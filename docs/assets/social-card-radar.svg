@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="21 21 66 66" width="400" height="400">
+  <!--Exact paths, colors and opacity from app/src/main/res/drawable/ic_launcher_foreground.xml-->
+  <path d="M24.00,54.00a30.00,30.00 0,1 1,60.00,0a30.00,30.00 0,1 1,-60.00,0" fill="none" stroke="#E53935" stroke-width="3" />
+  <path d="M38.00,54.00a16,16 0,1 1,32,0a16,16 0,1 1,-32,0" fill="none" stroke="#E53935" stroke-width="2" stroke-opacity="0.55" />
+  <path d="M54.00,54.00L54.00,25.50A28.50,28.50 0,0 1,75.83,35.68Z" fill="#E53935" fill-opacity="0.85" />
+  <path d="M50.50,54.00a3.5,3.5 0,1 1,7,0a3.5,3.5 0,1 1,-7,0" fill="#E53935" />
+  <path d="M71.54,49.63a3,3 0,1 1,6,0a3,3 0,1 1,-6,0" fill="#FF8A80" />
+</svg>
