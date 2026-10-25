@@ -91,7 +91,7 @@ Snoop reading and unattended-start preferences stay local to this phone when imp
 
 ## Copyright and license
 
-Copyright (c) 2026 Off Grid Pete LLC.
+Copyright (c) 2026 Off Grid Pete LLC. \
 Modifications copyright (c) 2026 NanashiTheNameless.
 
 Licensed under the [MIT License](LICENSE). AndroidX, Kotlin, and related libraries remain Apache-2.0. IEEE and Bluetooth SIG assigned-number tables in `radiodb.bin` are subject to those organizations' terms. See [NOTICE](NOTICE).
