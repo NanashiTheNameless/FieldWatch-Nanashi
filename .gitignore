@@ -4,12 +4,13 @@
 build/
 app/build/
 *.apk
-!dist/*.apk
 *.aab
 *.ap_
 local.properties
+.android-sdk/
 *.jks
 *.keystore
+fieldwatch-nanashi-keystore.properties
 
 # IDE
 .idea/

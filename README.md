@@ -1,77 +1,93 @@
-# Fieldwatch
+# FieldWatch-Nanashi
 
-I built Fieldwatch as a personal tool to look at what Wi-Fi access points and Bluetooth LE ads my phone was able to pick up, so that I could better understand what devices were being used around me. It’s passive, it only listens, there’s no dongle, no account, and no backend server. I wanted something that would work offline in the field.
+> [!WARNING]
+> **Unofficial, modified, personal fork. Not for general use.**
+>
+> FieldWatch-Nanashi is Nanashi's personal modification of Fieldwatch. The source is public, but the fork exists for one user and is tuned to Nanashi's own preferences. It is not made, reviewed, or endorsed by Off Grid Pete LLC or the upstream Fieldwatch project. Expect it to be unstable: features change or disappear without notice, builds can break, and saved data may not survive updates. English only. It is not meant for adoption by anyone but Nanashi. If you want Fieldwatch, use the upstream project at <https://github.com/OffGridPete/Fieldwatch>. Please do not file issues about this fork upstream.
 
-My goals were to have a modern interface that was easy to use, flexible in how information was displayed so I could customize a view based on what I was trying to do, a filtering engine so I do not have to look at everything, an extensible signature library so I can identify as many radio sources as possible and add new ones on the fly, as well as create reports of what was seen.
+Wi-Fi access-point and Bluetooth LE watcher for Android, with optional active Bluetooth Classic discovery. No account, no backend, works offline.
 
-I have been using it and iterating on it for a while now, and it has been useful enough that I thought I would share it.
-
-This is a hobby — something I do for fun in my spare time. There is no Fieldwatch backend. There are no ads. Everything lives on the phone. Source and sideload files are in this repository (`dist/` for the APK, instruction card, and manual).
-
-It was Spectre through 1.2.14. I later learned that name was already in use by another app, so I renamed this one Fieldwatch to keep the two from being mixed up. Same field tool, new application id (`app.fieldwatch`), MIT License. Installing Fieldwatch does not replace Spectre on a phone; it is a separate app.
-
-If you spot an error, something stupid, or have a feature idea — in the app or the documentation — please [open an issue on this repository](https://github.com/OffGridPete/Fieldwatch/issues). This is how we make it better. I hope you find it as useful as I have. I look forward to hearing how it goes.
-
-**Just want to install it?** Download [Fieldwatch.apk](https://github.com/OffGridPete/Fieldwatch/raw/main/dist/Fieldwatch.apk). Instruction card and manual: [instruction.txt](https://github.com/OffGridPete/Fieldwatch/raw/main/dist/instruction.txt), [Fieldwatch_User_Manual.pdf](https://github.com/OffGridPete/Fieldwatch/raw/main/dist/Fieldwatch_User_Manual.pdf). [What’s new](CHANGELOG.md) is the changelog for each build. Leave the APK named `Fieldwatch.apk`. GitHub may say the file is too big to preview — that is their viewer; use Download.
-
-**Stay updated.** Fieldwatch isn't on the Play Store. Install [Obtainium](https://github.com/ImranR98/Obtainium) and add https://github.com/OffGridPete/Fieldwatch. It can download and install a new release for you.
-
-**Official builds.** The only official Fieldwatch builds are the releases in this repo. Other builds and translations are not made or reviewed by Off Grid Pete LLC.
+Application id `dev.namelessnanashi.fieldwatch`. It installs alongside upstream `app.fieldwatch` and does not update or replace it.
 
 ## Safety & disclaimer
 
-This is a hobby project, provided as-is under the MIT License. A few things to know before you do:
+Provided as-is under the MIT License.
 
-- Use at your own risk. Using Fieldwatch is your responsibility. To the maximum extent permitted by law, Off Grid Pete LLC is not liable for indirect, incidental, special, consequential, or punitive damages arising from its use.
-- There is no guarantee that trackers, cameras, tags, access points, or any other device will be found, named, or reported. Radios that are off, cellular-only, asleep, randomized, quiet, or outside what this handset’s OS exposes will not appear. Each phone has its own radios, firmware, scan quotas, and OEM battery policies. Software cannot address those limits.
-- Pattern matches, GPS co-travel (“Moving with you” / “possible tail”), Debrief language, and AI Export output are hypotheses — not identity, not a legal finding, and not a complete RF capture. You are solely responsible for how you use this app and this document, and for complying with local law. By using the software or this manual you accept these terms and the MIT License.
-- Location data, if tagging is on, is this phone at hear-time — not the other radio. There is no Fieldwatch server. Stamps stay on the handset until you share them. Logs keep full coordinates even when Privacy mode masks the screen and sit reports. Debrief, Share log, AI Export (sit or one radio), and radio-detail Share as text can take that path off the phone. Online place names use the system geocoder (often the OEM / Google network), not a Fieldwatch cloud. How you store, share, or publish those files is your responsibility.
+- Use at your own risk. To the maximum extent permitted by law, the authors (Off Grid Pete LLC and NanashiTheNameless) are not liable for indirect, incidental, special, consequential, or punitive damages arising from its use.
+- There is no guarantee that trackers, cameras, tags, access points, or any other device will be found, named, or reported. Radios that are off, cellular-only, asleep, randomized, quiet, or outside what the handset's OS exposes will not appear.
+- Pattern matches, GPS co-travel ("Moving with you" / "possible tail"), Debrief language, and AI Export output are hypotheses — not identity, not a legal finding, and not a complete RF capture. You are responsible for how you use the app and for complying with local law.
+- Location stamps are this phone at hear-time, not the other radio. They stay on the handset until you share them. Logs keep full coordinates even when Privacy mode masks the screen. Debrief, Share log, AI Export, and Share as text can take that data off the phone. Online place names use the system geocoder (often the OEM / Google network); map tiles come from the selected tile provider.
 
-## Put it on a phone
+## Install
 
-On a phone, the install files are in [`dist/`](https://github.com/OffGridPete/Fieldwatch/tree/main/dist), not the root of the repo:
+Nightly only, no stable releases: download `FieldWatch-Nanashi-nightly.apk` from the [Nightly-Rolling release](https://github.com/NanashiTheNameless/FieldWatch-Nanashi/releases/tag/Nightly-Rolling), or add this repository to Obtainium. Every official build is signed with the same key; its SHA-256 is in the release notes.
 
-- [Fieldwatch.apk](https://github.com/OffGridPete/Fieldwatch/raw/main/dist/Fieldwatch.apk)
-- [instruction.txt](https://github.com/OffGridPete/Fieldwatch/raw/main/dist/instruction.txt)
-- [Fieldwatch_User_Manual.pdf](https://github.com/OffGridPete/Fieldwatch/raw/main/dist/Fieldwatch_User_Manual.pdf)
+## Build
 
-Do not rename the APK. Open `Fieldwatch.apk` from Files (or My Files). Allow install from that app if Android asks.
+Runs on Android 12 through Android 17 (API 31–37); targets API 36. Builds with the JDK named in `.java-version` and Android SDK platform 37.
+
+```bash
+./build.sh                # unit tests + debug APK
+./build.sh install        # unit tests + install the debug build on the connected phone
+./build.sh release        # unit tests + release APK, then show its signing certificate
+./build.sh installRelease # unit tests + signed release APK + install on the connected phone
+./build.sh <gradle args>  # anything else goes straight to Gradle
+```
+
+`build.sh` finds the JDK from `.java-version` and an existing Android SDK (installing only missing packages), so nothing needs exporting first. `./setup.sh` does just that check; `eval "$(./setup.sh --env)"` exports the same environment into your shell for running `./gradlew` directly.
+
+The debug build installs as `dev.namelessnanashi.fieldwatch.debug` ("FieldWatch-Nanashi (DEBUG)") beside a release build and is signed with the local Android debug key. `versionCode` is seconds since 2026-01-01 UTC, so each build installs over the last. Signed nightly builds are published automatically; see [docs/releases.md](docs/releases.md).
 
 | File | What it is |
 |---|---|
-| `dist/Fieldwatch.apk` | Sideload APK |
-| `dist/fieldwatch-signatures.json` | Stock catalog for 1.1.11 GitHub update (catalog 77) |
-| `dist/fieldwatch-signatures-v2.json` | Stock catalog for 1.1.12+ GitHub update |
-| `dist/fieldwatch-sensors.geojson.gz` | Other sensors list. OpenStreetMap contributors, ODbL 1.0. See `dist/fieldwatch-sensors.txt` |
-| `dist/instruction.txt` | Permissions, first launch |
-| `dist/Fieldwatch_User_Manual.pdf` | User manual |
-| [`CHANGELOG.md`](CHANGELOG.md) | What’s new in each build |
+| `docs/releases.md` | Nightly pipeline, release key, versioning |
 | `LICENSE` | MIT License |
 | `NOTICE` | Third-party attribution |
 
-Android 10+. Allow install from the app you used to open the APK. Play Protect may warn that it is not from Play — expected. Full steps are in `instruction.txt`.
+### Moving from upstream `app.fieldwatch`
 
-```bash
-adb install -r dist/Fieldwatch.apk
-```
+Nothing carries over by itself. In upstream: Settings → **Export signatures** and **Export settings**. In this app: **Import signatures** and **Import settings**.
 
-### Upgrading from 1.0.4 or earlier — Fieldwatch now has a real publisher certificate (one-time reinstall)
+## Elevated access (optional)
 
-This release is a little more professional about how the APK is signed. Android attaches a certificate to every app so the phone can tell “this update is from the same publisher as the app I already have.” Through 1.0.4, Fieldwatch used the generic Android developer certificate that the build tools ship with. That is normal while you are iterating, but people who scan a sideload APK (and some scanners) flag it: a public build should not look like a debug leftover. 1.0.5 is signed with an Off Grid Pete LLC certificate instead. Same hobby app; the file now has a publisher name scanners can check. The fingerprint is in `instruction.txt` if you want to compare.
+Settings → **Elevated access** uses whatever the phone offers to lift Android limits that make scanning unreliable. Nothing runs until you tap it.
 
-The catch is one-time. The phone treats a new certificate as a different publisher, so it will not install 1.0.5 on top of 1.0.4 or earlier. You uninstall the old Fieldwatch, then install this APK. After that, later versions use the same certificate, so ordinary updates work again. You will not have to uninstall for 1.1.31.
+- **Shizuku or root** (`su`, e.g. Magisk, KernelSU, APatch): *Apply reliability fixes* turns off Wi-Fi scan throttling, exempts the app from battery optimization and background limits, stops Android removing its permissions when unused, grants its radio permissions, and grants secure-settings access so the app can keep throttling off by itself after that. *Turn on Wi-Fi, Bluetooth, and Location* does what it says.
+- **Device admin:** an active admin (no policies requested) is placed in the exempted standby bucket, so background scans are not deferred. Deactivate it before uninstalling.
+- **Vector module** (modern Xposed): enable FieldWatch-Nanashi for the Bluetooth app and this app, then restart Bluetooth or reboot. It lifts three BLE scan limits for this app only: "scanning too frequently", the 30-minute downgrade to opportunistic scanning, and screen-off suspension of unfiltered scans.
 
-Uninstall wipes what is on the phone. If you added signatures, changed Settings, named radios, or saved filter presets, do this first: Settings → **Export signatures** and **Export settings**. Share or save those two files somewhere you can get them after. They are not the log and not GPS. Then uninstall (long-press the Fieldwatch icon, or `adb uninstall app.fieldwatch`), install 1.0.5, open it, tap through the disclaimer, and use **Import signatures** and **Import settings**. If you never customized, skip the export and just uninstall, then install.
+## Optional discovery and unattended scanning
 
-## What Fieldwatch is not
+All switches below are off by default in Settings → Scanning.
 
-- Not Wi-Fi clients, probe-only stations, or 802.11 monitor mode
-- Not Bluetooth Classic inquiry (HC-05 / HC-06 will not appear)
-- Not cellular
-- Not direction finding
+- **Bluetooth Classic discovery:** periodically runs an active inquiry while the screen is on. Discoverable older headsets, speakers, car kits, and serial modules appear in the Bluetooth list using the existing Class of Device decoder. Inquiry shares radio time with BLE and costs extra battery; devices must answer inquiry to appear.
+- **HCI snoop-log reader (root):** first apply **Bluetooth HCI snoop log** in Elevated access, then enable the reader in Scanning settings. It reads new legacy/extended LE advertising reports and Classic inquiry results from `/data/misc/bluetooth/logs/btsnoop_hci.log`, using the existing payload and Class of Device decoders. It handles partial records and file rotation, skips older capture history, and shows reader status in Scanning settings. Other HCI traffic is discarded. Fragmented or truncated extended advertising payloads are skipped. Phones using another log path or format are not supported. Root is required for reading; Shizuku's shell identity cannot access this log. Disabling the reader leaves system logging enabled; undo the elevated snoop item to stop logging and delete its capture. The system capture can contain sensitive Bluetooth traffic, including pairing keys.
+- **Continue scanning in background:** keeps the foreground scan notification after dismissing the app from Recents and allows Android to restart the service after memory reclamation. Stop it from the notification.
+- **Start scanning after boot:** starts after first unlock and app updates. Grant radio permissions first, then apply **Location permission for boot scanning** through Shizuku or root in Elevated access (or grant **Allow all the time** in Android's app location settings). Use the existing battery exemption and background-running items if needed. These permissions persist across reboots; Shizuku need not be running at boot. Device owner is not required. Force stop blocks automatic starts until the app is opened again, and manufacturer background restrictions can still prevent operation. Continue-after-dismissal and boot startup are separate preferences.
+
+The Live screen has separate **Start scan** and **Stop scan** buttons. **Pause** freezes only the display; scanning and alerts continue. **Stop scan** stops scanning and removes the scan notification, and stays stopped across app resumes and reboot until you press **Start scan**. The notification's Stop action has the same effect. Scan preferences and saved observations are retained.
+
+Snoop capture read interruptions retry up to three times with increasing delays. A damaged or unsupported capture waits for log rotation; denied root access requires checking root and toggling the reader.
+
+Snoop reading and unattended-start preferences stay local to this phone when importing settings.
+
+## Not supported
+
+- Wi-Fi clients, probe-only stations, or 802.11 monitor mode
+- Cellular
+- Direction finding
+
+## Support this fork
+
+- [GitHub Sponsors](https://github.com/sponsors/NanashiTheNameless)
+- [Buy Me a Coffee](https://buymeacoffee.com/NamelessNanashi)
+- [Ko-fi](https://ko-fi.com/NanashiTheNameless)
+- [Liberapay](https://liberapay.com/NamelessNanashi)
+- [Throne](https://throne.com/NamelessNanashi)
 
 ## Copyright and license
 
 Copyright (c) 2026 Off Grid Pete LLC.
+Modifications copyright (c) 2026 NanashiTheNameless.
 
-Fieldwatch source is licensed under the [MIT License](LICENSE). AndroidX, Kotlin, and related libraries remain Apache-2.0. IEEE and Bluetooth SIG assigned-number tables in `radiodb.bin` are subject to those organizations’ terms. See [NOTICE](NOTICE).
+Licensed under the [MIT License](LICENSE). AndroidX, Kotlin, and related libraries remain Apache-2.0. IEEE and Bluetooth SIG assigned-number tables in `radiodb.bin` are subject to those organizations' terms. See [NOTICE](NOTICE).

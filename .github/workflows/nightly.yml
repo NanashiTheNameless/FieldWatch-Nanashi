@@ -1,0 +1,172 @@
+name: Nightly
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+jobs:
+  nightly:
+    name: Signed nightly release
+    runs-on: ubuntu-latest
+    env:
+      BUILD_TOOLS: "37.0.0"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Variables
+        id: vars
+        run: |
+          set -euo pipefail
+          sha7=$(git rev-parse --short=7 HEAD)
+          date=$(date -u +%Y.%m.%d)
+          prev=$(git rev-parse -q --verify 'refs/tags/Nightly-Rolling^{commit}' || true)
+          {
+            echo "sha7=$sha7"
+            echo "date=$date"
+            echo "prev=$prev"
+            echo "apk=FieldWatch-Nanashi-nightly-$date-$sha7.apk"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: zulu
+          java-version-file: .java-version
+
+      - uses: android-actions/setup-android@v4
+
+      - name: Android SDK packages
+        run: |
+          yes | sdkmanager --licenses > /dev/null
+          sdkmanager "platform-tools" "platforms;android-37.0" "build-tools;${BUILD_TOOLS}"
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Decode keystore
+        env:
+          RELEASE_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE }}
+        run: |
+          set -euo pipefail
+          if [ -z "$RELEASE_KEYSTORE" ]; then
+            echo "::error::RELEASE_KEYSTORE secret is not set. Official builds must be signed."
+            exit 1
+          fi
+          printf '%s' "$RELEASE_KEYSTORE" | base64 -d > "$RUNNER_TEMP/release.jks"
+          echo "KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+
+      - name: Unit tests and stock catalog
+        env:
+          STOCK_CATALOG_OUT: ${{ runner.temp }}/out/fieldwatch-signatures-v2.json
+        run: ./gradlew --no-daemon testDebugUnitTest --build-cache
+
+      - name: Build release APK
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: ./gradlew --no-daemon assembleRelease --build-cache -PversionSuffix=${{ steps.vars.outputs.sha7 }}
+
+      - name: Remove keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.jks"
+
+      - name: Verify signing certificate
+        id: cert
+        env:
+          EXPECTED: ${{ vars.RELEASE_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          src=$(ls app/build/outputs/apk/release/*.apk | grep -v unsigned | head -n 1 || true)
+          if [ -z "$src" ]; then
+            echo "::error::No signed release APK was produced. Check the RELEASE_* secrets."
+            exit 1
+          fi
+          apksigner="$ANDROID_HOME/build-tools/$BUILD_TOOLS/apksigner"
+          "$apksigner" -J-enable-native-access=ALL-UNNAMED verify --min-sdk-version 31 "$src"
+          actual=$("$apksigner" -J-enable-native-access=ALL-UNNAMED verify --print-certs "$src" \
+            | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n 1)
+          expected=$(printf '%s' "$EXPECTED" | tr -d ': ' | tr 'A-F' 'a-f')
+          if [ -z "$expected" ]; then
+            echo "::error::Repository variable RELEASE_CERT_SHA256 is not set. This build is signed by $actual. Set the variable to that value if it is your key."
+            exit 1
+          fi
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::APK is signed by $actual, expected $expected. Refusing to publish."
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/out"
+          cp "$src" "$RUNNER_TEMP/out/${{ steps.vars.outputs.apk }}"
+          cp "$src" "$RUNNER_TEMP/out/FieldWatch-Nanashi-nightly.apk"
+          echo "sha256=$actual" >> "$GITHUB_OUTPUT"
+
+      - name: Release notes
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/out"
+          apk_sum=$(sha256sum "$out/${{ steps.vars.outputs.apk }}" | cut -d' ' -f1)
+          prev="${{ steps.vars.outputs.prev }}"
+          if [ -n "$prev" ] && git merge-base --is-ancestor "$prev" HEAD; then
+            changes=$(git log --no-merges --format='- %s (%h)' "$prev..HEAD" | head -n 50)
+          else
+            changes=$(git log --no-merges --format='- %s (%h)' -n 20)
+          fi
+          cat > "$out/notes.md" <<EOF
+          > [!WARNING]
+          > Unofficial, modified, personal fork of Fieldwatch. Unstable. Not meant for adoption by anyone but Nanashi.
+
+          Nightly build of \`${GITHUB_SHA}\` from ${{ steps.vars.outputs.date }}.
+
+          | | |
+          |---|---|
+          | APK | \`${{ steps.vars.outputs.apk }}\` (also \`FieldWatch-Nanashi-nightly.apk\`) |
+          | APK SHA-256 | \`${apk_sum}\` |
+          | Signing certificate SHA-256 | \`${{ steps.cert.outputs.sha256 }}\` |
+
+          ## Changes
+
+          ${changes:-- No new commits.}
+          EOF
+
+      - name: Move Nightly-Rolling tag
+        run: |
+          set -euo pipefail
+          git tag -f Nightly-Rolling "$GITHUB_SHA"
+          git push -f origin refs/tags/Nightly-Rolling
+
+      - name: Publish Nightly-Rolling release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/out"
+          title="Nightly-Rolling ${{ steps.vars.outputs.date }} (${{ steps.vars.outputs.sha7 }})"
+          if gh release view Nightly-Rolling > /dev/null 2>&1; then
+            gh release edit Nightly-Rolling --title "$title" --notes-file "$out/notes.md" --prerelease=false --latest
+          else
+            gh release create Nightly-Rolling --title "$title" --notes-file "$out/notes.md" --latest --verify-tag
+          fi
+          gh release upload Nightly-Rolling --clobber \
+            "$out/${{ steps.vars.outputs.apk }}" \
+            "$out/FieldWatch-Nanashi-nightly.apk" \
+            "$out/fieldwatch-signatures-v2.json"
+
+      - name: Prune old nightly APKs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KEEP: "4"
+        run: |
+          set -euo pipefail
+          gh release view Nightly-Rolling --json assets \
+            --jq '.assets | map(select(.name | test("^FieldWatch-Nanashi-nightly-.*\\.apk$"))) | sort_by(.createdAt) | reverse | .[(env.KEEP | tonumber):] | .[].name' \
+            | while read -r name; do
+                [ -n "$name" ] && gh release delete-asset Nightly-Rolling "$name" --yes
+              done

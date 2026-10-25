@@ -1,11 +1,30 @@
-# Sideload is non-debuggable. Shrink unused library code (Material icons,
-# Compose tooling) but do not obfuscate or optimize — same R8 shape as
-# the old debug field build, without adb run-as into app data.
+# Release builds are not debuggable. R8 optimizes and shrinks, but does not rename:
+# crash notes are read on the phone, so stack traces must stay readable.
 -dontobfuscate
--dontoptimize
 
--keep class app.fieldwatch.** { *; }
--keepclassmembers class app.fieldwatch.** { *; }
+# Entry points Android constructs by name. Everything else may be optimized or removed.
+-keep class dev.namelessnanashi.fieldwatch.FieldwatchApp { *; }
+-keep class dev.namelessnanashi.fieldwatch.MainActivity { *; }
+-keep class dev.namelessnanashi.fieldwatch.radio.ScanService { *; }
+-keep class dev.namelessnanashi.fieldwatch.elevated.FieldwatchAdminReceiver { *; }
+-keep class dev.namelessnanashi.fieldwatch.elevated.ShellService { *; }
+-keep class dev.namelessnanashi.fieldwatch.elevated.IShellService { *; }
+-keep class dev.namelessnanashi.fieldwatch.elevated.IShellService$* { *; }
+# Entry class named in META-INF/xposed/java_init.list, loaded by the framework.
+-keep class dev.namelessnanashi.fieldwatch.elevated.xposed.FieldwatchXposedModule { *; }
+# Read by the module through reflection inside the Bluetooth process.
+-keep class dev.namelessnanashi.fieldwatch.elevated.xposed.XposedTargets { *; }
+
+# @Serializable classes: keep their fields and generated serializers.
+-keepclassmembers @kotlinx.serialization.Serializable class dev.namelessnanashi.fieldwatch.** {
+    <fields>;
+    *** Companion;
+    *** serializer(...);
+}
+-keepclasseswithmembers class dev.namelessnanashi.fieldwatch.** {
+    public static ** INSTANCE;
+    kotlinx.serialization.KSerializer serializer(...);
+}
 
 -keepattributes RuntimeVisibleAnnotations, AnnotationDefault, InnerClasses, Signature, Exception, EnclosingMethod, SourceFile, LineNumberTable
 
@@ -17,3 +36,8 @@
 }
 
 -dontwarn androidx.compose.**
+
+# Shizuku user service and binder glue.
+-keep class rikka.shizuku.** { *; }
+# The Vector/libxposed API is supplied by the framework at runtime, not packaged.
+-dontwarn io.github.libxposed.**

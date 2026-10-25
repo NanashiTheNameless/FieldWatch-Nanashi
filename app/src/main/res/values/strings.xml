@@ -1,3 +1,5 @@
 <resources>
-    <string name="app_name">Fieldwatch</string>
+    <string name="app_name">FieldWatch-Nanashi</string>
+    <string name="xposed_description">Lifts Android\'s Bluetooth LE scan limits for FieldWatch-Nanashi only: scanning too frequently, the 30-minute downgrade, and screen-off suspension of unfiltered scans.</string>
+    <string name="device_admin_explanation">FieldWatch-Nanashi asks for no device admin policies. Being an active admin keeps Android from deferring its background scanning.</string>
 </resources>

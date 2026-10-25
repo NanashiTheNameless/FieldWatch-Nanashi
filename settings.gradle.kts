@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Fieldwatch"
+rootProject.name = "FieldWatch-Nanashi"
 include(":app")

@@ -34,3 +34,10 @@ as original Fieldwatch source.
 
 Fieldwatch continues the Spectre 1.2.14 field build under a new name,
 application id (app.fieldwatch), and license.
+
+This fork uses the application id dev.namelessnanashi.fieldwatch.
+
+The app font is 0xProto 2.502 by the 0xType Project
+Authors, https://github.com/0xType/0xProto, licensed under the SIL Open
+Font License 1.1. The license text ships in the app at
+app/src/main/assets/licenses/0xProto-OFL.txt.

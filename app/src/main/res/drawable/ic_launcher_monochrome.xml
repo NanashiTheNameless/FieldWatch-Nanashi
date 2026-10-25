@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed-icon layer (Android 13+): flat radar on the 108dp adaptive canvas, inside the 66dp safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3"
+        android:pathData="M24.00,54.00a30.00,30.00 0,1 1,60.00,0a30.00,30.00 0,1 1,-60.00,0" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeAlpha="0.55"
+        android:strokeWidth="2"
+        android:pathData="M38.00,54.00a16,16 0,1 1,32,0a16,16 0,1 1,-32,0" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.85"
+        android:pathData="M54.00,54.00L54.00,25.50A28.50,28.50 0,0 1,75.83,35.68Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M50.50,54.00a3.5,3.5 0,1 1,7,0a3.5,3.5 0,1 1,-7,0" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M71.54,49.63a3,3 0,1 1,6,0a3,3 0,1 1,-6,0" />
+</vector>
