@@ -6,16 +6,17 @@ FieldWatch-Nanashi publishes nightly APK builds. The separate `Data-Assets` rele
 
 `.github/workflows/nightly.yml` runs on every push to `main` (and on manual dispatch):
 
-1. Runs the unit tests and writes the stock signature pack from `DefaultCatalog`.
+1. Runs the unit tests.
 2. Builds `assembleRelease` with `versionName` `<x.y.z>-<sha7>` and the time-based `versionCode`.
 3. Signs with the release key from repository secrets. The decoded keystore lives in the runner's temp directory and is deleted right after the build.
 4. Refuses to publish unless `apksigner` verifies APK Signature Scheme v3 and its V3 signer certificate matches the SHA-256 pinned in the `RELEASE_CERT_SHA256` repository variable. Every official build uses that one key.
 5. Force-moves the `Nightly-Rolling` tag and updates the single `Nightly-Rolling` GitHub release (a normal release marked latest, not a pre-release) with:
    - `FieldWatch-Nanashi-nightly-<yyyy.mm.dd>-<sha7>.apk` (the last 4 are kept)
    - `FieldWatch-Nanashi-nightly.apk` (always the newest; stable download URL)
-   - release notes with the APK SHA-256, the certificate SHA-256, and the commits since the previous Nightly-Rolling build
+   - `FieldWatch-Nanashi-obtainium.json` (app-specific Obtainium import configuration)
+   - release notes with a headerless APK/hash table and no generated commit list
 
-6. Refreshes `fieldwatch-signatures-v2.json` on the existing `Data-Assets` release. Historical data assets there are preserved. The APK release holds APKs only. See [Data assets](data-assets.md).
+`.github/workflows/data-assets.yml` independently regenerates the fork catalog, refreshes the optional upstream exports, and publishes the Obtainium config to `Data-Assets`. It runs daily at 04:17 UTC, on relevant source changes, and on manual dispatch. Unchanged assets retain their IDs and download dates. The data release is neither latest nor a pre-release. See [Data assets](data-assets.md).
 
 The certificate parser accepts build-tools 37's `V3.0 Signer` label, requires a successful v3 verification result, and refuses missing or conflicting V3 digests. Local release verification uses the same parser.
 

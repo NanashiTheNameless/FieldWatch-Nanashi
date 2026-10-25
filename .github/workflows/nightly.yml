@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Variables
         id: vars
@@ -29,11 +29,9 @@ jobs:
           set -euo pipefail
           sha7=$(git rev-parse --short=7 HEAD)
           date=$(date -u +%Y.%m.%d)
-          prev=$(git rev-parse -q --verify 'refs/tags/Nightly-Rolling^{commit}' || true)
           {
             echo "sha7=$sha7"
             echo "date=$date"
-            echo "prev=$prev"
             echo "apk=FieldWatch-Nanashi-nightly-$date-$sha7.apk"
           } >> "$GITHUB_OUTPUT"
 
@@ -66,9 +64,7 @@ jobs:
       - name: Verify certificate parser
         run: bash scripts/test_apk_certificate.sh
 
-      - name: Unit tests and stock catalog
-        env:
-          STOCK_CATALOG_OUT: ${{ runner.temp }}/out/fieldwatch-signatures-v2.json
+      - name: Unit tests
         run: ./build.sh testDebugUnitTest --no-daemon --build-cache
 
       - name: Build release APK
@@ -109,45 +105,27 @@ jobs:
           mkdir -p "$RUNNER_TEMP/out"
           cp "$src" "$RUNNER_TEMP/out/${{ steps.vars.outputs.apk }}"
           cp "$src" "$RUNNER_TEMP/out/FieldWatch-Nanashi-nightly.apk"
+          cp docs/FieldWatch-Nanashi-obtainium.json "$RUNNER_TEMP/out/FieldWatch-Nanashi-obtainium.json"
           echo "sha256=$actual" >> "$GITHUB_OUTPUT"
-
-      - name: Publish stock catalog to data release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          test -s "$RUNNER_TEMP/out/fieldwatch-signatures-v2.json"
-          gh release edit Data-Assets --draft=false --prerelease=false --latest=false
-          gh release upload Data-Assets --clobber "$RUNNER_TEMP/out/fieldwatch-signatures-v2.json"
 
       - name: Release notes
         run: |
           set -euo pipefail
           out="$RUNNER_TEMP/out"
           apk_sum=$(sha256sum "$out/${{ steps.vars.outputs.apk }}" | cut -d' ' -f1)
-          prev="${{ steps.vars.outputs.prev }}"
-          if [ -n "$prev" ] && git merge-base --is-ancestor "$prev" HEAD; then
-            changes=$(git log --no-merges --format='- %s (%h)' "$prev..HEAD" | head -n 50)
-          else
-            changes=$(git log --no-merges --format='- %s (%h)' -n 20)
-          fi
           cat > "$out/notes.md" <<EOF
           > [!WARNING]
           > Unofficial, modified, personal fork of Fieldwatch. Unstable. Not meant for adoption by anyone but Nanashi.
 
           Nightly build of \`${GITHUB_SHA}\` from ${{ steps.vars.outputs.date }}.
 
-          | | |
-          |---|---|
-          | APK | \`${{ steps.vars.outputs.apk }}\` (also \`FieldWatch-Nanashi-nightly.apk\`) |
-          | APK SHA-256 | \`${apk_sum}\` |
-          | Signing certificate SHA-256 | \`${{ steps.cert.outputs.sha256 }}\` |
+          <table>
+          <tr><td>APK</td><td><code>${{ steps.vars.outputs.apk }}</code> (also <code>FieldWatch-Nanashi-nightly.apk</code>)</td></tr>
+          <tr><td>APK SHA-256</td><td><code>${apk_sum}</code></td></tr>
+          <tr><td>Signing certificate SHA-256</td><td><code>${{ steps.cert.outputs.sha256 }}</code></td></tr>
+          </table>
 
           Signature catalogs and optional sensor exports: [Data assets](https://github.com/${{ github.repository }}/releases/tag/Data-Assets).
-
-          ## Changes
-
-          ${changes:-- No new commits.}
           EOF
 
       - name: Move Nightly-Rolling tag
@@ -170,7 +148,8 @@ jobs:
           fi
           gh release upload Nightly-Rolling --clobber \
             "$out/${{ steps.vars.outputs.apk }}" \
-            "$out/FieldWatch-Nanashi-nightly.apk"
+            "$out/FieldWatch-Nanashi-nightly.apk" \
+            "$out/FieldWatch-Nanashi-obtainium.json"
 
       - name: Prune old nightly APKs
         env:

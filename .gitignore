@@ -28,3 +28,6 @@ research/
 scripts/.lookup-cache/
 
 # Machine JDK path belongs in JAVA_HOME, not the tree
+
+# Python helper caches
+__pycache__/

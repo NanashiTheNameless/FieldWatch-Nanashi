@@ -1,0 +1,71 @@
+name: Data assets
+
+on:
+  schedule:
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/data-assets.yml'
+      - 'app/src/main/java/**/domain/**'
+      - 'app/src/main/java/**/data/ConfigStore.kt'
+      - 'app/src/test/java/**/domain/StockCatalogFileTest.kt'
+      - 'app/build.gradle.kts'
+      - 'docs/FieldWatch-Nanashi-obtainium.json'
+      - 'scripts/*data_assets.py'
+      - 'scripts/tests/test_data_assets.py'
+      - 'build.sh'
+      - 'setup.sh'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: data-assets
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: Refresh data exports
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Test data publication helpers
+        run: python3 -m unittest discover -s scripts/tests -p test_data_assets.py
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: zulu
+          java-version-file: .java-version
+
+      - uses: android-actions/setup-android@v4
+
+      - name: Android SDK packages
+        run: |
+          yes | sdkmanager --licenses > /dev/null
+          sdkmanager "platform-tools" "platforms;android-37.0" "build-tools;37.0.0"
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Unit tests and fork catalog
+        env:
+          STOCK_CATALOG_OUT: ${{ runner.temp }}/data-assets/fieldwatch-signatures-v2.json
+        run: ./build.sh testDebugUnitTest --no-daemon --build-cache
+
+      - name: Resolve upstream snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          commit=$(gh api repos/OffGridPete/Fieldwatch/commits/main --jq .sha)
+          echo "UPSTREAM_COMMIT=$commit" >> "$GITHUB_ENV"
+
+      - name: Prepare optional exports and Obtainium config
+        run: python3 scripts/prepare_data_assets.py --directory "$RUNNER_TEMP/data-assets" --upstream-commit "$UPSTREAM_COMMIT"
+
+      - name: Publish data assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/publish_data_assets.py --directory "$RUNNER_TEMP/data-assets" --repo "$GITHUB_REPOSITORY"
