@@ -231,7 +231,7 @@ private fun buildLines(): List<EnglishLine> = listOf(
     en("elevated.confirm.run", "Run", LanguageSlot.CONTROL),
     en("elevated.log", "Last result", LanguageSlot.CONTROL),
     en("elevated.busy", "Working…", LanguageSlot.CONTROL),
-    en("settings.catalog.source.fork", "FieldWatch-Nanashi nightly", LanguageSlot.CONTROL),
+    en("settings.catalog.source.fork", "FieldWatch-Nanashi", LanguageSlot.CONTROL),
     en("settings.catalog.source.upstream", "Upstream Fieldwatch", LanguageSlot.CONTROL),
     en(
         "settings.catalog.source.about",

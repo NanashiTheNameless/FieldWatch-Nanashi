@@ -26,8 +26,11 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v6
 
+      - name: Verify certificate parser
+        run: bash scripts/test_apk_certificate.sh
+
       - name: Unit tests
-        run: ./gradlew --no-daemon testDebugUnitTest --build-cache
+        run: ./build.sh testDebugUnitTest --no-daemon --build-cache
 
       - name: Upload test report
         if: always()
@@ -38,7 +41,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Assemble debug APK
-        run: ./gradlew --no-daemon assembleDebug --build-cache
+        run: ./build.sh assembleDebug --no-daemon --build-cache
 
       - name: Upload APK
         uses: actions/upload-artifact@v7

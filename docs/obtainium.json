@@ -1,0 +1,7 @@
+{
+  "id": "dev.namelessnanashi.fieldwatch",
+  "url": "https://github.com/NanashiTheNameless/FieldWatch-Nanashi",
+  "author": "NanashiTheNameless",
+  "name": "FieldWatch-Nanashi",
+  "additionalSettings": "{\"includePrereleases\":false,\"filterReleaseTitlesByRegEx\":\"^Nightly-Rolling\",\"apkFilterRegEx\":\"^FieldWatch-Nanashi-nightly\\\\.apk$\",\"useLatestAssetDateAsReleaseDate\":true,\"releaseDateAsVersion\":true,\"versionDetection\":false}"
+}

@@ -146,3 +146,13 @@ dependencies {
     // Real org.json on the JVM test classpath; the android.jar bundled JSONObject is a stub.
     testImplementation("org.json:json:20260814")
 }
+
+// Catalog export is a real test output so a cache hit also restores the release asset.
+tasks.withType<Test>().configureEach {
+    val catalogOut = providers.environmentVariable("STOCK_CATALOG_OUT").orNull
+    inputs.property("exportStockCatalog", catalogOut != null)
+    if (catalogOut != null) {
+        environment("STOCK_CATALOG_OUT", catalogOut)
+        outputs.file(catalogOut).withPropertyName("stockCatalog")
+    }
+}

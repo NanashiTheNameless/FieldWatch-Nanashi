@@ -14,7 +14,7 @@ class StockCatalogFileTest {
     @Test
     fun stockPackMatchesDefaultCatalog() {
         val encoded = stockPackJson()
-        // The nightly workflow publishes this file as the stock catalog asset.
+        // The nightly workflow refreshes this file on the separate Data-Assets release.
         System.getenv("STOCK_CATALOG_OUT")?.takeIf { it.isNotBlank() }?.let { path ->
             val dest = java.io.File(path)
             dest.parentFile?.mkdirs()

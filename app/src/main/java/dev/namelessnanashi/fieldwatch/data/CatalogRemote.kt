@@ -6,9 +6,9 @@ import java.net.URL
 
 /** HTTPS GET of a stock signature pack on GitHub. No account. Fails to the caller. */
 object CatalogRemote {
-    /** Built from this fork's DefaultCatalog by the Nightly-Rolling workflow. */
+    /** Built from this fork's DefaultCatalog; hosted on the separate Data-Assets release. */
     const val FORK_PACK_URL =
-        "https://github.com/NanashiTheNameless/FieldWatch-Nanashi/releases/download/Nightly-Rolling/fieldwatch-signatures-v2.json"
+        "https://github.com/NanashiTheNameless/FieldWatch-Nanashi/releases/download/Data-Assets/fieldwatch-signatures-v2.json"
 
     /** Upstream Fieldwatch's published pack. */
     const val UPSTREAM_PACK_URL =

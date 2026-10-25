@@ -1,6 +1,6 @@
 # Nightly releases and signing
 
-FieldWatch-Nanashi has nightly builds only. There are no stable releases or version tags.
+FieldWatch-Nanashi publishes nightly APK builds. The separate `Data-Assets` release holds downloadable data; it is neither latest nor a pre-release.
 
 ## How it works
 
@@ -9,12 +9,15 @@ FieldWatch-Nanashi has nightly builds only. There are no stable releases or vers
 1. Runs the unit tests and writes the stock signature pack from `DefaultCatalog`.
 2. Builds `assembleRelease` with `versionName` `<x.y.z>-<sha7>` and the time-based `versionCode`.
 3. Signs with the release key from repository secrets. The decoded keystore lives in the runner's temp directory and is deleted right after the build.
-4. Refuses to publish unless `apksigner` confirms the APK is signed by the certificate pinned in the `RELEASE_CERT_SHA256` repository variable. Every official build uses that one key.
+4. Refuses to publish unless `apksigner` verifies APK Signature Scheme v3 and its V3 signer certificate matches the SHA-256 pinned in the `RELEASE_CERT_SHA256` repository variable. Every official build uses that one key.
 5. Force-moves the `Nightly-Rolling` tag and updates the single `Nightly-Rolling` GitHub release (a normal release marked latest, not a pre-release) with:
    - `FieldWatch-Nanashi-nightly-<yyyy.mm.dd>-<sha7>.apk` (the last 4 are kept)
    - `FieldWatch-Nanashi-nightly.apk` (always the newest; stable download URL)
-   - `fieldwatch-signatures-v2.json` (used by **Update stock catalog from GitHub** when Settings → Signatures → **Stock catalog source** is *FieldWatch-Nanashi nightly*, the default; *Upstream Fieldwatch* downloads upstream's `dist/` pack instead)
    - release notes with the APK SHA-256, the certificate SHA-256, and the commits since the previous Nightly-Rolling build
+
+6. Refreshes `fieldwatch-signatures-v2.json` on the existing `Data-Assets` release. Historical data assets there are preserved. The APK release holds APKs only. See [Data assets](data-assets.md).
+
+The certificate parser accepts build-tools 37's `V3.0 Signer` label, requires a successful v3 verification result, and refuses missing or conflicting V3 digests. Local release verification uses the same parser.
 
 `.github/workflows/android.yml` runs tests and a debug build on pull requests.
 

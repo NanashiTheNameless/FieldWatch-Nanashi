@@ -50,8 +50,10 @@ case "${1:-}" in
         fi
         echo "APK: $apk"
         echo "APK SHA-256: $(sha256sum "$apk" | cut -d' ' -f1)"
-        certificate_info=$("$BUILD_TOOLS_DIR/apksigner" -J-enable-native-access=ALL-UNNAMED verify --min-sdk-version 31 --print-certs "$apk")
-        printf '%s\n' "$certificate_info" | grep -E 'certificate (DN|SHA-256)'
+        certificate_info=$("$BUILD_TOOLS_DIR/apksigner" -J-enable-native-access=ALL-UNNAMED verify --verbose --min-sdk-version 31 --print-certs "$apk")
+        certificate_sha256=$(printf '%s\n' "$certificate_info" | bash "$ROOT_DIR/scripts/apk_certificate_sha256.sh")
+        printf '%s\n' "$certificate_info" | grep 'certificate DN' || true
+        printf 'Signing certificate SHA-256: %s\n' "$certificate_sha256"
         if [ "$action" = installRelease ]; then
             adb install -r "$apk"
         fi
