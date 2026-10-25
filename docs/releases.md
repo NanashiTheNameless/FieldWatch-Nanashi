@@ -11,7 +11,7 @@ FieldWatch-Nanashi publishes nightly APK builds. The separate `Data-Assets` rele
 3. Signs with the release key from repository secrets. The decoded keystore lives in the runner's temp directory and is deleted right after the build.
 4. Refuses to publish unless `apksigner` verifies APK Signature Scheme v3 and its V3 signer certificate matches the SHA-256 pinned in the `RELEASE_CERT_SHA256` repository variable. Every official build uses that one key.
 5. Force-moves the `Nightly-Rolling` tag and updates the single `Nightly-Rolling` GitHub release (a normal release marked latest, not a pre-release) with:
-   - `FieldWatch-Nanashi-nightly-<yyyy.mm.dd>-<sha7>.apk` (the last 4 are kept)
+   - `FieldWatch-Nanashi-nightly-<yyyy.mm.dd>-<sha7>.apk` (the current build and five previous dated APKs are kept)
    - `FieldWatch-Nanashi-nightly.apk` (always the newest; stable download URL)
    - `FieldWatch-Nanashi-obtainium.json` (app-specific Obtainium import configuration)
    - release notes with a headerless APK/hash table and no generated commit list
@@ -83,3 +83,9 @@ keyPassword=...
 
 - `versionCode` is seconds since 2026-01-01T00:00:00Z, read at build time. It always increases and fits in an `Int` until 2094-01-19. Do not move that epoch backwards.
 - `versionName` is `<x.y.z>-localbuild` locally and `<x.y.z>-<sha7>` in CI (`-PversionSuffix=`). Debug adds `-debug`.
+
+## Dependency updates
+
+`.github/dependabot.yml` combines scheduled Gradle and GitHub Actions dependency updates into one weekly `dependencies` pull request using a multi-ecosystem group. Security alerts remain enabled and can trigger separate security update pull requests. Updates are not automatically merged.
+
+Some AGP build tools pull in libraries that Dependabot cannot update when they are only transitive dependencies. Their patched versions are declared explicitly in the root `buildscript` classpath. These are build-tool dependencies, not additions to the APK runtime. Keep dependency alerts enabled; a refreshed dependency graph is needed after changes.

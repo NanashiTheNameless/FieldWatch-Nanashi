@@ -154,11 +154,11 @@ jobs:
       - name: Prune old nightly APKs
         env:
           GH_TOKEN: ${{ github.token }}
-          KEEP: "4"
+          PREVIOUS_APKS: "5"
         run: |
           set -euo pipefail
           gh release view Nightly-Rolling --json assets \
-            --jq '.assets | map(select(.name | test("^FieldWatch-Nanashi-nightly-.*\\.apk$"))) | sort_by(.createdAt) | reverse | .[(env.KEEP | tonumber):] | .[].name' \
+            --jq '.assets | map(select(.name | test("^FieldWatch-Nanashi-nightly-.*\\.apk$"))) | sort_by(.createdAt) | reverse | .[((env.PREVIOUS_APKS | tonumber) + 1):] | .[].name' \
             | while read -r name; do
                 [ -n "$name" ] && gh release delete-asset Nightly-Rolling "$name" --yes
               done
