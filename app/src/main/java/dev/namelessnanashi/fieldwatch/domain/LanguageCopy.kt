@@ -115,6 +115,13 @@ private fun buildLines(): List<EnglishLine> = listOf(
         "Off by default. Also runs a Bluetooth Classic inquiry, which finds older devices (speakers, headsets, car kits, trackers) that answer an inquiry instead of advertising. Each inquiry is about 12 seconds of radio and shares the chip with the BLE scan, so it runs on a long interval and only while the screen is on.",
         LanguageSlot.BODY,
     ),
+    en("settings.statusicon.title", "Hide status-bar icon", LanguageSlot.CONTROL),
+    en("settings.statusicon.open", "Open notification settings", LanguageSlot.CONTROL),
+    en(
+        "settings.statusicon.about",
+        "Android requires a notification while scanning, and only you can hide its icon. Opens the Scanning notification page: set it to Silent, then turn on Minimize. Scanning keeps running. Some phones do not offer Minimize.",
+        LanguageSlot.BODY,
+    ),
     en("settings.catalog.source", "Stock catalog source", LanguageSlot.CONTROL),
     en("settings.tts.engine", "Voice engine", LanguageSlot.CONTROL),
     en("settings.voice.title", "Voice", LanguageSlot.CONTROL),

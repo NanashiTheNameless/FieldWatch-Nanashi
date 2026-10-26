@@ -68,7 +68,7 @@ class ScanService : LifecycleService() {
 
     override fun onCreate() {
         super.onCreate()
-        ensureChannel()
+        ensureChannel(this)
         // A restarted foreground service must post its notification before waiting on disk I/O.
         startAsForeground()
         startupJob = lifecycleScope.launch {
@@ -619,17 +619,6 @@ class ScanService : LifecycleService() {
         return null
     }
 
-    private fun ensureChannel() {
-        if (Build.VERSION.SDK_INT < 26) return
-        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        nm.createNotificationChannel(
-            NotificationChannel(CHANNEL, "Scanning", NotificationManager.IMPORTANCE_LOW).apply {
-                description = LanguageText.text("ui.passive.wi.fi.bluetooth")
-                setShowBadge(false)
-            },
-        )
-    }
-
     companion object {
         private const val TAG = "FieldwatchScan"
         const val CHANNEL = "fieldwatch_scan"
@@ -639,5 +628,17 @@ class ScanService : LifecycleService() {
         private const val PUBLISH_SCREEN_OFF_MS = 1_000L
         private const val BLE_START_STAGGER_MS = 500L
         private const val GNSS_START_DELAY_MS = 1_500L
+
+        /** Settings opens this channel's page, so it must exist before the first scan. */
+        fun ensureChannel(context: Context) {
+            if (Build.VERSION.SDK_INT < 26) return
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            nm.createNotificationChannel(
+                NotificationChannel(CHANNEL, "Scanning", NotificationManager.IMPORTANCE_LOW).apply {
+                    description = LanguageText.text("ui.passive.wi.fi.bluetooth")
+                    setShowBadge(false)
+                },
+            )
+        }
     }
 }

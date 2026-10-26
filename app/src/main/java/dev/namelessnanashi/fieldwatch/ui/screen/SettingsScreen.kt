@@ -87,6 +87,7 @@ import dev.namelessnanashi.fieldwatch.domain.TakGnssSend
 import dev.namelessnanashi.fieldwatch.domain.TakInstall
 import dev.namelessnanashi.fieldwatch.domain.TakPublish
 import dev.namelessnanashi.fieldwatch.domain.TakUdpPreset
+import dev.namelessnanashi.fieldwatch.radio.ScanService
 import dev.namelessnanashi.fieldwatch.radio.WifiRadio
 import dev.namelessnanashi.fieldwatch.ui.FieldwatchUi
 import dev.namelessnanashi.fieldwatch.ui.FieldwatchViewModel
@@ -278,6 +279,17 @@ fun SettingsScreen(
                     "Allow background running and exempt battery optimization there too if needed. " +
                     "Alternatively, select Allow all the time in Android's location permissions for this app. " +
                     "Shizuku does not need to stay running after granting permissions. Force stop blocks boot starts until you open the app again.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(LanguageText.text("settings.statusicon.title"), Modifier.weight(1f))
+                FieldwatchActionButton(onClick = { openScanChannelSettings(context) }) {
+                    Text(LanguageText.text("settings.statusicon.open"))
+                }
+            }
+            Text(
+                LanguageText.text("settings.statusicon.about"),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1679,6 +1691,25 @@ internal fun isBackgroundUsageAllowed(context: Context): Boolean =
     context.getSystemService(ActivityManager::class.java)?.isBackgroundRestricted != true
 
 private enum class BatteryAndroidGate { BACKGROUND, UNRESTRICTED }
+
+/**
+ * The Scanning channel's system page, where the user can minimize it to drop
+ * the status-bar icon. Falls back to the app's notification page.
+ */
+private fun openScanChannelSettings(context: Context) {
+    ScanService.ensureChannel(context)
+    val attempts = listOf(
+        Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+            .putExtra(Settings.EXTRA_CHANNEL_ID, ScanService.CHANNEL),
+        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
+    )
+    for (intent in attempts) {
+        if (intent.resolveActivity(context.packageManager) == null) continue
+        if (runCatching { context.startActivity(intent) }.isSuccess) return
+    }
+}
 
 /**
  * Fieldwatch's per-app Battery page. Samsung keeps Allow background usage and
