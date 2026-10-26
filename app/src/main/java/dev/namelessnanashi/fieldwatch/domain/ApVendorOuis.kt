@@ -3,11 +3,11 @@ package dev.namelessnanashi.fieldwatch.domain
 /**
  * IEEE MA-L prefixes registered to access-point / gateway vendors.
  * Packed from standards-oui.ieee.org oui.csv (cache 24 Aug 2026).
- * Wi-Fi BSSID only — a renamed SSID still hits. Local-bit (randomized)
+ * Wi-Fi BSSID only - a renamed SSID still hits. Local-bit (randomized)
  * BSSIDs miss. Not chip-module vendors (Espressif, MediaTek, AMPAK).
  */
 internal object ApVendorOuis {
-    /** 76 MA-L — NETGEAR */
+    /** 76 MA-L - NETGEAR */
     val NETGEAR = listOf(
         "00:09:5B", "00:0F:B5", "00:14:6C", "00:18:4D", "00:1B:2F", "00:1E:2A", "00:1F:33", "00:22:3F",
         "00:24:B2", "00:26:F2", "00:8E:F2", "04:A1:51", "08:02:8E", "08:36:C9", "08:BD:43", "10:0C:6B",
@@ -21,7 +21,7 @@ internal object ApVendorOuis {
         "E0:C2:50", "E4:F4:C6", "E8:FC:AF", "F8:73:94",
     )
 
-    /** 263 MA-L — TP-Link Systems Inc; TP-Link Systems Inc.; TP-LINK TECHNOLOGIES CO.,LTD. */
+    /** 263 MA-L - TP-Link Systems Inc; TP-Link Systems Inc.; TP-LINK TECHNOLOGIES CO.,LTD. */
     val TPLINK = listOf(
         "00:0A:EB", "00:14:78", "00:19:E0", "00:1D:0F", "00:21:27", "00:23:CD", "00:25:86", "00:27:19",
         "00:31:92", "00:5F:67", "04:0F:66", "04:C8:45", "04:F9:F8", "08:1F:71", "08:57:00", "0C:4B:54",
@@ -58,7 +58,7 @@ internal object ApVendorOuis {
         "F8:1A:67", "F8:6F:B0", "F8:8C:21", "F8:C9:03", "F8:CE:21", "F8:D1:11", "FC:D7:33",
     )
 
-    /** 94 MA-L — ASUSTek COMPUTER INC.; Asus Network Technologies, Inc. */
+    /** 94 MA-L - ASUSTek COMPUTER INC.; Asus Network Technologies, Inc. */
     val ASUS = listOf(
         "00:04:0F", "00:0C:6E", "00:0E:A6", "00:11:2F", "00:11:D8", "00:13:D4", "00:15:F2", "00:17:31",
         "00:18:F3", "00:1A:92", "00:1B:FC", "00:1D:60", "00:1E:8C", "00:1F:C6", "00:22:15", "00:23:54",
@@ -74,7 +74,7 @@ internal object ApVendorOuis {
         "F0:2F:74", "F0:79:59", "F4:6D:04", "F8:32:E4", "FC:34:97", "FC:C2:33",
     )
 
-    /** 28 MA-L — Cisco-Linksys, LLC; Linksys USA, Inc; The Linksys Group, Inc. */
+    /** 28 MA-L - Cisco-Linksys, LLC; Linksys USA, Inc; The Linksys Group, Inc. */
     val LINKSYS = listOf(
         "00:04:5A", "00:06:25", "00:0C:41", "00:0E:08", "00:0F:66", "00:12:17", "00:13:10", "00:14:BF",
         "00:16:B6", "00:18:39", "00:18:F8", "00:1A:70", "00:1C:10", "00:1D:7E", "00:1E:E5", "00:21:29",
@@ -82,7 +82,7 @@ internal object ApVendorOuis {
         "98:FC:11", "C0:C1:C0", "C8:B3:73", "C8:D7:19",
     )
 
-    /** 116 MA-L — eero inc. */
+    /** 116 MA-L - eero inc. */
     val EERO = listOf(
         "00:AB:48", "08:9B:F1", "08:F0:1E", "0C:1C:1A", "0C:39:3D", "0C:93:A5", "0C:C7:63", "14:22:DB",
         "18:90:88", "18:A9:ED", "20:3A:0C", "20:74:DD", "20:BE:CD", "20:E6:DF", "24:2D:6C", "24:F3:E3",
@@ -101,14 +101,14 @@ internal object ApVendorOuis {
         "F8:BB:BF", "F8:BC:0E", "FC:3D:73", "FC:3F:A6",
     )
 
-    /** 20 MA-L — BELKIN COMPONENTS; Belkin Corporation; Belkin International Inc. */
+    /** 20 MA-L - BELKIN COMPONENTS; Belkin Corporation; Belkin International Inc. */
     val BELKIN = listOf(
         "00:11:50", "00:17:3F", "00:1C:DF", "00:22:75", "00:30:BD", "08:86:3B", "14:91:82", "24:F5:A2",
         "30:23:03", "58:EF:68", "60:38:E0", "80:69:1A", "94:10:3E", "94:44:52", "B4:75:0E", "C0:56:27",
         "C4:41:1E", "D8:EC:5E", "E8:9F:80", "EC:1A:59",
     )
 
-    /** 91 MA-L — D-Link (Shanghai) Limited Corp.; D-Link Corporation; D-Link International; D-Link Middle East FZCO; D-LINK SYSTEMS, INC. */
+    /** 91 MA-L - D-Link (Shanghai) Limited Corp.; D-Link Corporation; D-Link International; D-Link Middle East FZCO; D-LINK SYSTEMS, INC. */
     val DLINK = listOf(
         "00:05:5D", "00:0D:88", "00:0F:3D", "00:11:95", "00:13:46", "00:15:E9", "00:17:9A", "00:19:5B",
         "00:1B:11", "00:1C:F0", "00:1E:58", "00:21:91", "00:22:B0", "00:24:01", "00:26:5A", "00:50:BA",
@@ -124,7 +124,7 @@ internal object ApVendorOuis {
         "F4:8C:EB", "F8:E9:03", "FC:75:16",
     )
 
-    /** 57 MA-L — Cisco Meraki */
+    /** 57 MA-L - Cisco Meraki */
     val MERAKI = listOf(
         "00:18:0A", "00:84:1E", "08:6A:0B", "08:71:1C", "08:F1:B3", "0C:7B:C8", "0C:8D:DB", "14:9F:43",
         "1C:E5:87", "2C:3F:0B", "30:3B:49", "34:56:FE", "38:84:79", "40:27:A8", "4C:C8:A1", "5C:06:10",
@@ -136,7 +136,7 @@ internal object ApVendorOuis {
         "FC:94:2E",
     )
 
-    /** 100 MA-L — Ruckus Wireless */
+    /** 100 MA-L - Ruckus Wireless */
     val RUCKUS = listOf(
         "00:13:92", "00:1D:2E", "00:1F:41", "00:22:7F", "00:24:82", "00:25:C4", "00:33:58", "00:E6:3A",
         "04:4F:AA", "0C:F4:D5", "10:F0:68", "18:4B:0D", "18:7C:0B", "1C:3A:60", "1C:B9:C4", "20:58:69",
@@ -153,7 +153,7 @@ internal object ApVendorOuis {
         "F0:6F:CE", "F0:B0:52", "F8:E7:1E", "FC:5C:45",
     )
 
-    /** 26 MA-L — Fortinet, Inc. */
+    /** 26 MA-L - Fortinet, Inc. */
     val FORTINET = listOf(
         "00:09:0F", "00:0C:E6", "04:01:A1", "04:D5:90", "08:5B:0E", "1C:D1:1A", "38:C0:EA", "48:3A:02",
         "5C:63:B0", "68:CC:AE", "70:4C:A5", "74:78:A6", "78:18:EC", "80:5A:70", "80:80:2C", "84:39:8F",
@@ -161,19 +161,19 @@ internal object ApVendorOuis {
         "E8:1C:BA", "E8:ED:D6",
     )
 
-    /** 22 MA-L — Routerboard.com */
+    /** 22 MA-L - Routerboard.com */
     val MIKROTIK = listOf(
         "00:0C:42", "04:F4:1C", "08:55:31", "18:FD:74", "2C:C8:1B", "38:32:7A", "48:8F:5A", "48:A9:8A",
         "4C:5E:0C", "64:D1:54", "6C:3B:6B", "74:4D:28", "78:9A:18", "B8:69:F4", "C4:AD:34", "CC:2D:E0",
         "D0:EA:11", "D4:01:C3", "D4:CA:6D", "DC:2C:6E", "E4:8D:8C", "F4:1E:57",
     )
 
-    /** 2 MA-L — EnGenius Technologies, Inc. */
+    /** 2 MA-L - EnGenius Technologies, Inc. */
     val ENGENIUS = listOf(
         "88:DC:96", "C4:E3:CE",
     )
 
-    /** 71 MA-L — Zyxel Communications Corporation */
+    /** 71 MA-L - Zyxel Communications Corporation */
     val ZYXEL = listOf(
         "00:13:49", "00:19:CB", "00:23:F8", "00:A0:C5", "04:BF:6D", "08:26:97", "10:71:B3", "10:7B:EF",
         "10:C5:FA", "14:33:75", "14:36:0E", "14:C7:C4", "1C:74:0D", "28:28:5D", "30:15:77", "30:BD:13",
@@ -186,37 +186,37 @@ internal object ApVendorOuis {
         "EC:43:F6", "F0:87:56", "F4:4D:5C", "F8:0D:A9", "FC:22:F4", "FC:9F:2A", "FC:F5:28",
     )
 
-    /** 6 MA-L — Peplink International Ltd.; Pepwave Limited; PePWave Ltd */
+    /** 6 MA-L - Peplink International Ltd.; Pepwave Limited; PePWave Ltd */
     val PEPLINK = listOf(
         "00:11:6E", "00:1A:DD", "10:56:CA", "6C:A3:D3", "A8:C0:EA", "D4:13:F8",
     )
 
-    /** 4 MA-L — Comcast Cable Corporation; Comcast-SRL */
+    /** 4 MA-L - Comcast Cable Corporation; Comcast-SRL */
     val COMCAST = listOf(
         "D8:9C:8E", "F0:46:3B", "F0:61:F3", "F8:34:51",
     )
 
-    /** 5 MA-L — AT&T */
+    /** 5 MA-L - AT&T */
     val ATT = listOf(
         "00:07:1C", "00:60:D3", "08:00:6A", "80:00:10", "80:3A:59",
     )
 
-    /** 3 MA-L — Verizon */
+    /** 3 MA-L - Verizon */
     val VERIZON = listOf(
         "18:78:D4", "20:C0:47", "48:5D:36",
     )
 
-    /** 1 MA-L — Space Exploration Technologies */
+    /** 1 MA-L - Space Exploration Technologies */
     val SPACEX = listOf(
         "00:26:12",
     )
 
-    /** 1 MA-L — Arris */
+    /** 1 MA-L - Arris */
     val ARRIS = listOf(
         "34:2B:70",
     )
 
-    /** 1248 MA-L — Cisco Systems, Inc (not Meraki, not Cisco-Linksys, not SPVTG) */
+    /** 1248 MA-L - Cisco Systems, Inc (not Meraki, not Cisco-Linksys, not SPVTG) */
     val CISCO = listOf(
         "00:00:0C", "00:01:42", "00:01:43", "00:01:63", "00:01:64", "00:01:96", "00:01:97", "00:01:C7",
         "00:01:C9", "00:02:16", "00:02:17", "00:02:3D", "00:02:4A", "00:02:4B", "00:02:7D", "00:02:7E",
@@ -375,7 +375,7 @@ internal object ApVendorOuis {
         "F8:72:EA", "F8:7A:41", "F8:7B:20", "F8:A5:C5", "F8:A7:3A", "F8:B7:E2", "F8:C2:88", "F8:C6:50",
         "F8:E5:7E", "F8:E9:4F", "FC:21:20", "FC:58:9A", "FC:5B:39", "FC:72:88", "FC:99:47", "FC:FB:FB",
     )
-    /** 176 MA-L — Hewlett Packard Enterprise */
+    /** 176 MA-L - Hewlett Packard Enterprise */
     val HPE = listOf(
         "00:0B:86", "00:14:38", "00:1A:1E", "00:24:6C", "00:4E:35", "00:C8:4E", "00:FD:45", "04:09:73",
         "04:BD:88", "08:18:14", "08:97:34", "08:F1:EA", "0C:97:5F", "10:1D:6E", "10:4F:58", "14:02:EC",
@@ -401,7 +401,7 @@ internal object ApVendorOuis {
         "F0:61:C0", "F0:D0:18", "F4:03:43", "F4:2E:7F", "F4:9A:B1", "F4:E1:FC", "F8:60:F0", "FC:7F:F1",
     )
 
-    /** 44 MA-L — HP Inc. */
+    /** 44 MA-L - HP Inc. */
     val HPINC = listOf(
         "00:68:EB", "04:0E:3C", "10:B6:76", "14:CB:19", "24:6A:0E", "24:FB:E3", "28:C5:C8", "2C:58:B9",
         "30:13:8B", "30:24:A9", "34:03:3D", "38:16:B3", "38:22:E2", "38:CA:84", "48:9E:BD", "48:EA:62",
@@ -411,7 +411,7 @@ internal object ApVendorOuis {
         "E8:D8:D1", "F0:4E:A4", "F8:0D:AC", "F8:ED:FC",
     )
 
-    /** 347 MA-L — Commscope; Commscope, Inc; CommScope Inc */
+    /** 347 MA-L - Commscope; Commscope, Inc; CommScope Inc */
     val COMMSCOPE = listOf(
         "00:00:C5", "00:00:CA", "00:03:E0", "00:04:BD", "00:08:0E", "00:0B:06", "00:0C:E5", "00:0E:5C",
         "00:0F:9F", "00:0F:CC", "00:11:1A", "00:11:80", "00:11:AE", "00:12:25", "00:12:8A", "00:12:C9",
@@ -459,7 +459,7 @@ internal object ApVendorOuis {
         "FC:6F:B7", "FC:8E:7E", "FC:AE:34",
     )
 
-    /** 36 MA-L — HUMAX Co., Ltd.; HUMAX NETWORKS */
+    /** 36 MA-L - HUMAX Co., Ltd.; HUMAX NETWORKS */
     val HUMAX = listOf(
         "00:03:78", "04:4F:17", "08:EB:74", "0C:08:B4", "10:C4:CA", "28:25:5F", "28:32:C5", "2C:08:8C",
         "34:38:B7", "38:F8:5E", "3C:71:4B", "40:3D:EC", "48:E2:AD", "4C:D0:8A", "6C:4B:B4", "6C:B5:6B",
@@ -468,7 +468,7 @@ internal object ApVendorOuis {
         "DC:D3:21", "E8:20:E2", "E8:B2:FE", "EC:C3:02",
     )
 
-    /** 219 MA-L — Sagemcom Broadband SAS */
+    /** 219 MA-L - Sagemcom Broadband SAS */
     val SAGEMCOM = listOf(
         "00:0E:59", "00:15:56", "00:19:4B", "00:1B:BF", "00:1E:74", "00:1F:95", "00:23:48", "00:25:69",
         "00:26:91", "00:37:B7", "00:60:4C", "00:78:9E", "00:CB:51", "00:F8:CC", "04:E3:1A", "08:3E:5D",
@@ -500,14 +500,14 @@ internal object ApVendorOuis {
         "F8:08:4F", "F8:AB:05", "FC:66:37",
     )
 
-    /** 17 MA-L — Mist Systems, Inc. */
+    /** 17 MA-L - Mist Systems, Inc. */
     val MIST = listOf(
         "00:3E:73", "00:D6:26", "04:A9:24", "04:CD:C0", "14:A4:54", "3C:94:FD", "54:33:C6", "5C:5B:35",
         "70:90:41", "7C:B6:8D", "A8:3A:79", "A8:53:7D", "A8:F7:D9", "AC:23:16", "C8:78:67", "D4:20:B0",
         "D4:DC:09",
     )
 
-    /** 90 MA-L — Arcadyan Corporation */
+    /** 90 MA-L - Arcadyan Corporation */
     val ARCADYAN = listOf(
         "00:12:BF", "00:1A:2A", "00:1D:19", "00:23:08", "00:26:4D", "04:09:86", "04:70:56", "04:A2:22",
         "08:27:A8", "0C:8E:29", "18:58:80", "18:60:41", "18:82:8C", "18:83:BF", "18:A5:FF", "1C:C6:3C",
@@ -523,7 +523,7 @@ internal object ApVendorOuis {
         "F8:3E:B0", "FC:3D:A5",
     )
 
-    /** 44 MA-L — Nokia Solutions and Networks GmbH & Co. KG; Nokia Solutions and Networks India Private Limited */
+    /** 44 MA-L - Nokia Solutions and Networks GmbH & Co. KG; Nokia Solutions and Networks India Private Limited */
     val NOKIA_NSN = listOf(
         "00:77:E4", "08:9B:B9", "0C:7C:28", "0C:88:32", "14:55:B9", "20:78:52", "24:DE:8A", "28:74:F5",
         "2C:C1:F4", "34:CE:69", "38:A0:67", "40:48:6E", "40:E1:E4", "48:41:7B", "48:EC:5B", "54:FA:96",
@@ -533,7 +533,7 @@ internal object ApVendorOuis {
         "DC:8D:8A", "E0:1F:2B", "E4:D4:36", "F8:9B:6E",
     )
 
-    /** 52 MA-L — ASKEY COMPUTER CORP */
+    /** 52 MA-L - ASKEY COMPUTER CORP */
     val ASKEY = listOf(
         "00:11:F5", "00:16:E3", "00:1B:9E", "00:21:63", "00:24:D2", "00:26:B6", "00:90:96", "08:33:ED",
         "08:6A:0A", "08:B0:55", "1C:24:CD", "1C:B0:44", "24:EC:99", "2C:EA:DC", "38:88:71", "4C:AB:F8",
@@ -544,36 +544,36 @@ internal object ApVendorOuis {
         "F4:69:42", "F8:5B:3B", "FC:12:63", "FC:B4:E6",
     )
 
-    /** 22 MA-L — Calix Inc.; Calix Networks */
+    /** 22 MA-L - Calix Inc.; Calix Networks */
     val CALIX = listOf(
         "00:02:5D", "00:06:31", "04:BC:9F", "10:03:CD", "10:74:C5", "14:21:03", "1C:8B:76", "40:E7:62",
         "44:65:7F", "48:77:46", "4C:43:41", "5C:DB:36", "60:DB:98", "84:D3:43", "88:DA:36", "B8:94:70",
         "CC:BE:59", "D0:76:8F", "E0:49:34", "E4:6C:D1", "EC:4F:82", "F8:85:F9",
     )
 
-    /** 2 MA-L — SAMSARA NETWORKS INC */
+    /** 2 MA-L - SAMSARA NETWORKS INC */
     val SAMSARA = listOf(
         "28:EA:5B", "FC:DB:21",
     )
 
-    /** 5 MA-L — AirTies Wireless Networks */
+    /** 5 MA-L - AirTies Wireless Networks */
     val AIRTIES = listOf(
         "00:1C:A8", "18:28:61", "88:41:FC", "A0:2D:13", "F4:17:B8",
     )
 
-    /** 2 MA-L — CradlePoint, Inc */
+    /** 2 MA-L - CradlePoint, Inc */
     val CRADLEPOINT = listOf(
         "00:30:44", "00:E0:1C",
     )
 
-    /** 19 MA-L — Tenda Technology Co.,Ltd.Dongguan branch; SHEN ZHEN TENDA TECHNOLOGY CO.,LTD; Tenda Technology Co., Ltd. */
+    /** 19 MA-L - Tenda Technology Co.,Ltd.Dongguan branch; SHEN ZHEN TENDA TECHNOLOGY CO.,LTD; Tenda Technology Co., Ltd. */
     val TENDA = listOf(
         "04:95:E6", "08:40:F3", "0C:85:09", "50:0F:F5", "50:2B:73", "50:DA:9E", "58:D9:D5", "74:DD:F0",
         "80:9F:E4", "8C:05:28", "8C:44:BB", "B0:DF:C1", "B4:0F:3B", "B8:3A:08", "BC:6C:96", "C8:3A:35",
         "CC:2D:21", "D8:32:14", "E8:65:D4",
     )
 
-    /** 33 MA-L — Sercomm France Sarl; Sercomm Corporation.; SERCOMM PHILIPPINES INC; Sercomm Japan Corporation */
+    /** 33 MA-L - Sercomm France Sarl; Sercomm Corporation.; SERCOMM PHILIPPINES INC; Sercomm Japan Corporation */
     val SERCOMM = listOf(
         "00:0E:8F", "00:C0:02", "0C:73:29", "10:50:72", "14:2E:5E", "14:7D:05", "18:EF:C0", "2C:08:23",
         "2C:93:FB", "34:17:DD", "38:02:DE", "3C:62:F0", "3C:98:72", "4C:FB:FE", "54:EC:B0", "60:CE:86",
@@ -582,17 +582,17 @@ internal object ApVendorOuis {
         "F4:64:B6",
     )
 
-    /** 3 MA-L — Luxul Tech Co., Ltd; Luxul */
+    /** 3 MA-L - Luxul Tech Co., Ltd; Luxul */
     val LUXUL = listOf(
         "A4:13:4E", "A8:81:FE", "C4:91:CF",
     )
 
-    /** 4 MA-L — Sophos Ltd */
+    /** 4 MA-L - Sophos Ltd */
     val SOPHOS = listOf(
         "00:1A:8C", "7C:5A:1C", "A8:91:62", "C8:4F:86",
     )
 
-    /** 34 MA-L — 2Wire Inc */
+    /** 34 MA-L - 2Wire Inc */
     val TWOWIRE = listOf(
         "00:0D:72", "00:12:88", "00:14:95", "00:18:3F", "00:19:E4", "00:1A:C4", "00:1B:5B", "00:1D:5A",
         "00:1E:C7", "00:1F:B3", "00:21:7C", "00:22:A4", "00:23:51", "00:24:56", "00:25:3C", "00:26:50",
@@ -601,14 +601,14 @@ internal object ApVendorOuis {
         "F8:18:97", "F8:2C:18",
     )
 
-    /** 18 MA-L — AUMOVIO Systems Romania S.R.L.; AUMOVIO Technologies Romania S.R.L.; AUMOVIO Systems, Inc.; AUMOVIO Aftermarket GmbH; AUMOVIO Germany GmbH; AUMOVIO France S.A.S.; AUMOVIO Czech Republic s.r.o.; AUMOVIO Autonomous Mobility Germany GmbH; AUMOVIO Hungary Kft. */
+    /** 18 MA-L - AUMOVIO Systems Romania S.R.L.; AUMOVIO Technologies Romania S.R.L.; AUMOVIO Systems, Inc.; AUMOVIO Aftermarket GmbH; AUMOVIO Germany GmbH; AUMOVIO France S.A.S.; AUMOVIO Czech Republic s.r.o.; AUMOVIO Autonomous Mobility Germany GmbH; AUMOVIO Hungary Kft. */
     val AUMOVIO = listOf(
         "00:1E:AE", "00:54:AF", "18:4C:AE", "20:AD:56", "24:08:5D", "34:22:CF", "40:82:56", "40:85:56",
         "44:20:63", "8C:5F:48", "9C:28:BF", "AC:C3:58", "B4:DD:D0", "D4:00:CA", "D4:94:FB", "E4:12:26",
         "E4:1E:33", "F0:30:12",
     )
 
-    /** 41 MA-L — Cisco SPVTG */
+    /** 41 MA-L - Cisco SPVTG */
     val CISCO_SPVTG = listOf(
         "00:18:68", "00:19:47", "00:1B:D7", "00:1E:6B", "00:21:BE", "00:22:3A", "00:22:CE", "00:23:BE",
         "00:25:2E", "08:80:39", "10:5F:49", "10:EA:59", "18:55:0F", "18:59:33", "24:37:4C", "24:76:7D",
@@ -618,7 +618,7 @@ internal object ApVendorOuis {
         "F4:5F:D4",
     )
 
-    /** 96 MA-L — Extreme Networks, Inc. */
+    /** 96 MA-L - Extreme Networks, Inc. */
     val EXTREME = listOf(
         "00:01:30", "00:04:96", "00:19:77", "00:89:C9", "00:B8:1D", "00:DC:B2", "00:E0:2B", "00:E6:0E",
         "08:EA:44", "0C:9B:78", "0C:ED:71", "18:49:F8", "1C:2D:60", "1C:98:4B", "20:6C:8A", "20:9E:F7",
@@ -634,34 +634,34 @@ internal object ApVendorOuis {
         "F0:2B:7C", "F0:64:26", "F0:9C:E9", "F4:54:24", "F4:6E:95", "F4:CE:48", "F4:EA:B5", "FC:0A:81",
     )
 
-    /** 15 MA-L — Adtran Inc */
+    /** 15 MA-L - Adtran Inc */
     val ADTRAN = listOf(
         "00:01:4F", "00:19:92", "00:24:45", "00:A0:C8", "20:5F:3D", "28:D0:CB", "38:F8:F6", "54:22:E0",
         "58:87:85", "64:A0:AC", "84:4D:4C", "AC:13:9C", "AC:51:EE", "BC:21:06", "CC:66:18",
     )
 
-    /** 10 MA-L — Cambium Networks Limited; IgniteNet */
+    /** 10 MA-L - Cambium Networks Limited; IgniteNet */
     val CAMBIUM = listOf(
         "00:04:56", "28:76:10", "30:CB:C7", "58:C1:7A", "90:14:AF", "90:6D:62", "B4:A2:5C", "BC:A9:93",
         "BC:E6:7C", "FC:11:65",
     )
 
-    /** 4 MA-L — TRENDnet, Inc. */
+    /** 4 MA-L - TRENDnet, Inc. */
     val TRENDNET = listOf(
         "00:14:D1", "3C:8C:F8", "78:2D:7E", "D8:EB:97",
     )
 
-    /** 2 MA-L — Shenzhen Cudy Technology Co., Ltd. */
+    /** 2 MA-L - Shenzhen Cudy Technology Co., Ltd. */
     val CUDY = listOf(
         "80:AF:CA", "D4:0D:AB",
     )
 
-    /** 2 MA-L — SnapAV */
+    /** 2 MA-L - SnapAV */
     val SNAPAV = listOf(
         "14:3F:C3", "D4:6A:91",
     )
 
-    /** 128 MA-L — Vantiva USA LLC; Vantiva Technologies Belgium; Vantiva - Connected Home; Vantiva Connected Home - Technologies Telco; Technicolor (China) Technology Co., Ltd.; Technicolor CH USA Inc for Telus; Vantiva Connected Home - Home Networks; Vantiva Connected Home - Orange Belgium */
+    /** 128 MA-L - Vantiva USA LLC; Vantiva Technologies Belgium; Vantiva - Connected Home; Vantiva Connected Home - Technologies Telco; Technicolor (China) Technology Co., Ltd.; Technicolor CH USA Inc for Telus; Vantiva Connected Home - Home Networks; Vantiva Connected Home - Orange Belgium */
     val VANTIVA = listOf(
         "00:CB:7A", "08:7E:64", "08:95:2A", "08:A7:C0", "08:C7:F5", "0C:02:27", "0C:FE:7B", "10:13:31",
         "10:33:BF", "10:36:AA", "10:62:D0", "10:A7:93", "10:C2:5A", "14:98:7D", "14:B7:F8", "1C:9D:72",
@@ -681,7 +681,7 @@ internal object ApVendorOuis {
         "F8:20:D2", "F8:3B:1D", "F8:5E:42", "F8:D0:0E", "F8:D2:AC", "FC:52:8D", "FC:91:14", "FC:94:E3",
     )
 
-    /** 32 MA-L — Hitron Technologies. Inc; Hitron Technology, Inc. */
+    /** 32 MA-L - Hitron Technologies. Inc; Hitron Technology, Inc. */
     val HITRON = listOf(
         "00:05:CA", "00:07:D8", "00:26:5B", "00:FC:8D", "0C:47:3D", "1C:AB:C0", "20:6A:94", "30:B7:D4",
         "38:AD:2B", "60:6C:63", "64:77:7D", "68:8F:2E", "68:B6:FC", "74:9B:E8", "78:8D:F7", "84:0B:7C",
@@ -689,7 +689,7 @@ internal object ApVendorOuis {
         "BC:4D:FB", "D0:EE:47", "DC:36:0C", "F0:F2:49", "F8:1D:0F", "F8:34:5A", "FC:5A:1D", "FC:77:7B",
     )
 
-    /** 34 MA-L — Actiontec Electronics, Inc; Actiontec Electronics Inc. */
+    /** 34 MA-L - Actiontec Electronics, Inc; Actiontec Electronics Inc. */
     val ACTIONTEC = listOf(
         "00:0F:B3", "00:15:05", "00:18:01", "00:1E:A7", "00:1F:90", "00:20:E0", "00:24:7B", "00:26:62",
         "00:26:B8", "00:7F:28", "00:BC:2F", "08:95:36", "0C:61:27", "10:5F:06", "10:78:5B", "10:9F:A9",
@@ -698,7 +698,7 @@ internal object ApVendorOuis {
         "F8:E4:FB", "FC:2B:B2",
     )
 
-    /** 35 MA-L — BUFFALO.INC */
+    /** 35 MA-L - BUFFALO.INC */
     val BUFFALO = listOf(
         "00:07:40", "00:0D:0B", "00:16:01", "00:1D:73", "00:24:A5", "00:2B:F5", "00:40:26", "00:E5:F1",
         "10:6F:3F", "18:C2:BF", "18:EC:E7", "34:3D:C4", "4C:85:8A", "4C:E6:76", "50:C4:DD", "58:27:8C",
@@ -707,12 +707,12 @@ internal object ApVendorOuis {
         "EC:5A:31", "F0:F8:4A", "F8:94:97",
     )
 
-    /** 4 MA-L — Grandstream Networks, Inc.; Grandstream Networks Inc */
+    /** 4 MA-L - Grandstream Networks, Inc.; Grandstream Networks Inc */
     val GRANDSTREAM = listOf(
         "00:0B:82", "14:4C:FF", "C0:74:AD", "EC:74:D7",
     )
 
-    /** 31 MA-L — Edgecore Networks Corporation; Edgecore Americas Networking Corporation; EdgeCore Networks */
+    /** 31 MA-L - Edgecore Networks Corporation; Edgecore Americas Networking Corporation; EdgeCore Networks */
     val EDGECORE = listOf(
         "04:F8:F8", "0C:E0:FC", "14:44:8F", "1C:EA:0B", "24:34:08", "34:EF:B6", "3C:2C:99", "44:45:BA",
         "5C:17:83", "68:21:5F", "70:72:CF", "7C:8D:9C", "80:A2:35", "8C:EA:1B", "90:2D:77", "90:3C:B3",
@@ -720,57 +720,57 @@ internal object ApVendorOuis {
         "C0:C9:89", "CC:37:AB", "D0:77:CE", "D4:DC:85", "E0:01:A6", "E4:9D:73", "F8:8E:A1",
     )
 
-    /** 2 MA-L — WatchGuard Technologies, Inc. */
+    /** 2 MA-L - WatchGuard Technologies, Inc. */
     val WATCHGUARD = listOf(
         "00:01:21", "00:90:7F",
     )
 
-    /** 4 MA-L — Mojo Networks, Inc. */
+    /** 4 MA-L - Mojo Networks, Inc. */
     val MOJO = listOf(
         "00:11:74", "30:B6:2D", "88:B1:E1", "E4:D1:24",
     )
 
-    /** 1 MA-L — Winegard Company */
+    /** 1 MA-L - Winegard Company */
     val WINEGARD = listOf(
         "00:17:1A",
     )
 
-    /** 5 MA-L — Inseego Wireless, Inc */
+    /** 5 MA-L - Inseego Wireless, Inc */
     val INSEEGO = listOf(
         "00:15:FF", "18:EE:86", "28:80:A2", "78:0C:71", "E0:86:14",
     )
 
-    /** 2 MA-L — Synology Incorporated */
+    /** 2 MA-L - Synology Incorporated */
     val SYNOLOGY = listOf(
         "00:11:32", "90:09:D0",
     )
 
-    /** 3 MA-L — Arlo Technology */
+    /** 3 MA-L - Arlo Technology */
     val ARLO = listOf(
         "48:62:64", "A4:11:62", "FC:9C:98",
     )
 
-    /** 7 MA-L — Sierra Wireless, ULC; AirLink Communications, Inc. */
+    /** 7 MA-L - Sierra Wireless, ULC; AirLink Communications, Inc. */
     val AIRLINK = listOf(
         "00:14:3E", "00:A0:D5", "28:A3:31", "50:13:9D", "64:CE:6E", "84:DB:2F", "CC:93:4A",
     )
 
-    /** 3 MA-L — Compex Systems Pte Ltd; COMPEX INCORPORATED; Compex */
+    /** 3 MA-L - Compex Systems Pte Ltd; COMPEX INCORPORATED; Compex */
     val COMPEX = listOf(
         "00:40:29", "00:80:48", "04:F0:21",
     )
 
-    /** 1 MA-L — Inseego Wireless, Inc (ex-Novatel Wireless) */
+    /** 1 MA-L - Inseego Wireless, Inc (ex-Novatel Wireless) */
     val NOVATEL = listOf(
         "28:80:A2",
     )
 
-    /** 2 MA-L — Utility, Inc */
+    /** 2 MA-L - Utility, Inc */
     val UTILITY_INC = listOf(
         "00:09:BC", "00:16:ED",
     )
 
-    /** 33 MA-L — Ruijie Networks Co.,LTD (Reyee campus / SMB APs) */
+    /** 33 MA-L - Ruijie Networks Co.,LTD (Reyee campus / SMB APs) */
     val RUIJIE = listOf(
         "00:74:9C", "10:5F:02", "10:82:3D", "14:14:4B", "28:D0:F5", "30:0D:9E", "48:81:D4", "4C:49:68",
         "54:16:51", "54:23:E3", "58:69:6C", "58:B4:BB", "70:42:D3", "70:85:6C", "70:85:C4", "74:08:AA",
@@ -779,33 +779,33 @@ internal object ApVendorOuis {
         "FC:59:9F",
     )
 
-    /** 9 MA-L — DWnet Technologies(Suzhou) Corporation */
+    /** 9 MA-L - DWnet Technologies(Suzhou) Corporation */
     val DWNET = listOf(
         "2C:67:BE", "58:9B:4A", "70:F8:2B", "78:B2:13", "7C:8F:DE", "98:3B:67", "E0:0E:E4", "E4:26:86",
         "F8:AA:3F",
     )
 
-    /** 1 MA-L — Winstars Technology Ltd (WAVLINK) */
+    /** 1 MA-L - Winstars Technology Ltd (WAVLINK) */
     val WINSTARS = listOf(
         "80:3F:5D",
     )
 
-    /** 1 MA-L — GL Technologies (Hong Kong) Limited */
+    /** 1 MA-L - GL Technologies (Hong Kong) Limited */
     val GLINET = listOf(
         "94:83:C4",
     )
 
-    /** 1 MA-L — PeopleNet Communication */
+    /** 1 MA-L - PeopleNet Communication */
     val PEOPLENET = listOf(
         "98:5D:46",
     )
 
-    /** 1 MA-L — Franklin Technology Inc. (not Franklin Electric, not Franklin Technology Systems) */
+    /** 1 MA-L - Franklin Technology Inc. (not Franklin Electric, not Franklin Technology Systems) */
     val FRANKLIN = listOf(
         "50:FB:FF",
     )
 
-    /** 30 MA-L — Roku, Inc */
+    /** 30 MA-L - Roku, Inc */
     val ROKU = listOf(
         "00:0D:4B", "08:05:81", "10:59:32", "20:EF:BD", "34:5E:08", "50:06:F5", "54:4E:F0", "60:92:C8",
         "7C:67:AB", "84:EA:ED", "88:DE:A9", "8C:49:62", "9C:F1:D4", "A8:B5:7C", "AC:3A:7A", "AC:AE:19",
@@ -813,7 +813,7 @@ internal object ApVendorOuis {
         "D4:BE:DC", "D4:E2:2F", "D8:31:34", "DC:3A:5E", "EC:9B:75", "F8:B2:2C",
     )
 
-    /** 2047 MA-L — HUAWEI TECHNOLOGIES CO.,LTD; Huawei Device Co., Ltd. Phones and CPE share these. */
+    /** 2047 MA-L - HUAWEI TECHNOLOGIES CO.,LTD; Huawei Device Co., Ltd. Phones and CPE share these. */
     val HUAWEI = listOf(
         "00:18:82", "00:1E:10", "00:25:68", "00:25:9E", "00:2E:C7", "00:34:FE", "00:3D:E1", "00:46:4B",
         "00:4B:0D", "00:4F:1A", "00:56:6D", "00:5A:13", "00:61:51", "00:66:19", "00:66:4B", "00:68:2B",
@@ -1073,7 +1073,7 @@ internal object ApVendorOuis {
         "FC:BC:D1", "FC:E1:A6", "FC:E3:3C", "FC:EB:7B", "FC:EF:D7", "FC:F7:38", "FC:F7:7B",
     )
 
-    /** 1 MA-L — Plume Design Inc */
+    /** 1 MA-L - Plume Design Inc */
     val PLUME = listOf(
         "60:B4:F7",
     )

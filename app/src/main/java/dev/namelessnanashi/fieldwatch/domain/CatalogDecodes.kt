@@ -109,7 +109,7 @@ internal object CatalogDecodes {
     /**
      * ASTM F3411 / OpenDroneID on UUID 0xFFFA.
      * Service data: 0x0D app code, counter, then a 25-byte message.
-     * Type-specific fields are gated on protocol versions 0–2 (F3411).
+     * Type-specific fields are gated on protocol versions 0-2 (F3411).
      * Older protocol bytes still show app code, counter, and message type.
      */
     val remoteId: FleetDecode = FleetDecode(
@@ -277,7 +277,7 @@ internal object CatalogDecodes {
         ),
     )
 
-    /** DJI 0x08AA manufacturer-data model id (u16 LE). Osmo 0x0006–0x0022; some aircraft; Power 2000 is 4500. */
+    /** DJI 0x08AA manufacturer-data model id (u16 LE). Osmo 0x0006-0x0022; some aircraft; Power 2000 is 4500. */
     val djiModel: FleetDecode = FleetDecode(
         source = DecodeSource.MANUFACTURER_DATA,
         companyId = 0x08AA,
@@ -289,7 +289,7 @@ internal object CatalogDecodes {
     /**
      * Cheap valve-cap BLE TPMS (TPMS1 / FBB0 / TomTom 0x0001).
      * 16 bytes after company ID: sensor, id, pressure kPa, temperature °C, battery, alarm.
-     * ra6070/BLE-TPMS and Theengs TPMS. Identity is name / FBB0 / data prefix 80–83,
+     * ra6070/BLE-TPMS and Theengs TPMS. Identity is name / FBB0 / data prefix 80-83,
      * not a bare Nokia 0x0001 match.
      */
     val tpmsAftermarket: FleetDecode = FleetDecode(
@@ -320,7 +320,7 @@ internal object CatalogDecodes {
 
     /**
      * SYTPMS / BR bicycle-scooter sensors. 7-byte manufacturer blob
-     * SS BB TT PPPP CCCC — company ID is status+battery, so the map
+     * SS BB TT PPPP CCCC - company ID is status+battery, so the map
      * prepends those two bytes. andi38/TPMS, Theengs TPMSBR.
      */
     val sytpms: FleetDecode = FleetDecode(
@@ -458,7 +458,7 @@ internal object CatalogDecodes {
     /**
      * Packed Location after the 0x0D app code and counter (opendroneid.c).
      * Flags at offset 3: SpeedMult bit 0, EWDirection bit 1, HeightType bit 2.
-     * Direction byte is 0–179; EWDirection adds 180. SpeedHorizontal is
+     * Direction byte is 0-179; EWDirection adds 180. SpeedHorizontal is
      * value×0.25, or value×0.75 + 255×0.25 when SpeedMult is set.
      */
     private fun locationFields(): List<DecodeField> = listOf(
@@ -552,14 +552,14 @@ internal object CatalogDecodes {
         ),
     )
 
-    /** Classification bits 2–4 equal 1 (EU). Bit 2 set, bits 3 and 4 clear. */
+    /** Classification bits 2-4 equal 1 (EU). Bit 2 set, bits 3 and 4 clear. */
     private fun euClassification(): DecodeWhen = mask(3, "04", nmask(3, "18"))
 
     private fun operatorIdFields(): List<DecodeField> = listOf(
         utf8("operator_id", "Operator ID", 4, length = 20),
     )
 
-    /** Gate on message type for protocol versions 0–2 (header = type<<4 | version). */
+    /** Gate on message type for protocol versions 0-2 (header = type<<4 | version). */
     private fun forMessageType(type: Int, fields: List<DecodeField>): List<DecodeField> {
         return (0..2).flatMap { ver ->
             val headerGate = eq(2, "%02X".format((type shl 4) or ver))
@@ -616,7 +616,7 @@ internal object CatalogDecodes {
     private fun nmask(offset: Int, hex: String, and: DecodeWhen? = null) =
         DecodeWhen(offset = offset, length = hexByteLen(hex), op = DecodeWhenOp.NMASK, valueHex = hex, and = and)
 
-    /** Tesla tsTPMS type byte at offset 2: 0–4 sleep, 5+ live. */
+    /** Tesla tsTPMS type byte at offset 2: 0-4 sleep, 5+ live. */
     private fun teslaAwake(): DecodeWhen =
         neq(2, "00", neq(2, "01", neq(2, "02", neq(2, "03", neq(2, "04")))))
 

@@ -202,7 +202,7 @@ object SitPathPlot {
         /** Local clock, same as the times drawn on the path. */
         fun whenLine(): String {
             val start = GnssCopy.localHm(at)
-            return if (endedAt > at) "$start–${GnssCopy.localHm(endedAt)}" else start
+            return if (endedAt > at) "$start-${GnssCopy.localHm(endedAt)}" else start
         }
 
         fun keyLine(): String {

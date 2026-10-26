@@ -162,7 +162,7 @@ object AircraftTrail {
         return buildString {
             pictures.forEachIndexed { index, pic ->
                 if (index > 0) appendLine()
-                val head = if (pic.status.isBlank()) pic.title else "${pic.title} — ${pic.status}"
+                val head = if (pic.status.isBlank()) pic.title else "${pic.title} - ${pic.status}"
                 appendLine("• $head")
                 if (pic.aircraft.isNotBlank()) appendLine("  ${pic.aircraft}")
                 val last = pic.fixes.last()
@@ -249,10 +249,10 @@ object AircraftTrail {
             craftKeys = base.craftKeys + near.map { pathKeyLine(it) },
             spanM = Geo.spanM(framed),
             caption = if (secondary) {
-                if ("second sit’s advertised track" in base.caption) {
+                if ("second sit's advertised track" in base.caption) {
                     base.caption
                 } else {
-                    base.caption + " A blue dotted line is the second sit’s advertised track within 2 km of this path."
+                    base.caption + " A blue dotted line is the second sit's advertised track within 2 km of this path."
                 }
             } else if ("black dotted line is an advertised track" in base.caption) {
                 base.caption
@@ -464,7 +464,7 @@ object AircraftTrail {
             opPhoneLat = pic.opPhoneLat,
             opPhoneLon = pic.opPhoneLon,
         )
-        return "$head — $note"
+        return "$head - $note"
     }
 
     private fun sideBit(pic: Picture): String {

@@ -46,7 +46,7 @@ fun List<LiveDecodeChip>.reportLabels(): List<String> =
  * Parses [Fleet.decode] maps from a BLE advertisement, or from Wi-Fi Remote ID
  * framed as BLE FFFA ([OpenDroneId.wifiFffaPayloads]).
  * Used by device detail, reports, and sticky payload coordinates for TAK/CoT.
- * Not a matcher — [SignatureEngine.match] still decides the label.
+ * Not a matcher - [SignatureEngine.match] still decides the label.
  */
 object SignatureFieldDecoder {
     private val cache = ConcurrentHashMap<String, List<DecodedFieldValue>>()

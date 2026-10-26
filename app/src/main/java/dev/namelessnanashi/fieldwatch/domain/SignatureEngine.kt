@@ -2,7 +2,7 @@ package dev.namelessnanashi.fieldwatch.domain
 
 class SignatureEngine {
     companion object {
-        /** 802.11 WPA (Microsoft) and RSN (IEEE) vendor IE OUIs — not a product brand. */
+        /** 802.11 WPA (Microsoft) and RSN (IEEE) vendor IE OUIs - not a product brand. */
         private val WIFI_PROTOCOL_IE_OUIS = setOf("0050F2", "000FAC")
     }
 
@@ -194,7 +194,7 @@ class SignatureEngine {
 
     /**
      * WIFI = every rule is Wi-Fi-only (AP rows). BLE = every rule is BLE-only.
-     * null = mixed or unscoped (Tesla, DJI, UniFi name, custom) — still searched on both.
+     * null = mixed or unscoped (Tesla, DJI, UniFi name, custom) - still searched on both.
      */
     private fun radioScope(rules: List<MatchRule>): RadioKind? {
         var wifi = false
@@ -281,7 +281,7 @@ class SignatureEngine {
     /**
      * iBeacon is a payload layout, not a product. If a radio already matched a
      * non-beacon signature (Sony TV, Tesla phone-key, …), drop the iBeacon chip.
-     * Minew / Estimote / Kontakt / Atrius cart tag stay dual-labeled — those rows are beacon class.
+     * Minew / Estimote / Kontakt / Atrius cart tag stay dual-labeled - those rows are beacon class.
      */
     private fun dropProtocolIBeacon(hits: MutableSet<String>, compiled: Compiled) {
         if ("fleet-ibeacon" !in hits) return
@@ -396,8 +396,8 @@ class SignatureEngine {
     }
 
     /**
-     * Wi-Fi vendor IEs (detail “Vendor OUI” list), not the BSSID.
-     * Skip WPA (00:50:F2) and RSN (00:0F:AC) — those are protocol tags, not the product.
+     * Wi-Fi vendor IEs (detail "Vendor OUI" list), not the BSSID.
+     * Skip WPA (00:50:F2) and RSN (00:0F:AC) - those are protocol tags, not the product.
      * UniFi virtual BSSIDs also hit on the recovered universal OUI when that prefix is cataloged.
      */
     private fun wifiVendorIeHitsOui(device: Sighting, prefix: String): Boolean {

@@ -64,7 +64,7 @@ class TakPublisher {
             _status.value = if (!settings.takEnabled) {
                 TakFeedStatus(detail = "Off")
             } else {
-                TakFeedStatus(paused = true, detail = "Privacy mode — feed paused")
+                TakFeedStatus(paused = true, detail = "Privacy mode - feed paused")
             }
             return false
         }

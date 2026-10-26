@@ -240,7 +240,7 @@ object BleAdParser {
     private fun addressTypeOf(device: BluetoothDevice?): String? {
         if (device == null) return null
         // BluetoothDevice.getAddressType() is API 35. The ADDRESS_TYPE_*
-        // constants exist earlier; calling the getter on 12–14 is a
+        // constants exist earlier; calling the getter on 12-14 is a
         // NoSuchMethodError on the scan callback and kills the process.
         if (Build.VERSION.SDK_INT < 35) return null
         return when (device.addressType) {

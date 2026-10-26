@@ -19,10 +19,10 @@ object DefaultCatalog {
 
     /**
      * DJI company 0x08AA manufacturer-data model id (u16 LE). Osmo cameras sit
-     * in 0x0006–0x0022. Aircraft (Mavic 3 0x0070, Neo 2 0x007e, …) do not.
+     * in 0x0006-0x0022. Aircraft (Mavic 3 0x0070, Neo 2 0x007e, …) do not.
      * Power 2000 advertised 0x1194 (4500) once (Power2000-1006HZ, 2026-10-04).
      * That id is a decode label only. The DJI Power row matches the name.
-     * Do not put bare mfg(0x08AA) on the Osmo or DJI Power row — that is every DJI radio.
+     * Do not put bare mfg(0x08AA) on the Osmo or DJI Power row - that is every DJI radio.
      */
     val OSMO_CAMERA_MFG_PREFIXES = listOf(
         "0600", // Osmo Action 1
@@ -43,19 +43,19 @@ object DefaultCatalog {
      * Operators can still change any row in the editor.
      */
     private object Hue {
-        const val MESH = 0          // phosphor green — LoRa / community mesh
-        const val SURVEILLANCE = 1  // amber — ALPR / Flock-family / municipal cameras
+        const val MESH = 0          // phosphor green - LoRa / community mesh
+        const val SURVEILLANCE = 1  // amber - ALPR / Flock-family / municipal cameras
         const val DRONE = 1         // same amber; class (not color) splits poles vs aircraft
-        const val HACKING = 2       // red — pentest kit and cheap UART overlays
-        const val TRACKER = 3       // cyan — SmartTag / Tile / Pebblebee
-        const val FIND_MY = 4       // purple — Apple/Google phones and Find My tags
-        const val GLASSES = 5       // orange — smart glasses
+        const val HACKING = 2       // red - pentest kit and cheap UART overlays
+        const val TRACKER = 3       // cyan - SmartTag / Tile / Pebblebee
+        const val FIND_MY = 4       // purple - Apple/Google phones and Find My tags
+        const val GLASSES = 5       // orange - smart glasses
         const val AUDIO = 5         // same orange; class splits glasses vs headphones / speakers
-        const val CAMERA = 6        // silver — consumer / action cameras (not poles)
-        const val HOME_CAM = 6      // silver — PCs / home IoT / retail signage
-        const val LAW = 7           // teal — public safety / vehicle (class splits them)
+        const val CAMERA = 6        // silver - consumer / action cameras (not poles)
+        const val HOME_CAM = 6      // silver - PCs / home IoT / retail signage
+        const val LAW = 7           // teal - public safety / vehicle (class splits them)
         const val VEHICLE = 7       // same teal; class (not color) splits LE vs civilian vehicle
-        const val HEALTH = 8        // clinical blue — scanners, BP, scales, CGM
+        const val HEALTH = 8        // clinical blue - scanners, BP, scales, CGM
     }
 
     /**
@@ -338,7 +338,7 @@ object DefaultCatalog {
         kind = SignatureClass.SURVEILLANCE,
         matchAny = true,
         notes = "Flock-style roadside ALPR / camera pole. IEEE B4:1E:52 or a name that starts with Flock-. Current poles are often quiet on Wi-Fi and BLE. LiteOn module prefixes are a separate row, not Extra attention.",
-        attentionNote = "Flock-style roadside ALPR / camera pole — reads plates and can be used to locate a vehicle. IEEE B4:1E:52 or a Flock-* SSID is the strong hit. Current poles are often quiet on Wi-Fi and BLE. Pattern match, not that camera. Look with your eyes.",
+        attentionNote = "Flock-style roadside ALPR / camera pole - reads plates and can be used to locate a vehicle. IEEE B4:1E:52 or a Flock-* SSID is the strong hit. Current poles are often quiet on Wi-Fi and BLE. Pattern match, not that camera. Look with your eyes.",
         builtIn = true,
         rules = listOf(
             oui("B4:1E:52"),
@@ -374,7 +374,7 @@ object DefaultCatalog {
         colorIndex = Hue.SURVEILLANCE,
         kind = SignatureClass.SURVEILLANCE,
         matchAny = true,
-        notes = "Flock Raven or ShotSpotter-style acoustic gunshot sensor, usually on a pole with cameras. BLE UUIDs 3100–3500 are the Raven radio. The XUNTONG battery manufacturer ID is Penguin, not this row. Current Flock-family poles are often quiet on Wi-Fi and BLE.",
+        notes = "Flock Raven or ShotSpotter-style acoustic gunshot sensor, usually on a pole with cameras. BLE UUIDs 3100-3500 are the Raven radio. The XUNTONG battery manufacturer ID is Penguin, not this row. Current Flock-family poles are often quiet on Wi-Fi and BLE.",
         builtIn = true,
         rules = listOf(
             name("RAVEN"),
@@ -396,7 +396,7 @@ object DefaultCatalog {
         colorIndex = Hue.FIND_MY,
         kind = SignatureClass.FINDER,
         matchAny = true,
-        notes = "Apple AirTag or Find My accessory. iPhones also send Find My so they can be located — that stays on Apple Device unless the name is AirTag. Addresses rotate.",
+        notes = "Apple AirTag or Find My accessory. iPhones also send Find My so they can be located - that stays on Apple Device unless the name is AirTag. Addresses rotate.",
         builtIn = true,
         rules = listOf(
             name("AirTag"),
@@ -510,7 +510,7 @@ object DefaultCatalog {
         colorIndex = Hue.TRACKER,
         kind = SignatureClass.FINDER,
         matchAny = true,
-        notes = "Tile item finder. Decoded fields can show a rotating private id — not a serial.",
+        notes = "Tile item finder. Decoded fields can show a rotating private id - not a serial.",
         builtIn = true,
         decode = CatalogDecodes.tile,
         rules = listOf(
@@ -562,7 +562,7 @@ object DefaultCatalog {
         kind = SignatureClass.SURVEILLANCE,
         matchAny = true,
         notes = "External battery pack usually associated with a Flock-style camera pole. The name FS Ext Battery, or a name that starts with FS Ext, is the hit. Current poles are often quiet on Wi-Fi and BLE.",
-        attentionNote = "Usually associated with a Flock-style camera — an external battery pack on the pole. The name is the hit. Current poles are often quiet on Wi-Fi and BLE. Pattern match, not that camera. Look with your eyes.",
+        attentionNote = "Usually associated with a Flock-style camera - an external battery pack on the pole. The name is the hit. Current poles are often quiet on Wi-Fi and BLE. Pattern match, not that camera. Look with your eyes.",
         builtIn = true,
         rules = listOf(
             name("FS Ext Battery"),
@@ -635,7 +635,7 @@ object DefaultCatalog {
         colorIndex = Hue.VEHICLE,
         kind = SignatureClass.VEHICLE,
         matchAny = true,
-        notes = "Tesla phone-as-key, vehicle, Wall Connector, or TeslaGW Wi-Fi. iOS also sees an iBeacon layout from the car — that is still Tesla, not a mall beacon. Tire sensors are the tsTPMS row.",
+        notes = "Tesla phone-as-key, vehicle, Wall Connector, or TeslaGW Wi-Fi. iOS also sees an iBeacon layout from the car - that is still Tesla, not a mall beacon. Tire sensors are the tsTPMS row.",
         builtIn = true,
         rules = listOf(
             mfg(0x022B),
@@ -835,7 +835,7 @@ object DefaultCatalog {
         colorIndex = Hue.AUDIO,
         kind = SignatureClass.AUDIO,
         matchAny = true,
-        notes = "Sony headphones, TV, or camera. Bravia TVs also send a generic iBeacon for Cast — Fieldwatch keeps Sony.",
+        notes = "Sony headphones, TV, or camera. Bravia TVs also send a generic iBeacon for Cast - Fieldwatch keeps Sony.",
         builtIn = true,
         rules = listOf(
             mfg(0x012D),
@@ -1329,7 +1329,7 @@ object DefaultCatalog {
         colorIndex = Hue.HOME_CAM,
         kind = SignatureClass.ISP,
         matchAny = true,
-        notes = "Comcast xfinitywifi hotspot or Xfinity / XFSETUP gateway name. Most boxes are Arris / Hitron / Technicolor OEM — those hit the OEM row.",
+        notes = "Comcast xfinitywifi hotspot or Xfinity / XFSETUP gateway name. Most boxes are Arris / Hitron / Technicolor OEM - those hit the OEM row.",
         builtIn = true,
         rules = withWifiOuis(
             listOf(
@@ -1421,7 +1421,7 @@ object DefaultCatalog {
         colorIndex = Hue.HOME_CAM,
         kind = SignatureClass.ISP,
         matchAny = true,
-        notes = "Starlink router. The BSSID is often randomized now — the STARLINK name is the usual hit.",
+        notes = "Starlink router. The BSSID is often randomized now - the STARLINK name is the usual hit.",
         builtIn = true,
         rules = withWifiOuis(
             listOf(
@@ -1546,7 +1546,7 @@ object DefaultCatalog {
         kind = SignatureClass.SURVEILLANCE,
         matchAny = true,
         notes = "Verkada cloud camera, including LPR-capable bullets, on buildings and some public sites.",
-        attentionNote = "Verkada cloud cameras, including LPR-capable bullets. Used on buildings and some public sites — video and sometimes plates. Name-only. Pattern match, not that camera. Look with your eyes.",
+        attentionNote = "Verkada cloud cameras, including LPR-capable bullets. Used on buildings and some public sites - video and sometimes plates. Name-only. Pattern match, not that camera. Look with your eyes.",
         builtIn = true,
         rules = listOf(
             name("Verkada"),
@@ -1562,7 +1562,7 @@ object DefaultCatalog {
         kind = SignatureClass.SURVEILLANCE,
         matchAny = true,
         notes = "Motorola Vigilant plate reader used by agencies and parking.",
-        attentionNote = "Motorola Vigilant is LPR — plate readers used by agencies and parking. Name-only when advertised. Pattern match, not that camera. Look with your eyes.",
+        attentionNote = "Motorola Vigilant is LPR - plate readers used by agencies and parking. Name-only when advertised. Pattern match, not that camera. Look with your eyes.",
         builtIn = true,
         rules = listOf(
             name("Vigilant Solutions"),
@@ -2072,7 +2072,7 @@ object DefaultCatalog {
         colorIndex = Hue.VEHICLE,
         kind = SignatureClass.VEHICLE,
         matchAny = true,
-        notes = "Aftermarket CarPlay / Android Auto adapter hotspot (CARLINK-). Head-unit dongle, not the car’s own modem.",
+        notes = "Aftermarket CarPlay / Android Auto adapter hotspot (CARLINK-). Head-unit dongle, not the car's own modem.",
         builtIn = true,
         rules = withWifiOuis(
             listOf(
@@ -2502,7 +2502,7 @@ object DefaultCatalog {
         colorIndex = Hue.MESH,
         kind = SignatureClass.MESH,
         matchAny = true,
-        notes = "MeshCore LoRa companion radio. Off-grid text/location, not cellular. Name-only — Nordic UART UUID is every ESP32 serial board and is not this row.",
+        notes = "MeshCore LoRa companion radio. Off-grid text/location, not cellular. Name-only - Nordic UART UUID is every ESP32 serial board and is not this row.",
         builtIn = true,
         rules = listOf(
             bleName("MeshCore"),
@@ -2586,7 +2586,7 @@ object DefaultCatalog {
         kind = SignatureClass.SURVEILLANCE,
         matchAny = true,
         notes = "Genetec AutoVu parking or roadside plate reader.",
-        attentionNote = "Genetec AutoVu is municipal / parking ALPR — reads plates at lots and roadside. Name-only when advertised. Pattern match, not that camera. Look with your eyes.",
+        attentionNote = "Genetec AutoVu is municipal / parking ALPR - reads plates at lots and roadside. Name-only when advertised. Pattern match, not that camera. Look with your eyes.",
         builtIn = true,
         rules = listOf(
             name("Genetec"),
@@ -2712,7 +2712,7 @@ object DefaultCatalog {
         kind = SignatureClass.SURVEILLANCE,
         matchAny = true,
         notes = "Rekor highway or transit plate reader.",
-        attentionNote = "Rekor is highway / transit ALPR — reads plates on roads and at checkpoints. Name-only. Pattern match, not that camera. Look with your eyes.",
+        attentionNote = "Rekor is highway / transit ALPR - reads plates on roads and at checkpoints. Name-only. Pattern match, not that camera. Look with your eyes.",
         builtIn = true,
         rules = listOf(
             name("Rekor"),
@@ -2772,7 +2772,7 @@ object DefaultCatalog {
         kind = SignatureClass.LAW_ENFORCEMENT,
         matchAny = true,
         notes = "Digital Ally body-worn or in-car camera (FirstVu / EVO). Quiet or LTE-only units will not appear.",
-        attentionNote = "Digital Ally body-worn or in-car (FirstVu / EVO family). IEEE OUI 00:23:BD is Digital Ally, Inc. — camera gear, not a chip vendor. Patrol units may stay on LTE and stay quiet. Pattern match, not that officer. Look with your eyes. Not identity.",
+        attentionNote = "Digital Ally body-worn or in-car (FirstVu / EVO family). IEEE OUI 00:23:BD is Digital Ally, Inc. - camera gear, not a chip vendor. Patrol units may stay on LTE and stay quiet. Pattern match, not that officer. Look with your eyes. Not identity.",
         builtIn = true,
         rules = listOf(
             oui("00:23:BD"),
@@ -2830,7 +2830,7 @@ object DefaultCatalog {
         kind = SignatureClass.SURVEILLANCE,
         matchAny = true,
         notes = "Panasonic i-PRO camera or Arbitrator in-car system. Panasonic TVs and phones use other names.",
-        attentionNote = "Panasonic i-PRO camera or Arbitrator in-car video. Used on buildings and some patrol cars — video and sometimes plates. Name-only (i-PRO / Arbitrator). Not every Panasonic radio. Pattern match, not that camera. Look with your eyes.",
+        attentionNote = "Panasonic i-PRO camera or Arbitrator in-car video. Used on buildings and some patrol cars - video and sometimes plates. Name-only (i-PRO / Arbitrator). Not every Panasonic radio. Pattern match, not that camera. Look with your eyes.",
         builtIn = true,
         rules = listOf(
             name("i-PRO"),
@@ -2849,7 +2849,7 @@ object DefaultCatalog {
         kind = SignatureClass.SURVEILLANCE,
         matchAny = true,
         notes = "Avigilon building or municipal camera, sometimes with LPR.",
-        attentionNote = "Motorola Avigilon cameras / LPR. Used on municipal poles and commercial sites — video and sometimes plates. Name-only. Pattern match, not that camera. Look with your eyes.",
+        attentionNote = "Motorola Avigilon cameras / LPR. Used on municipal poles and commercial sites - video and sometimes plates. Name-only. Pattern match, not that camera. Look with your eyes.",
         builtIn = true,
         rules = listOf(
             name("Avigilon"),
@@ -2883,7 +2883,7 @@ object DefaultCatalog {
         kind = SignatureClass.SURVEILLANCE,
         matchAny = true,
         notes = "Hayden AI bus- or vehicle-mounted camera used for parking and traffic enforcement.",
-        attentionNote = "Hayden AI cameras ride on buses and city vehicles — video and plates. Name-only when advertised. LTE-only units will not appear. Pattern match, not that camera. Look with your eyes.",
+        attentionNote = "Hayden AI cameras ride on buses and city vehicles - video and plates. Name-only when advertised. LTE-only units will not appear. Pattern match, not that camera. Look with your eyes.",
         builtIn = true,
         rules = listOf(
             name("Hayden AI"),
@@ -2932,7 +2932,7 @@ object DefaultCatalog {
         kind = SignatureClass.SURVEILLANCE,
         matchAny = true,
         notes = "LiveView Technologies (LVT) solar surveillance trailer. Most units are cellular-only and will not appear.",
-        attentionNote = "LVT / LiveView solar camera trailer — parking lots, construction, some city parks. Video and sometimes plates. Most units use cellular and stay quiet on Wi-Fi/BLE. A LiveView or LVT- name is a pattern, not that trailer. Look with your eyes.",
+        attentionNote = "LVT / LiveView solar camera trailer - parking lots, construction, some city parks. Video and sometimes plates. Most units use cellular and stay quiet on Wi-Fi/BLE. A LiveView or LVT- name is a pattern, not that trailer. Look with your eyes.",
         builtIn = true,
         rules = listOf(
             name("LiveView"),
@@ -3028,7 +3028,7 @@ object DefaultCatalog {
         kind = SignatureClass.GLASSES,
         matchAny = true,
         notes = "Ray-Ban Meta, Oakley Meta, or Meta Display smart glasses, or a Quest / other Meta wearable.",
-        attentionNote = "Meta / Luxottica BLE — often Ray-Ban Meta smart glasses. A Bluetooth name that starts with Meta RB Display is these glasses. The same company IDs show up on Quest headsets and other Meta wearables. Not proof someone is recording. A miss is not a clean bill (paired and quiet, asleep, or a different brand). Look with your eyes.",
+        attentionNote = "Meta / Luxottica BLE - often Ray-Ban Meta smart glasses. A Bluetooth name that starts with Meta RB Display is these glasses. The same company IDs show up on Quest headsets and other Meta wearables. Not proof someone is recording. A miss is not a clean bill (paired and quiet, asleep, or a different brand). Look with your eyes.",
         builtIn = true,
         rules = listOf(
             mfg(0x01AB),
@@ -3054,7 +3054,7 @@ object DefaultCatalog {
         kind = SignatureClass.GLASSES,
         matchAny = true,
         notes = "Snap Spectacles or other Snap BLE product.",
-        attentionNote = "Snapchat BLE company ID — used by Snap Spectacles. Other Snap BLE products could match. Not proof of recording. Look with your eyes.",
+        attentionNote = "Snapchat BLE company ID - used by Snap Spectacles. Other Snap BLE products could match. Not proof of recording. Look with your eyes.",
         builtIn = true,
         rules = listOf(
             mfg(0x03C2),
@@ -3141,7 +3141,7 @@ object DefaultCatalog {
         kind = SignatureClass.HACKING,
         matchAny = true,
         notes = "Hak5 WiFi Pineapple setup or management AP. Cloned café SSIDs from PineAP look like ordinary Wi-Fi and will not hit this row.",
-        attentionNote = "Hak5 WiFi Pineapple setup or management AP (Pineapple_XXXX). That is the admin radio, not every rogue SSID PineAP might impersonate — those look like ordinary café Wi-Fi. A miss is not a clean bill (renamed, or only cloning). Pattern match, not identity. Look with your eyes.",
+        attentionNote = "Hak5 WiFi Pineapple setup or management AP (Pineapple_XXXX). That is the admin radio, not every rogue SSID PineAP might impersonate - those look like ordinary café Wi-Fi. A miss is not a clean bill (renamed, or only cloning). Pattern match, not identity. Look with your eyes.",
         builtIn = true,
         rules = listOf(
             glob("Pineapple_*"),
@@ -3251,7 +3251,7 @@ object DefaultCatalog {
         kind = SignatureClass.HACKING,
         matchAny = true,
         notes = "Porkchop pentest firmware on a Cardputer or Cheap Yellow Display. Default AP name PORKCHOP. BLE spam that spoofs Apple/Android is not this row.",
-        attentionNote = "M5PORKCHOP / Porkchop — pocket Wi-Fi pentest firmware (Cardputer or Cheap Yellow Display). Default CYD remote AP is named PORKCHOP. BACON-mode fake APs brand vendor IE 50:52:4B. A miss is not a clean bill (renamed, passive only, or no AP). Pattern match, not identity, not proof of an attack. Look with your eyes.",
+        attentionNote = "M5PORKCHOP / Porkchop - pocket Wi-Fi pentest firmware (Cardputer or Cheap Yellow Display). Default CYD remote AP is named PORKCHOP. BACON-mode fake APs brand vendor IE 50:52:4B. A miss is not a clean bill (renamed, passive only, or no AP). Pattern match, not identity, not proof of an attack. Look with your eyes.",
         builtIn = true,
         rules = listOf(
             name("PORKCHOP"),
@@ -3354,7 +3354,7 @@ object DefaultCatalog {
         colorIndex = Hue.TRACKER,
         kind = SignatureClass.WEARABLE,
         matchAny = true,
-        notes = "Fieldy pendant — wearable AI note-taker.",
+        notes = "Fieldy pendant - wearable AI note-taker.",
         attentionNote = "Fieldy wearable AI note-taker (pendant). It records conversations and transcribes them. Not proof someone is recording you. A miss is not a clean bill (off, paired and quiet, or a different brand). Look with your eyes.",
         builtIn = true,
         rules = listOf(
@@ -3387,7 +3387,7 @@ object DefaultCatalog {
         colorIndex = Hue.TRACKER,
         kind = SignatureClass.WEARABLE,
         matchAny = true,
-        notes = "Limitless / Rewind AI pendant — wearable conversation recorder.",
+        notes = "Limitless / Rewind AI pendant - wearable conversation recorder.",
         attentionNote = "Limitless Pendant wearable recorder. BLE service 632de001. It records conversations. Not proof someone is recording you. A miss is not a clean bill (off, paired and quiet, or a different brand). Look with your eyes.",
         builtIn = true,
         rules = listOf(
@@ -3440,7 +3440,7 @@ object DefaultCatalog {
         colorIndex = Hue.TRACKER,
         kind = SignatureClass.WEARABLE,
         matchAny = true,
-        notes = "Friend AI necklace — wearable companion that listens.",
+        notes = "Friend AI necklace - wearable companion that listens.",
         attentionNote = "Friend Pendant / necklace. BLE service 1a3fd0e7. It listens to conversations. Not proof someone is recording you. A miss is not a clean bill (off, or a different brand). Look with your eyes.",
         builtIn = true,
         rules = listOf(
@@ -3645,7 +3645,7 @@ object DefaultCatalog {
         colorIndex = Hue.DRONE,
         kind = SignatureClass.DRONE,
         matchAny = true,
-        notes = "Skydio drone (common in US public-safety / enterprise). In-flight Remote ID is often Wi-Fi and easy to miss — the Remote ID row is the license plate.",
+        notes = "Skydio drone (common in US public-safety / enterprise). In-flight Remote ID is often Wi-Fi and easy to miss - the Remote ID row is the license plate.",
         builtIn = true,
         rules = listOf(
             name("Skydio"),
@@ -4288,7 +4288,7 @@ object DefaultCatalog {
         colorIndex = Hue.VEHICLE,
         kind = SignatureClass.VEHICLE,
         matchAny = true,
-        notes = "Vehicle Wi-Fi from an AUMOVIO (ex-Continental) module. The car’s AP, not an ISP router.",
+        notes = "Vehicle Wi-Fi from an AUMOVIO (ex-Continental) module. The car's AP, not an ISP router.",
         builtIn = true,
         rules = withWifiOuis(emptyList(), ApVendorOuis.AUMOVIO),
     )

@@ -8,7 +8,7 @@ import java.util.TimeZone
 /**
  * Paste-ready addendum prompt for Reports → AI Export.
  * Onboard Debrief is verbatim. Working data is rates, RSSI bands, Extra attention,
- * and finder-tag rows for a tracking stress-test — not a second inventory.
+ * and finder-tag rows for a tracking stress-test - not a second inventory.
  */
 object DebriefPrompt {
     const val WINDOW_SHORT_MS = 5 * 60_000L
@@ -86,7 +86,7 @@ object DebriefPrompt {
             appendLine("- Place names (if present) are system reverse-geocode of those stamps.")
             appendLine("- RSSI is loudness at the phone, not meters.")
             appendLine("- Live RAM cap is about 400 radios; unnamed BLE evicts after ~3 min. A named sit keeps more. This is not a complete capture.")
-            appendLine("- Do not claim a tracker is following unless the onboard GPS co-travel section supports it. A radio with you the whole sit is not automatically yours — it may be planted. Do not dismiss it. Do not invent a tail the onboard test did not flag. Do not treat a retail beacon as a Find My tail.")
+            appendLine("- Do not claim a tracker is following unless the onboard GPS co-travel section supports it. A radio with you the whole sit is not automatically yours - it may be planted. Do not dismiss it. Do not invent a tail the onboard test did not flag. Do not treat a retail beacon as a Find My tail.")
             appendLine("- Seen at more than one place, when that section is present, means this phone heard that stable address at those stops in the last 7 days. The coordinates are where this phone was. A street is the system geocoder when Online place names is on. It is not the co-travel test. A radio heard the whole way is left out of that section.")
             appendLine("- A radio marked mine was claimed by the operator. Do not treat it as an unexplained follower.")
             appendLine("- A flood note is a burst of new addresses, not a follower.")
@@ -95,14 +95,14 @@ object DebriefPrompt {
             appendLine("- Do not give safety advice. Do not tell the operator they are safe or in danger.")
             appendLine("- Treat this paste as operationally sensitive.")
             appendLine()
-            appendLine("## Your output (required — this is the addendum the operator reads)")
+            appendLine("## Your output (required - this is the addendum the operator reads)")
             appendLine("Write complete sentences. Headings as below. Short bullets only for Extra attention and tracking rows from the working table. No markdown tables. No code fences. No dump of the onboard inventories.")
             appendLine()
-            appendLine("1. **Disclaimer** — Repeat the experimental-use disclaimer first.")
-            appendLine("2. **What the onboard Debrief already established** — 3–5 sentences. Counts, distance, tracking callouts, Extra attention hits, Observer notes if any, Marked mine if any, Flood if any. Do not reprint inventories.")
-            appendLine("3. **What the numbers add** — 5- vs 15-minute counts, RSSI bands, RAND BLE percent, arrivals per minute, persistent vs gone, signature-family mix. Say street vs dwelling vs retail vs vehicle, and 5-minute vs 15-minute change (denser, quieter, stable). Confidence. If GPS ran, path length/span from the working table — do not pin a radio to a stay.")
-            appendLine("4. **Extra attention and tracking callouts** — Full identifiers from the working table (complete MAC, name, RSSI min/max, signatures, dwell). Stress-test onboard Possible trackers with you / Possible tail / Retail beacons / Wearables. Agree, qualify, or say the data are too thin. Pattern match, not identity. If none, say none.")
-            appendLine("5. **What another sit or Hunt would shrink** — Concrete in-app next steps only (Hunt on one Extra attention row, a longer GPS path, Compare sits, Filters). No safety advice. No “call the police.”")
+            appendLine("1. **Disclaimer** - Repeat the experimental-use disclaimer first.")
+            appendLine("2. **What the onboard Debrief already established** - 3-5 sentences. Counts, distance, tracking callouts, Extra attention hits, Observer notes if any, Marked mine if any, Flood if any. Do not reprint inventories.")
+            appendLine("3. **What the numbers add** - 5- vs 15-minute counts, RSSI bands, RAND BLE percent, arrivals per minute, persistent vs gone, signature-family mix. Say street vs dwelling vs retail vs vehicle, and 5-minute vs 15-minute change (denser, quieter, stable). Confidence. If GPS ran, path length/span from the working table - do not pin a radio to a stay.")
+            appendLine("4. **Extra attention and tracking callouts** - Full identifiers from the working table (complete MAC, name, RSSI min/max, signatures, dwell). Stress-test onboard Possible trackers with you / Possible tail / Retail beacons / Wearables. Agree, qualify, or say the data are too thin. Pattern match, not identity. If none, say none.")
+            appendLine("5. **What another sit or Hunt would shrink** - Concrete in-app next steps only (Hunt on one Extra attention row, a longer GPS path, Compare sits, Filters). No safety advice. No \"call the police.\"")
             appendLine()
             appendLine("**Takeaway (required, last line).** One sentence starting with `Takeaway:` that adds *one number the onboard takeaway does not already say* (a rate, RAND percent, 5- vs 15-minute change, path span). Not a moral. Not a threat level.")
             appendLine()
@@ -118,11 +118,11 @@ object DebriefPrompt {
             appendLine("- Scan intensity: ${settings.intensity.name.lowercase()}. Stale after ${settings.staleSec}s.")
             appendLine("- Location tags: ${if (settings.tagLocation) "on" else "off"}. Online place names: ${if (settings.onlineLookup) "on" else "off"}.")
             appendLine()
-            appendLine("## Onboard Debrief (verbatim — already shown to the operator; do not rewrite)")
+            appendLine("## Onboard Debrief (verbatim - already shown to the operator; do not rewrite)")
             appendLine()
             appendLine(onboard.trimEnd())
             appendLine()
-            appendLine("## Working data (for the addendum — do not copy rosters into the answer)")
+            appendLine("## Working data (for the addendum - do not copy rosters into the answer)")
             appendLine()
             appendLine(
                 "15 min: Wi-Fi ${wifi.size}  BLE ${ble.size}  signed ${signed.size}  hidden SSIDs ${wifi.count { it.hiddenSsid }}  " +

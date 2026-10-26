@@ -17,8 +17,8 @@ object FieldwatchDisclaimer {
         "This is a hobby project, provided as-is under the MIT License. Use at your own risk."
 
     const val HYPOTHESES =
-        "Detections, pattern matches, “Moving with you” / “possible tail,” Debrief text, " +
-            "and AI Export are hypotheses — not identity, not a legal finding, and not a " +
+        "Detections, pattern matches, \"Moving with you\" / \"possible tail,\" Debrief text, " +
+            "and AI Export are hypotheses - not identity, not a legal finding, and not a " +
             "complete RF capture. Radios that are off, asleep, randomized, cellular-only, " +
             "or hidden by the OS will not appear."
 
@@ -72,7 +72,7 @@ object FieldwatchDisclaimer {
     /** Debrief text / PDF. Same core as first-run, without the click-through line. */
     fun report(window: DebriefWindow? = null): String {
         val source = if (window?.sitName != null) {
-            "named sit “${window.sitName}” (radios heard in that window; Live list cap still applied while watching). "
+            "named sit \"${window.sitName}\" (radios heard in that window; Live list cap still applied while watching). "
         } else {
             "the in-memory live set (last 15 minutes, cap about 400). "
         }

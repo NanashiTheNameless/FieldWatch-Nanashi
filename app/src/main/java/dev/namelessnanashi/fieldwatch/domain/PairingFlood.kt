@@ -550,7 +550,7 @@ class PairingFlood {
     }
 
     /**
-     * Swift Pair beacon: id 0x03, sub-scenario 0x00–0x02, reserved byte 0x80.
+     * Swift Pair beacon: id 0x03, sub-scenario 0x00-0x02, reserved byte 0x80.
      * The Windows background beacon starts with 0x01 and stays out.
      */
     private fun swiftPair(hex: String): Boolean {

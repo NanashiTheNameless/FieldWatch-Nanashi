@@ -20,7 +20,7 @@ object Hunt {
     const val EARLIER_TO_MS = 3_500L
     const val STEP_DB = 3.0
     const val QUIET_MS = 8_000L
-    /** Same floor as DeviceExplain “very strong.” Pocket / in-hand / same bag, not meters. */
+    /** Same floor as DeviceExplain "very strong." Pocket / in-hand / same bag, not meters. */
     const val VERY_CLOSE_DBM = -45.0
     /** Geiger tick: last-heard RSSI mapped to interval. Loud end is faster than Very Close. */
     const val TICK_LOUD_DBM = -40

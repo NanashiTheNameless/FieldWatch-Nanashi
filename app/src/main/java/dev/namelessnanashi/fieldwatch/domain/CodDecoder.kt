@@ -74,12 +74,12 @@ object CodDecoder {
         }
         0x03 -> when ((minor shr 3) and 0x7) {
             0 -> "Fully available"
-            1 -> "1–17% utilized"
-            2 -> "17–33% utilized"
-            3 -> "33–50% utilized"
-            4 -> "50–67% utilized"
-            5 -> "67–83% utilized"
-            6 -> "83–99% utilized"
+            1 -> "1-17% utilized"
+            2 -> "17-33% utilized"
+            3 -> "33-50% utilized"
+            4 -> "50-67% utilized"
+            5 -> "67-83% utilized"
+            6 -> "83-99% utilized"
             else -> "No service available"
         }
         0x04 -> when (minor) {

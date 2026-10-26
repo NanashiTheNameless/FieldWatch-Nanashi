@@ -1170,7 +1170,7 @@ data class AppSettings(
      * shows the tour once more, then this catches up so later launches do not.
      */
     val liveTourRev: Int = 0,
-    /** Signatures tab: Name A–Z (default) or Class A–Z. */
+    /** Signatures tab: Name A-Z (default) or Class A-Z. */
     val signatureListSort: SignatureListSort = SignatureListSort.NAME,
     /** By class: hide class headers with 0 radios. Off = show all (zeros stay). */
     val outlineHideEmpty: Boolean = false,

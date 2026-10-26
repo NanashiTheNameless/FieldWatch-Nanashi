@@ -2,7 +2,7 @@ package dev.namelessnanashi.fieldwatch.domain
 
 /**
  * BLE/Wi-Fi RSSI as this phone received it (dBm). Bluetooth uses 127 for
- * “not available”; that is not transmit power and not a real hear.
+ * "not available"; that is not transmit power and not a real hear.
  */
 object Rssi {
     fun measured(rssi: Int): Boolean = rssi in -127..126

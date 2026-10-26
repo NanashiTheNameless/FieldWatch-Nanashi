@@ -79,7 +79,7 @@ object AdvPayloadDecoder {
                             8,
                         )
                     }
-                    0x08 -> out += RoleHint("siri", "an Apple device that just heard “Hey Siri”", "Hey Siri advertisement.", 6)
+                    0x08 -> out += RoleHint("siri", "an Apple device that just heard \"Hey Siri\"", "Hey Siri advertisement.", 6)
                     0x09 -> out += RoleHint("audio-speaker", "an AirPlay speaker or Apple TV", "AirPlay advertisement.", 5)
                     0x0B -> out += RoleHint("phone", "an Apple device doing Handoff", "Handoff advertisement.", 4)
                     0x0C -> out += RoleHint("phone", "an Apple device looking for Instant Hotspot", "Tethering-target advertisement.", 5)
@@ -89,7 +89,7 @@ object AdvPayloadDecoder {
                     0x12 -> out += RoleHint(
                         "tag",
                         "a Find My network radio",
-                        "Apple Offline Finding — AirTag, Find My accessory, or an Apple device locating itself.",
+                        "Apple Offline Finding - AirTag, Find My accessory, or an Apple device locating itself.",
                         4,
                     )
                 }
@@ -216,7 +216,7 @@ object AdvPayloadDecoder {
         return listOf(
             Field(
                 "iBeacon UUID",
-                if (teslaKey) "$uuid — Tesla phone-as-key (iOS background find). Not a mall beacon." else uuid,
+                if (teslaKey) "$uuid - Tesla phone-as-key (iOS background find). Not a mall beacon." else uuid,
             ),
             Field("iBeacon major / minor", "$major / $minor"),
             Field("iBeacon calibrated TX", "$tx dBm at 1 m (used to estimate range)"),
@@ -362,7 +362,7 @@ object AdvPayloadDecoder {
 
     private fun decodeHandoffOrTetherTarget(data: ByteArray): List<Field> =
         if (data.size >= 14) decodeHandoff(data)
-        else listOf(Field("Instant Hotspot (looking)", "This Apple device is searching for a paired phone’s hotspot."))
+        else listOf(Field("Instant Hotspot (looking)", "This Apple device is searching for a paired phone's hotspot."))
 
     private fun decodeTetherSource(data: ByteArray): List<Field> {
         if (data.size < 6) return listOf(Field("Instant Hotspot", "An iPhone/iPad is offering a personal hotspot."))
@@ -470,7 +470,7 @@ object AdvPayloadDecoder {
         return when (action) {
             0x03 -> "Phone is idle / locked."
             0x05 -> "Audio playing with the screen locked."
-            0x07 -> "Screen is on — someone is using it."
+            0x07 -> "Screen is on - someone is using it."
             0x0D -> "Device reports the user is driving."
             0x0E -> "In a phone or FaceTime call."
             else -> "Nearby Info advertisement."
@@ -498,7 +498,7 @@ object AdvPayloadDecoder {
                     if (maintained) append("Owner seen recently. ")
                     else append("Owner not seen in the current key window. ")
                     if (maintained || batt in 0..3) append("Battery $battName. ")
-                    append("($keyLen-byte key fragment — not a serial number.)")
+                    append("($keyLen-byte key fragment - not a serial number.)")
                 },
             ),
         )
@@ -509,7 +509,7 @@ object AdvPayloadDecoder {
             val id = modelId24(bytes)
             val name = FastPairModels.name(id)
             return listOf(
-                Field("Google Fast Pair", "In pairing mode — Android will pop a tap-to-pair card."),
+                Field("Google Fast Pair", "In pairing mode - Android will pop a tap-to-pair card."),
                 Field(
                     "Model ID",
                     if (name != null) "$name  (0x%06X)".format(id) else "0x%06X (not in the local name list)".format(id),

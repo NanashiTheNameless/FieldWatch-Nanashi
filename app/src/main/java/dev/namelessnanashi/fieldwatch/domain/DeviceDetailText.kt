@@ -40,7 +40,7 @@ object DeviceDetailText {
         out.append("Fieldwatch device detail\n")
         out.append(iso.format(Date(now))).append('\n')
         out.append(
-            "Experimental. Not a legal identity. Stock Android radios — this is what the OS " +
+            "Experimental. Not a legal identity. Stock Android radios - this is what the OS " +
                 "exposed, not a guarantee a tracker or camera is present.\n",
         )
         out.append('\n')
@@ -77,9 +77,9 @@ object DeviceDetailText {
         )
         line("Address", DeviceExplain.addressExplain(device))
         vendorLine(device)?.let { line("Who made it", it.replace('\n', ' ')) }
-            ?: line("OUI (vendor prefix)", "${device.oui} — no IEEE match; randomized addresses usually have none")
+            ?: line("OUI (vendor prefix)", "${device.oui} - no IEEE match; randomized addresses usually have none")
         if (device.hiddenSsid) {
-            line("Network name (SSID)", "Hidden — the AP is beaconing but not publishing a name")
+            line("Network name (SSID)", "Hidden - the AP is beaconing but not publishing a name")
         }
 
         section("Signal")
@@ -93,7 +93,7 @@ object DeviceDetailText {
         }
         line("Heard range this session", Rssi.sessionRange(device.rssiMin, device.rssiMax, device.rssiHistory))
         facts.txPowerDbm?.let {
-            line("Claimed transmit power", "$it dBm — how loud it says it transmits, not a distance")
+            line("Claimed transmit power", "$it dBm - how loud it says it transmits, not a distance")
         }
         if (device.channel != 0 || device.frequencyMhz != 0) {
             line(
@@ -135,8 +135,8 @@ object DeviceDetailText {
             facts.connectable?.let {
                 line(
                     "Connectable",
-                    if (it) "Yes — a phone could open a BLE connection"
-                    else "No — broadcast-only (you can hear it, not join it from this scan)",
+                    if (it) "Yes - a phone could open a BLE connection"
+                    else "No - broadcast-only (you can hear it, not join it from this scan)",
                 )
             }
             facts.advertisingIntervalMs?.let {
@@ -245,7 +245,7 @@ object DeviceDetailText {
                     "Vendor OUI ${ie.oui}$type",
                     buildString {
                         append(org ?: "Unknown IEEE OUI")
-                        append(" — extra AP information element, not the SSID.")
+                        append(" - extra AP information element, not the SSID.")
                         if (ie.dataHex.isNotBlank()) {
                             append(" ")
                             append(ie.dataHex.hexSpaced())
@@ -262,7 +262,7 @@ object DeviceDetailText {
         placeLines.forEach { out.append(it).append('\n') }
         Geo.screenCoord(device.latitude, device.longitude, demo)?.let {
             line("Last fix", it)
-            out.append("Last fix is the phone’s GPS at hear-time, not a fix on this radio.\n")
+            out.append("Last fix is the phone's GPS at hear-time, not a fix on this radio.\n")
         }
         Geo.screenGrid(device.latitude, device.longitude, demo)?.let { line("Grid", it) }
         if (device.fleetIds.isNotEmpty()) {
@@ -327,7 +327,7 @@ object DeviceDetailText {
         return spans.joinToString("; ") { span ->
             val start = fmt.format(Date(span.start.coerceAtLeast(from)))
             val end = span.end?.let { fmt.format(Date(it)) } ?: "now"
-            "$start–$end"
+            "$start-$end"
         }
     }
 }

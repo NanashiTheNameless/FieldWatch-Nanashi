@@ -224,7 +224,7 @@ class DeviceStore(
         }
     }
 
-    /** Name, vendor IEs, UUIDs, manufacturer payloads — not RSSI / GPS / gone. */
+    /** Name, vendor IEs, UUIDs, manufacturer payloads - not RSSI / GPS / gone. */
     private fun matchIdentity(device: Sighting): String {
         val ies = device.vendorIeOuis
         val uuids = device.serviceUuids

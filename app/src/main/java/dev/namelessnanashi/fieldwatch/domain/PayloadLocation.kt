@@ -4,7 +4,7 @@ package dev.namelessnanashi.fieldwatch.domain
  * Advertised WGS84 from decode field ids, not the operator phone GPS.
  *
  * Canonical ids are [LAT] / [LON]. Stock Remote ID uses those. A custom map
- * with the same ids pins the same way — there is no Remote ID branch.
+ * with the same ids pins the same way - there is no Remote ID branch.
  * [OP_LAT] / [OP_LON] are the Remote ID operator location and are never the pin.
  * [opKind] is takeoff, live GPS, or a fixed point. Null means this packet did not say.
  */

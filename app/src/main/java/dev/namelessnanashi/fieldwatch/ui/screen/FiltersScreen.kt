@@ -473,9 +473,9 @@ fun FiltersScreen(state: FieldwatchUi, vm: FieldwatchViewModel) {
             text = {
                 Text(
                     if (preset.isBuiltIn()) {
-                        "Remove “${preset.name}” from this list? A catalog update will not put it back. Settings → Restore default signatures & presets brings the stock presets back. Live keeps this filter until you pick another preset or tap Reset filter."
+                        "Remove \"${preset.name}\" from this list? A catalog update will not put it back. Settings → Restore default signatures & presets brings the stock presets back. Live keeps this filter until you pick another preset or tap Reset filter."
                     } else {
-                        "Delete “${preset.name}”? This cannot be undone. Live keeps this filter until you pick another preset or tap Reset filter."
+                        "Delete \"${preset.name}\"? This cannot be undone. Live keeps this filter until you pick another preset or tap Reset filter."
                     },
                 )
             },

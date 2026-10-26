@@ -1034,10 +1034,10 @@ object DebriefPdf {
             val who = listOfNotNull(kind, d.label.ifBlank { d.mac }, fleets.ifBlank { null }, tag, obs)
                 .joinToString(" ")
             val advertised = d.advertisedNote.trim()
-            if (advertised.isEmpty()) who else "$who — $advertised"
+            if (advertised.isEmpty()) who else "$who - $advertised"
         }
         return if (pile.stacked) {
-            "$n  ${pile.members.size} radios at this stop — $radios"
+            "$n  ${pile.members.size} radios at this stop - $radios"
         } else {
             "$n  $radios"
         }

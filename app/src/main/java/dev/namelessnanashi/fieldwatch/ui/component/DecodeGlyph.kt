@@ -20,7 +20,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * Pointy hexagon — hex bytes in a packet. Decode-map mark on Live / detail.
+ * Pointy hexagon - hex bytes in a packet. Decode-map mark on Live / detail.
  */
 @Composable
 fun DecodeGlyph(

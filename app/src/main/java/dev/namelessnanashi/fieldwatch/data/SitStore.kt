@@ -170,7 +170,7 @@ class SitStore(
                 selectedId = file.summary.id
                 pruneClosedLocked()
             }
-            val notice = dropped?.let { "Dropped oldest sit “$it” (keep ${Sit.CLOSED_CAP})." }
+            val notice = dropped?.let { "Dropped oldest sit \"$it\" (keep ${Sit.CLOSED_CAP})." }
             publishLocked(notice)
             return file.summary
         }

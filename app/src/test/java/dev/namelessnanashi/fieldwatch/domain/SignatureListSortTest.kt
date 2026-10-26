@@ -35,8 +35,8 @@ class SignatureListSortTest {
 
     @Test
     fun labels() {
-        assertEquals("Name A–Z", SignatureListSort.NAME.label())
-        assertEquals("Class A–Z", SignatureListSort.CLASS.label())
+        assertEquals("Name A-Z", SignatureListSort.NAME.label())
+        assertEquals("Class A-Z", SignatureListSort.CLASS.label())
     }
 
     @Test

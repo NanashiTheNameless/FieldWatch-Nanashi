@@ -25,7 +25,7 @@ object PlaceMemory {
     const val DAY_MS = 24 * 60 * 60_000L
     /** Stops listed on the radio page, in the sit report, and on the Live filter. */
     const val WINDOW_MS = 7 * DAY_MS
-    /** How long “Heard again” stays on the page. The gap itself can be longer. */
+    /** How long "Heard again" stays on the page. The gap itself can be longer. */
     const val RETURN_SHOW_MS = DAY_MS
     const val RETAIN_MS = WINDOW_MS
     const val MIN_PLACES = 2
@@ -281,9 +281,9 @@ object PlaceMemory {
         val endClock = clock.format(Instant.ofEpochMilli(place.lastAt).atZone(zone))
         val span = when {
             start == formatAt(place.lastAt, zone, dated) -> start
-            dated && onSameDay(place.firstAt, place.lastAt, zone) -> "$start–$endClock"
-            dated -> "$start–${formatAt(place.lastAt, zone, true)}"
-            else -> if (start == endClock) start else "$start–$endClock"
+            dated && onSameDay(place.firstAt, place.lastAt, zone) -> "$start-$endClock"
+            dated -> "$start-${formatAt(place.lastAt, zone, true)}"
+            else -> if (start == endClock) start else "$start-$endClock"
         }
         val name = blankToNull(place.name)
         val head = if (name == null) span else "$name · $span"

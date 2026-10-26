@@ -104,7 +104,7 @@ data class DebriefDoc(
             if (after.isNotEmpty()) appendLine(after)
             appendLine()
         }
-        appendLine("—")
+        appendLine("-")
         appendLine("Takeaway: $takeaway")
     }
 
@@ -170,11 +170,11 @@ object DebriefReport {
     private const val WINDOW_MS = 15 * 60_000L
     private const val SHORT_MS = 5 * 60_000L
     private const val MOVE_M = 45.0
-    /** Possible-tail extra gates. Own-kit uses a louder, longer “still here” window. */
+    /** Possible-tail extra gates. Own-kit uses a louder, longer "still here" window. */
     private const val COVER_FRAC = 0.5
     private const val FADE_DB = 12
     private const val TRAIL_LOUD_DBM = CoTravel.TRAIL_LOUD_DBM
-    /** Own-kit “still here” — AirTags advertise slowly and rotate. */
+    /** Own-kit "still here" - AirTags advertise slowly and rotate. */
     private const val OWN_HERE_MS = 180_000L
     private const val TAIL_HERE_MS = 20_000L
     private const val ON_BODY_MAX = -55
@@ -572,7 +572,7 @@ object DebriefReport {
             "last 15 minutes (${utc(windowStart)} → ${utc(windowEnd)} UTC)"
         }
         val heading = if (win.sitName != null) {
-            "FIELDWATCH SIT — ${win.sitName}"
+            "FIELDWATCH SIT - ${win.sitName}"
         } else {
             LanguageText.text("ui.fieldwatch.field.debrief")
         }
@@ -614,7 +614,7 @@ object DebriefReport {
             },
             heading = heading,
             pdfKicker = if (win.sitName != null) "SIT" else LanguageText.text("ui.field.debrief"),
-            pdfTitle = if (win.sitName != null) "Sit — ${win.sitName}" else LanguageText.text("ui.field.debrief.2"),
+            pdfTitle = if (win.sitName != null) "Sit - ${win.sitName}" else LanguageText.text("ui.field.debrief.2"),
             pathFigure = AircraftTrail.applyWalk(
                 pathFigure(
                     win.sitName ?: LanguageText.text("ui.last.15.minutes"), path, inWin, fleets,
@@ -834,7 +834,7 @@ object DebriefReport {
                         "Heard along ${trailLen.toInt()} m of your ${opLen.toInt()} m path and still loud (${d.rssiMax} dBm). " +
                         withYouNote(kind, d)
                 span < MOVE_M * 0.6 ->
-                    Verdict.STATIONARY to "Heard near one place (${span.toInt()} m span) while you moved ${opSpan.toInt()} m. Looks stationary — you walked away from it."
+                    Verdict.STATIONARY to "Heard near one place (${span.toInt()} m span) while you moved ${opSpan.toInt()} m. Looks stationary - you walked away from it."
                 presentAtStart && stillHere && d.rssiMax >= ON_BODY_MAX ->
                     Verdict.OWN_LIKELY to
                         "Moved ${span.toInt()} m with you, already on the air when this 15-minute window opened, strong (${d.rssi} dBm). " +
@@ -892,7 +892,7 @@ object DebriefReport {
 
     /**
      * Extra gates on possible tail only. A neighborhood radio heard on a sidewalk
-     * arc, or that faded as you walked, is stationary — not a follower.
+     * arc, or that faded as you walked, is stationary - not a follower.
      * Bag/car tags still cover most of the path and stay loud.
      */
     private fun possibleTail(
@@ -996,7 +996,7 @@ object DebriefReport {
                 append((LanguageText.text("ui.gps.tagging.off.so") + " "))
             }
             pathSpan < MOVE_M -> {
-                append("GPS displacement was only ${pathSpan.toInt()} m — too short to test whether a tracker is following. Walk farther with tagging on. ")
+                append("GPS displacement was only ${pathSpan.toInt()} m - too short to test whether a tracker is following. Walk farther with tagging on. ")
             }
             else -> append((LanguageText.text("ui.no.finder.tag.clearly") + " "))
         }
@@ -1145,7 +1145,7 @@ object DebriefReport {
             if (leg.stay) {
                 stayN++
                 appendLine()
-                appendLine("${i + 1}. Stay  ${clock(leg.startAt)}–${clock(leg.endAt)} UTC  (${fmtDur(leg.durationMs)})")
+                appendLine("${i + 1}. Stay  ${clock(leg.startAt)}-${clock(leg.endAt)} UTC  (${fmtDur(leg.durationMs)})")
                 appendLine("   ${placeAndGps(leg.lat, leg.lon, places)}")
                 val here = devices.filter { heardAt(it, leg) }
                 val aps = here.count { it.kind == RadioKind.WIFI }
@@ -1161,7 +1161,7 @@ object DebriefReport {
             } else {
                 appendLine()
                 appendLine(
-                    "${i + 1}. Transit  ${clock(leg.startAt)}–${clock(leg.endAt)} UTC  " +
+                    "${i + 1}. Transit  ${clock(leg.startAt)}-${clock(leg.endAt)} UTC  " +
                         "${fmtDist(leg.pathM)} along track",
                 )
                 appendLine("   ${placeAndGps(leg.lat, leg.lon, places)}")
@@ -1393,7 +1393,7 @@ object DebriefReport {
         }
         val rand = devices.count { it.kind == RadioKind.BLE && it.randomized }
         if (rand >= 20) {
-            out += "High randomized BLE ($rand) — typical of phones, not a tracking finding."
+            out += "High randomized BLE ($rand) - typical of phones, not a tracking finding."
         }
         return out
     }
@@ -1430,7 +1430,7 @@ object DebriefReport {
         pathSpan: Double,
     ): List<String> = buildList {
         if (following.isNotEmpty()) {
-            add("Possible tail (appeared after this sit started): ${following.joinToString { trackId(it) }}. Pause Live, open detail, note RSSI while you walk a dog-leg. Do not disable someone else’s tag.")
+            add("Possible tail (appeared after this sit started): ${following.joinToString { trackId(it) }}. Pause Live, open detail, note RSSI while you walk a dog-leg. Do not disable someone else's tag.")
         }
         if (ownLikely.isNotEmpty() || withYou.isNotEmpty()) {
             add(
@@ -1491,7 +1491,7 @@ object DebriefReport {
             pathSpan < MOVE_M ->
                 "Not enough GPS movement (${pathSpan.toInt()} m) to test following; walk and re-run Debrief."
             ownLikely.isNotEmpty() || withYou.isNotEmpty() ->
-                "Finder tags with you (yours or planted before you started): ${(ownLikely + withYou).joinToString { trackId(it) }}. No new arrival this window. Account for each MAC — do not dismiss as yours."
+                "Finder tags with you (yours or planted before you started): ${(ownLikely + withYou).joinToString { trackId(it) }}. No new arrival this window. Account for each MAC - do not dismiss as yours."
             beaconsWithYou.isNotEmpty() || wearablesWithYou.isNotEmpty() ->
                 LanguageText.text("ui.no.finder.tag.stayed")
             named.isEmpty() ->

@@ -216,7 +216,7 @@ fun HuntScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    rssi?.toString() ?: "—",
+                    rssi?.toString() ?: "-",
                     fontFamily = OxProto,
                     fontWeight = FontWeight.Bold,
                     fontSize = 36.sp,

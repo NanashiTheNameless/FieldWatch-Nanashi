@@ -1370,7 +1370,7 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     private fun compareSubject(doc: DebriefDoc): String =
-        if (doc.windowLine.isNotBlank()) "Fieldwatch sit compare — ${doc.windowLine}"
+        if (doc.windowLine.isNotBlank()) "Fieldwatch sit compare - ${doc.windowLine}"
         else LanguageText.text("ui.fieldwatch.sit.compare")
 
     fun startSitCompareAiExport() {
@@ -1387,7 +1387,7 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
                     type = "text/plain"
                     putExtra(
                         Intent.EXTRA_SUBJECT,
-                        "Fieldwatch sit compare AI export — ${thisSide.name} vs ${second.name}",
+                        "Fieldwatch sit compare AI export - ${thisSide.name} vs ${second.name}",
                     )
                     putExtra(Intent.EXTRA_TEXT, text)
                 }
@@ -2722,7 +2722,7 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
                     type = "text/plain"
                     putExtra(
                         Intent.EXTRA_SUBJECT,
-                        if (window != null) "Fieldwatch AI export — sit ${window.sitName}"
+                        if (window != null) "Fieldwatch AI export - sit ${window.sitName}"
                         else LanguageText.text("ui.fieldwatch.ai.export.last"),
                     )
                     putExtra(Intent.EXTRA_TEXT, text)
@@ -2804,7 +2804,7 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
                 )
                 Intent(Intent.ACTION_SEND).apply {
                     type = "text/plain"
-                    putExtra(Intent.EXTRA_SUBJECT, "Fieldwatch AI export — $title")
+                    putExtra(Intent.EXTRA_SUBJECT, "Fieldwatch AI export - $title")
                     putExtra(Intent.EXTRA_TEXT, text)
                 }
             }.onSuccess { intent ->
@@ -2860,7 +2860,7 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
                 )
                 Intent(Intent.ACTION_SEND).apply {
                     type = "text/plain"
-                    putExtra(Intent.EXTRA_SUBJECT, "Fieldwatch device detail — $title")
+                    putExtra(Intent.EXTRA_SUBJECT, "Fieldwatch device detail - $title")
                     putExtra(Intent.EXTRA_TEXT, text)
                 }
             }.onSuccess { intent ->

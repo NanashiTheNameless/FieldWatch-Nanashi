@@ -1171,7 +1171,7 @@ fun SettingsScreen(
                 if (ipv4.isEmpty()) {
                     LanguageText.text("ui.phone.s.ipv4.none")
                 } else {
-                    "This phone’s IPv4  ·  ${ipv4.joinToString("  ·  ")}"
+                    "This phone's IPv4  ·  ${ipv4.joinToString("  ·  ")}"
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1681,7 +1681,7 @@ internal fun isBackgroundUsageAllowed(context: Context): Boolean =
 private enum class BatteryAndroidGate { BACKGROUND, UNRESTRICTED }
 
 /**
- * Fieldwatch’s per-app Battery page. Samsung keeps Allow background usage and
+ * Fieldwatch's per-app Battery page. Samsung keeps Allow background usage and
  * Unrestricted on this same screen. [highlightBackground] asks Settings to
  * focus the background-usage switch when the OEM supports it.
  */

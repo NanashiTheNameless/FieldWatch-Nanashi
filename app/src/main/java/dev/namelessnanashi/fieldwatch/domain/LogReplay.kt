@@ -2,7 +2,7 @@ package dev.namelessnanashi.fieldwatch.domain
 
 /**
  * One unique radio collapsed from many log rows. Re-match with the current
- * catalog — do not trust the write-time fleets column.
+ * catalog - do not trust the write-time fleets column.
  */
 data class LogRadio(
     val kind: RadioKind,

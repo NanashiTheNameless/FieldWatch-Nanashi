@@ -17,7 +17,7 @@ import dev.namelessnanashi.fieldwatch.R
 
 /** Default accent: red on black. */
 val Accent = Color(0xFFE53935)
-/** Checked switch / slider / chip fill — same hue as Accent, a little darker. */
+/** Checked switch / slider / chip fill - same hue as Accent, a little darker. */
 val AccentActive = Color(0xFFC62828)
 /** Healthy status only (header dot). Kept green so it never reads as an alert. */
 val Healthy = Color(0xFF3DFF9A)

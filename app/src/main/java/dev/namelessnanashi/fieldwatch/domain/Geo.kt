@@ -776,7 +776,7 @@ object TrackerMatch {
     private val beaconTokens = listOf("ibeacon", "minew", "estimote", "kontakt")
     private val wearableTokens = listOf("garmin", "fitbit", "oura", "polar")
 
-    /** Apple Continuity / pairing types — not Offline Finding 0x12. */
+    /** Apple Continuity / pairing types - not Offline Finding 0x12. */
     private val APPLE_CONTINUITY_PREFIXES = setOf(
         "05", "07", "08", "09", "0A", "0B", "0C", "0D", "0E", "0F", "10",
     )
@@ -803,7 +803,7 @@ object TrackerMatch {
             device.manufacturerDataHex.filter { it.isLetterOrDigit() }.take(2).uppercase() == "12"
     }
 
-    /** Nearby Info / Handoff / AirDrop / AirPods / … — a phone, Mac, or buds, not a tag. */
+    /** Nearby Info / Handoff / AirDrop / AirPods / … - a phone, Mac, or buds, not a tag. */
     fun isAppleContinuity(device: Sighting): Boolean {
         val recs = device.facts.mfgRecords.ifEmpty {
             val id = device.manufacturerId ?: return false
@@ -827,8 +827,8 @@ object TrackerMatch {
 
     /**
      * Pocket iPhone / Continuity: loud Apple BLE that stayed loud.
-     * Not every Apple TV on the block — followAssessments still requires a GPS trail.
-     * Not iBeacon / Minew — those are [Kind.BEACON] even though the payload is 0x004C.
+     * Not every Apple TV on the block - followAssessments still requires a GPS trail.
+     * Not iBeacon / Minew - those are [Kind.BEACON] even though the payload is 0x004C.
      */
     fun isCarriedApple(device: Sighting, names: Map<String, String>): Boolean {
         if (device.kind != RadioKind.BLE) return false

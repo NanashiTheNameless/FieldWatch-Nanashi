@@ -68,7 +68,7 @@ object DeviceExplain {
 
     /**
      * Compact Live-row title from the same guess as detail. Null if we only
-     * know it is an unnamed advertiser — caller may fall back to vendor.
+     * know it is an unnamed advertiser - caller may fall back to vendor.
      */
     fun listLabel(device: Sighting, signatureNames: List<String> = emptyList()): String? {
         val guess = guess(device, signatureNames)
@@ -117,9 +117,9 @@ object DeviceExplain {
     }.joinToString(" ")
 
     fun phyExplain(label: String): String = when {
-        label.contains("Coded") -> "$label — long-range BLE (slower, farther)"
-        label.contains("2M") -> "$label — faster BLE (Bluetooth 5)"
-        label.contains("1M") -> "$label — standard BLE radio"
+        label.contains("Coded") -> "$label - long-range BLE (slower, farther)"
+        label.contains("2M") -> "$label - faster BLE (Bluetooth 5)"
+        label.contains("1M") -> "$label - standard BLE radio"
         else -> label
     }
 
@@ -209,7 +209,7 @@ object DeviceExplain {
             else -> null
         }
         return when {
-            name != null && extra != null -> "$name — $extra"
+            name != null && extra != null -> "$name - $extra"
             name != null -> name
             extra != null -> extra
             else -> null

@@ -30,8 +30,8 @@ object ClassOutline {
     /**
      * Group the current Live set by signature class, then signature.
      * Every class is present, even at 0, so the list does not jump as radios
-     * appear and drop. Classes are A–Z by label. Signatures under a class
-     * are A–Z by name. Dual-chip radios sit in every class they matched.
+     * appear and drop. Classes are A-Z by label. Signatures under a class
+     * are A-Z by name. Dual-chip radios sit in every class they matched.
      * Unmatched is always last. Radio order inside a bucket follows
      * [devices] (Live sort).
      */

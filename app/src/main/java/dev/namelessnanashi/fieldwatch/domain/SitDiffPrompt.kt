@@ -3,7 +3,7 @@ package dev.namelessnanashi.fieldwatch.domain
 /**
  * Paste-ready addendum prompt for Reports → Compare sits → AI Export.
  * Onboard compare is verbatim. Working data is overlap + exclusive Extra attention /
- * Named radios — not a second inventory.
+ * Named radios - not a second inventory.
  */
 object SitDiffPrompt {
     private const val MAX_CHARS = 90_000
@@ -82,22 +82,22 @@ object SitDiffPrompt {
             appendLine("- Do not give safety advice. Do not tell the operator they are safe or in danger.")
             appendLine("- Treat this paste as operationally sensitive.")
             appendLine()
-            appendLine("## Your output (required — this is the addendum the operator reads)")
+            appendLine("## Your output (required - this is the addendum the operator reads)")
             appendLine("Write complete sentences. Headings as below. Short bullets only for exclusive Extra attention / Named radios. No markdown tables. No code fences. No dump of the onboard lists.")
             appendLine()
-            appendLine("1. **Disclaimer** — Repeat the experimental-use disclaimer first.")
-            appendLine("2. **What the onboard compare already established** — 3–5 sentences. Window names, counts, Extra attention exclusives, Observer notes if any, Marked mine if any, Flood if any. Do not reprint inventories.")
-            appendLine("3. **What the numbers add** — Overlap (both/union as a percent), Wi-Fi vs BLE in each bucket, how much exclusive BLE is RAND. Say whether this looks like fixtures, a different stall/hour, or a cap artifact. Confidence. Use the working table; do not invent rates.")
-            appendLine("4. **Exclusive Extra attention and Named radios** — Full identifiers from the working table (complete MAC, name, signatures, which window). Pattern match, not identity. If none, say none.")
-            appendLine("5. **What another sit or Hunt would shrink** — Concrete in-app next steps only (a third sit at the same stall, Hunt on one exclusive Extra attention row, Filters). No safety advice. No “call the police.”")
+            appendLine("1. **Disclaimer** - Repeat the experimental-use disclaimer first.")
+            appendLine("2. **What the onboard compare already established** - 3-5 sentences. Window names, counts, Extra attention exclusives, Observer notes if any, Marked mine if any, Flood if any. Do not reprint inventories.")
+            appendLine("3. **What the numbers add** - Overlap (both/union as a percent), Wi-Fi vs BLE in each bucket, how much exclusive BLE is RAND. Say whether this looks like fixtures, a different stall/hour, or a cap artifact. Confidence. Use the working table; do not invent rates.")
+            appendLine("4. **Exclusive Extra attention and Named radios** - Full identifiers from the working table (complete MAC, name, signatures, which window). Pattern match, not identity. If none, say none.")
+            appendLine("5. **What another sit or Hunt would shrink** - Concrete in-app next steps only (a third sit at the same stall, Hunt on one exclusive Extra attention row, Filters). No safety advice. No \"call the police.\"")
             appendLine()
             appendLine("**Takeaway (required, last line).** One sentence starting with `Takeaway:` that adds *one number the onboard takeaway does not already say* (overlap percent, exclusive Extra attention count, or RAND fraction of exclusive BLE). Not a moral. Not a threat level.")
             appendLine()
-            appendLine("## Onboard Compare (verbatim — already shown to the operator; do not rewrite)")
+            appendLine("## Onboard Compare (verbatim - already shown to the operator; do not rewrite)")
             appendLine()
             appendLine(onboard.toPlainText().trimEnd())
             appendLine()
-            appendLine("## Working data (for the addendum — do not copy rosters into the answer)")
+            appendLine("## Working data (for the addendum - do not copy rosters into the answer)")
             appendLine()
             appendLine("This sit: ${thisSit.name} (${thisSit.radios.size} radios${if (thisSit.ram) ", RAM ~400" else ", named sit up to ${Sit.RADIO_CAP}"})")
             appendLine("Second sit: ${second.name} (${second.radios.size} radios${if (second.ram) ", RAM ~400" else ", named sit up to ${Sit.RADIO_CAP}"})")

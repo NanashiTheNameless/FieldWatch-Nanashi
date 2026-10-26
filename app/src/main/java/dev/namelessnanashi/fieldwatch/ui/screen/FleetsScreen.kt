@@ -494,9 +494,9 @@ fun FleetEditor(
             text = {
                 Text(
                     if (initial.builtIn) {
-                        "“${fleet.name}” is a built-in signature. Deleting it removes matching, its bookmark, and filter chips. Settings → Restore default signatures & presets brings the stock set back."
+                        "\"${fleet.name}\" is a built-in signature. Deleting it removes matching, its bookmark, and filter chips. Settings → Restore default signatures & presets brings the stock set back."
                     } else {
-                        "“${fleet.name}” will be removed. Matching, its bookmark, and filter chips go with it. This cannot be undone."
+                        "\"${fleet.name}\" will be removed. Matching, its bookmark, and filter chips go with it. This cannot be undone."
                     },
                 )
             },

@@ -46,7 +46,7 @@ object Sit {
     fun dropWarning(closed: List<SitSummary>): String? {
         if (closed.size < CLOSED_CAP) return null
         val oldest = closed.lastOrNull() ?: return null
-        return "You already have $CLOSED_CAP saved sits. When you end this one, the oldest (“${oldest.name}”) will be deleted."
+        return "You already have $CLOSED_CAP saved sits. When you end this one, the oldest (\"${oldest.name}\") will be deleted."
     }
 
     fun pinned(

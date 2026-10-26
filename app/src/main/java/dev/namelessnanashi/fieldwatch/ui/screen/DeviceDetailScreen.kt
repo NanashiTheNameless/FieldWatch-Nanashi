@@ -341,7 +341,7 @@ fun DeviceDetailScreen(
                 )
                 Meta(LanguageText.text("ui.address.label"), DeviceExplain.addressExplain(device))
                 vendorLine(device)?.let { Meta(LanguageText.text("ui.who.made"), it) }
-                    ?: Meta(LanguageText.text("ui.oui.vendor.prefix"), "${device.oui} — no IEEE match; randomized addresses usually have none")
+                    ?: Meta(LanguageText.text("ui.oui.vendor.prefix"), "${device.oui} - no IEEE match; randomized addresses usually have none")
                 if (device.hiddenSsid) {
                     Meta(LanguageText.text("ui.network.name.ssid"), LanguageText.text("ui.hidden.ap.beaconing.but"))
                 }
@@ -373,7 +373,7 @@ fun DeviceDetailScreen(
                     Rssi.sessionRange(device.rssiMin, device.rssiMax, device.rssiHistory),
                 )
                 facts.txPowerDbm?.let {
-                    Meta(LanguageText.text("ui.claimed.transmit.power"), "$it dBm — how loud it says it transmits, not a distance")
+                    Meta(LanguageText.text("ui.claimed.transmit.power"), "$it dBm - how loud it says it transmits, not a distance")
                 }
                 if (device.channel != 0 || device.frequencyMhz != 0) {
                     Meta(

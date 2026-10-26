@@ -201,7 +201,7 @@ object SignatureCandidates {
             body = if (strong) {
                 "Same $kindLabel on $clause. That is a catalog pattern, not this MAC."
             } else {
-                "Same $kindLabel on $clause. Thin sample — a possible catalog family."
+                "Same $kindLabel on $clause. Thin sample - a possible catalog family."
             },
             logCount = logN,
             liveCount = liveN,
@@ -311,7 +311,7 @@ object SignatureCandidates {
                     radios = distinct,
                     proposedName = glob.takeWhile { it != '*' && it != '?' && it != '-' && it != '_' }
                         .ifBlank { glob.trimEnd('*') },
-                    why = "Same name glob on ${distinct.size} ${kind.radioWord(distinct.size)} — not a house SSID.",
+                    why = "Same name glob on ${distinct.size} ${kind.radioWord(distinct.size)} - not a house SSID.",
                 )
             }
             RuleKind.VENDOR_IE_OUI -> {

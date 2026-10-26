@@ -31,7 +31,7 @@ object WifiIeParser {
         return parseIes(raw, result.capabilities)
     }
 
-    /** Pure decode of a captured IE set — unit tests feed frames without a ScanResult. */
+    /** Pure decode of a captured IE set - unit tests feed frames without a ScanResult. */
     fun parseIes(ies: List<Ie>, capabilities: String?): Parsed {
         val rates = ArrayList<String>(16)
         val vendor = ArrayList<VendorIeRecord>(4)

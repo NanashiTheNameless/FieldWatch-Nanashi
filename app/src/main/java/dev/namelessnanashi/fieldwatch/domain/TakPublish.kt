@@ -446,7 +446,7 @@ object TakPublish {
     }
 
     /**
-     * Advertised decode lat/lon win. Otherwise this hear’s operator GPS,
+     * Advertised decode lat/lon win. Otherwise this hear's operator GPS,
      * and only while GPS tagging is on. GPS off + no payload = no pin.
      * Heard-here TAK holds the loudest of these (see [heardHereAction]).
      */
@@ -592,7 +592,7 @@ object TakPublish {
 
     /**
      * UIDs that must stay on ATAK this tick. Includes every eligible marker, not only
-     * the 24 we send — missing the cap is not gone. Selected radios with no pin this
+     * the 24 we send - missing the cap is not gone. Selected radios with no pin this
      * tick (GPS blip) keep whatever we already sent for that device key.
      */
     fun keepUids(

@@ -15,7 +15,7 @@ Provided as-is under the MIT License.
 
 - Use at your own risk. To the maximum extent permitted by law, the authors (Off Grid Pete LLC and NanashiTheNameless) are not liable for indirect, incidental, special, consequential, or punitive damages arising from its use.
 - There is no guarantee that trackers, cameras, tags, access points, or any other device will be found, named, or reported. Radios that are off, cellular-only, asleep, randomized, quiet, or outside what the handset's OS exposes will not appear.
-- Pattern matches, GPS co-travel ("Moving with you" / "possible tail"), Debrief language, and AI Export output are hypotheses — not identity, not a legal finding, and not a complete RF capture. You are responsible for how you use the app and for complying with local law.
+- Pattern matches, GPS co-travel ("Moving with you" / "possible tail"), Debrief language, and AI Export output are hypotheses - not identity, not a legal finding, and not a complete RF capture. You are responsible for how you use the app and for complying with local law.
 - Location stamps are this phone at hear-time, not the other radio. They stay on the handset until you share them. Logs keep full coordinates even when Privacy mode masks the screen. Debrief, Share log, AI Export, and Share as text can take that data off the phone. Online place names use the system geocoder (often the OEM / Google network); map tiles come from the selected tile provider.
 
 ## Install
@@ -28,7 +28,7 @@ Downloadable signature catalogs and optional sensor exports live in the separate
 
 ## Build
 
-Runs on Android 12 through Android 17 (API 31–37); targets API 36. Builds with the JDK named in `.java-version` and Android SDK platform 37.
+Runs on Android 12 through Android 17 (API 31-37); targets API 36. Builds with the JDK named in `.java-version` and Android SDK platform 37.
 
 ```bash
 ./build.sh                # unit tests + debug APK

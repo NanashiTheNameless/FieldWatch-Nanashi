@@ -12,7 +12,7 @@ object FastPair {
             isFastPairUuid(rec.uuid) && hexLen(rec.dataHex) == 6
         }
 
-    /** Account-key Fast Pair with no other signature — plaza chips. Pairing-mode stays. */
+    /** Account-key Fast Pair with no other signature - plaza chips. Pairing-mode stays. */
     fun isAccountKeyOnly(device: Sighting): Boolean {
         if (device.fastPairPairing) return false
         if (FLEET_ID !in device.fleetIds) return false
