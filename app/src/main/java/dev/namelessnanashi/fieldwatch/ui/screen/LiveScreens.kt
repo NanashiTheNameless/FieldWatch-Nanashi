@@ -5,15 +5,10 @@ import android.provider.Settings
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.calculateZoom
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,11 +39,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableFloatState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -57,11 +50,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -70,9 +59,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -94,7 +81,6 @@ import dev.namelessnanashi.fieldwatch.domain.MapBasemap
 import dev.namelessnanashi.fieldwatch.domain.MapFrame
 import dev.namelessnanashi.fieldwatch.domain.OutlineSnap
 import dev.namelessnanashi.fieldwatch.domain.Palette
-import dev.namelessnanashi.fieldwatch.domain.RadarPlot
 import dev.namelessnanashi.fieldwatch.domain.RadioBookmarks
 import dev.namelessnanashi.fieldwatch.domain.RadioKind
 import dev.namelessnanashi.fieldwatch.domain.ScanStatus
@@ -124,13 +110,9 @@ import dev.namelessnanashi.fieldwatch.ui.component.rssiColor
 import dev.namelessnanashi.fieldwatch.ui.theme.AccentActive
 import dev.namelessnanashi.fieldwatch.ui.theme.Cyan
 import dev.namelessnanashi.fieldwatch.ui.theme.OxProto
-import java.util.Locale
-import kotlin.math.cos
 import kotlin.math.roundToInt
-import kotlin.math.sin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.isActive
 
 @Composable
 fun LivePane(
@@ -404,7 +386,6 @@ private fun LiveMode(
     pinEnd: Boolean,
 ) {
     when (state.settings.viewMode) {
-        ViewMode.RADAR -> RadarView(live, vm, sort, windowMs, onOpen, emptyHint = liveEmpty(state, RADAR_EMPTY), showFleet = showFleet, demoMode = demoMode, flashKeys = flashKeys, alertedKeys = alertedKeys)
         ViewMode.LIST -> RankedList(live, vm, onOpen, sparklines = false, sort = sort, windowMs = windowMs, showBar = showBar, layoutEpoch = state.settings.scanControlsExpanded, emptyHint = liveEmpty(state, LIST_EMPTY), showNewAge = state.filter.arrivalsOnly, showFleet = showFleet, showFrequency = showFrequency, showSeenTimes = showSeenTimes, flashKeys = flashKeys, alertedKeys = alertedKeys, pinEnd = pinEnd, titleLine = titleLine, subtitleLine = subtitleLine, demoMode = demoMode)
         ViewMode.TIMELINE -> TimelineView(live, vm, onOpen, showFleet = showFleet, showFrequency = showFrequency, showSeenTimes = showSeenTimes, flashKeys = flashKeys, alertedKeys = alertedKeys, titleLine = titleLine, subtitleLine = subtitleLine, demoMode = demoMode)
         ViewMode.HYBRID -> RankedList(live, vm, onOpen, sparklines = true, sort = sort, windowMs = windowMs, showBar = showBar, layoutEpoch = state.settings.scanControlsExpanded, emptyHint = liveEmpty(state, LIST_EMPTY), showNewAge = state.filter.arrivalsOnly, showFleet = showFleet, showFrequency = showFrequency, showSeenTimes = showSeenTimes, flashKeys = flashKeys, alertedKeys = alertedKeys, pinEnd = pinEnd, titleLine = titleLine, subtitleLine = subtitleLine, demoMode = demoMode)
@@ -687,7 +668,6 @@ private val LIST_EMPTY get() = LanguageText.text("ui.no.live.emitters.match")
 
 private val CLASS_EMPTY get() = LanguageText.text("ui.no.live.emitters.match.2")
 
-private val RADAR_EMPTY get() = LanguageText.text("ui.no.devices.match.current")
 
 /** Keeps the filter sentence. Adds the Diagnostics pointer only while a scan is blocked. */
 private fun liveEmpty(state: FieldwatchUi, fallback: String): String {
@@ -1002,342 +982,6 @@ private fun outlineRadioRow(
 private fun ClassSlice.accent(vm: FieldwatchViewModel): Color {
     val id = signatures.firstOrNull()?.fleetId ?: radios.firstOrNull()?.fleetIds?.firstOrNull()
     return if (id != null) Color(Palette.color(vm.fleetColor(id))) else rssiColor(-80)
-}
-
-private fun radarRadius(rssi: Int, maxR: Float, zoom: Float = 1f): Float =
-    RadarPlot.radius(rssi, maxR, zoom)
-
-private fun radarRadius(rssi: Double, maxR: Float, zoom: Float = 1f): Float =
-    radarRadius(rssi.toInt(), maxR, zoom)
-
-private fun radarAngle(mac: String): Double {
-    val hash = mac.hashCode()
-    return ((hash ushr 1) % 360) * Math.PI / 180.0
-}
-
-private fun radarPoint(
-    device: Sighting,
-    center: Offset,
-    maxR: Float,
-    rssi: Double = device.rssi.toDouble(),
-    zoom: Float = 1f,
-): Offset {
-    val angle = radarAngle(device.mac)
-    val dist = radarRadius(rssi, maxR, zoom)
-    return Offset(
-        center.x + (cos(angle) * dist).toFloat(),
-        center.y + (sin(angle) * dist).toFloat(),
-    )
-}
-
-private fun sweepBehindDegrees(sweepDeg: Float, mac: String): Float {
-    val blip = ((mac.hashCode() ushr 1) % 360).toFloat()
-    var beam = (270f + sweepDeg) % 360f
-    if (beam < 0f) beam += 360f
-    var behind = beam - blip
-    while (behind < 0f) behind += 360f
-    return behind
-}
-
-/** 1 at the beam, falling off through the trail, dim between paints. */
-private fun sweepPaint(behindDeg: Float): Float = when {
-    behindDeg <= 8f -> 1f
-    behindDeg < 120f -> {
-        val u = (behindDeg - 8f) / 112f
-        (1f - u) * (1f - u)
-    }
-    else -> 0.20f
-}
-
-private fun DrawScope.drawRadarSweep(center: Offset, maxR: Float, beam: Color) {
-    val trailDeg = 58f
-    val steps = 24
-    val slice = trailDeg / steps
-    val box = androidx.compose.ui.geometry.Size(maxR * 2, maxR * 2)
-    val origin = Offset(center.x - maxR, center.y - maxR)
-    for (i in 0 until steps) {
-        val t = i / (steps - 1f).coerceAtLeast(1f)
-        val fade = 1f - t
-        drawArc(
-            color = beam.copy(alpha = 0.32f * fade * fade * fade),
-            startAngle = -90f - i * slice,
-            sweepAngle = -(slice + 1.1f),
-            useCenter = true,
-            topLeft = origin,
-            size = box,
-        )
-    }
-    val tip = Offset(center.x, center.y - maxR)
-    drawLine(beam.copy(alpha = 0.16f), center, tip, 15f)
-    drawLine(beam.copy(alpha = 0.42f), center, tip, 7f)
-    drawLine(beam.copy(alpha = 0.88f), center, tip, 2.2f)
-}
-
-private fun DrawScope.drawRadarContact(
-    pos: Offset,
-    color: Color,
-    named: Boolean,
-    gone: Boolean,
-    flashElapsedMs: Long?,
-    alertedRing: Color? = null,
-) {
-    val rad = if (named) 11f else 7f
-    if (named && !gone) drawCircle(color.copy(alpha = 0.28f), radius = 20f, center = pos)
-    if (flashElapsedMs == null) {
-        drawCircle(color, radius = rad, center = pos)
-        drawCircle(Color.Black.copy(alpha = 0.35f), radius = rad, center = pos, style = Stroke(1.4f))
-        if (alertedRing != null) {
-            drawCircle(
-                alertedRing,
-                radius = rad + 3.8f,
-                center = pos,
-                style = Stroke(width = 2.3f),
-            )
-        }
-        return
-    }
-    val elapsed = flashElapsedMs.coerceAtLeast(0L)
-    fun ping(delayMs: Long, travel: Float) {
-        val age = elapsed - delayMs
-        if (age < 0L) return
-        val u = (age / 720f).coerceIn(0f, 1f)
-        val ringR = rad + 6f + u * travel
-        val a = (1f - u) * 0.92f
-        drawCircle(
-            color.copy(alpha = a),
-            radius = ringR,
-            center = pos,
-            style = Stroke(width = (3.8f * (1f - 0.55f * u)).coerceAtLeast(1.2f)),
-        )
-    }
-    ping(0, 56f)
-    ping(220, 42f)
-    val beat = (0.5f + 0.5f * sin(elapsed / 1000.0 * 4.0 * Math.PI).toFloat()).coerceIn(0f, 1f)
-    drawCircle(Color.White.copy(alpha = 0.18f + 0.32f * beat), radius = rad + 16f + 10f * beat, center = pos)
-    drawCircle(color.copy(alpha = 0.40f + 0.25f * beat), radius = rad + 8f + 6f * beat, center = pos)
-    drawCircle(Color.White.copy(alpha = 0.80f), radius = rad + 2.5f + 2.5f * beat, center = pos)
-    drawCircle(color, radius = rad + 1.2f, center = pos)
-    drawCircle(Color.White.copy(alpha = 0.70f), radius = 3.4f, center = pos)
-    drawCircle(Color.Black.copy(alpha = 0.35f), radius = rad + 1.2f, center = pos, style = Stroke(1.4f))
-}
-
-/**
- * Vsync sweep so the beam still moves when Developer options
- * Animator duration scale is off (tween infinite animations freeze).
- */
-@Composable
-private fun rememberRadarSweepDegrees(periodMs: Int = 4200): MutableFloatState {
-    val sweep = remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(periodMs) {
-        var last = 0L
-        val periodNs = periodMs * 1_000_000L
-        while (isActive) {
-            withFrameNanos { now ->
-                if (last != 0L) {
-                    val add = (now - last).toDouble() / periodNs * 360.0
-                    var next = sweep.floatValue + add.toFloat()
-                    while (next >= 360f) next -= 360f
-                    sweep.floatValue = next
-                }
-                last = now
-            }
-        }
-    }
-    return sweep
-}
-
-@Composable
-private fun RadarView(
-    devices: List<Sighting>,
-    vm: FieldwatchViewModel,
-    sort: StrengthSort,
-    windowMs: Long,
-    onOpen: (Sighting) -> Unit,
-    emptyHint: String? = null,
-    showFleet: Boolean = true,
-    demoMode: Boolean = false,
-    flashKeys: Set<String> = emptySet(),
-    alertedKeys: Set<String> = emptySet(),
-) {
-    val sweep = rememberRadarSweepDegrees()
-    val ring = MaterialTheme.colorScheme.outline
-    val beam = MaterialTheme.colorScheme.primary
-    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val youColor = MaterialTheme.colorScheme.primary
-    val measurer = rememberTextMeasurer()
-    val onAir = devices.count { !it.gone }
-    val ringStyle = TextStyle(
-        color = labelColor,
-        fontSize = 10.sp,
-        fontFamily = OxProto,
-    )
-    val nameStyle = TextStyle(
-        color = MaterialTheme.colorScheme.onBackground,
-        fontSize = 10.sp,
-        fontWeight = FontWeight.Medium,
-        fontFamily = OxProto,
-    )
-    val flashAt = remember { mutableStateMapOf<String, Long>() }
-    val zoomState = remember { mutableFloatStateOf(1f) }
-    var zoom by zoomState
-    val liveRef = remember { mutableStateOf(devices) }
-    liveRef.value = devices
-    LaunchedEffect(flashKeys) {
-        val t = System.currentTimeMillis()
-        flashKeys.forEach { key -> if (key !in flashAt) flashAt[key] = t }
-        flashAt.keys.filter { it !in flashKeys }.forEach { flashAt.remove(it) }
-    }
-
-    fun hitBlip(tap: Offset, canvas: androidx.compose.ui.unit.IntSize): Sighting? {
-        val c = Offset(canvas.width / 2f, canvas.height / 2f)
-        val maxR = minOf(canvas.width, canvas.height) / 2f - 18f
-        val z = zoomState.floatValue
-        val now = System.currentTimeMillis()
-        return liveRef.value
-            .map {
-                val rssi = it.sortRssi(sort, windowMs, now)
-                it to rssi
-            }
-            .filter { RadarPlot.onDisc(it.second.toInt(), maxR, z) }
-            .map { (device, rssi) ->
-                device to (radarPoint(device, c, maxR, rssi, z) - tap).getDistance()
-            }
-            .minByOrNull { it.second }
-            ?.takeIf { it.second < 48f }
-            ?.first
-    }
-
-    Box(Modifier.fillMaxSize()) {
-        Canvas(
-            Modifier
-                .fillMaxSize()
-                .padding(8.dp)
-                .pointerInput(Unit) {
-                    awaitEachGesture {
-                        awaitFirstDown(requireUnconsumed = false)
-                        do {
-                            val event = awaitPointerEvent()
-                            val pressed = event.changes.count { it.pressed }
-                            if (pressed >= 2) {
-                                val factor = event.calculateZoom()
-                                if (factor != 1f) {
-                                    zoomState.floatValue =
-                                        RadarPlot.clampZoom(zoomState.floatValue * factor)
-                                    event.changes.forEach { it.consume() }
-                                }
-                            }
-                        } while (event.changes.any { it.pressed })
-                    }
-                }
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onDoubleTap = { zoomState.floatValue = RadarPlot.MIN_ZOOM },
-                        onTap = { tap -> hitBlip(tap, size)?.let(onOpen) },
-                    )
-                },
-        ) {
-            val c = Offset(size.width / 2f, size.height / 2f)
-            val maxR = size.minDimension / 2f - 18f
-            val z = zoom
-
-            drawCircle(Color.Black.copy(alpha = 0.18f), radius = maxR, center = c)
-            listOf(-40, -60, -80, -100).forEach { dbm ->
-                val rr = radarRadius(dbm, maxR, z)
-                if (rr > maxR + 0.5f) return@forEach
-                drawCircle(ring.copy(alpha = 0.55f), radius = rr, center = c, style = Stroke(2.2f))
-                val layout = measurer.measure("$dbm", ringStyle)
-                drawText(
-                    layout,
-                    topLeft = Offset(c.x + 6f, c.y - rr - layout.size.height),
-                )
-            }
-            drawLine(ring.copy(alpha = 0.4f), Offset(c.x - maxR, c.y), Offset(c.x + maxR, c.y), 2f)
-            drawLine(ring.copy(alpha = 0.4f), Offset(c.x, c.y - maxR), Offset(c.x, c.y + maxR), 2f)
-
-            rotate(sweep.floatValue, c) {
-                drawRadarSweep(c, maxR, beam)
-            }
-
-            val now = System.currentTimeMillis()
-            val phosphor = AccentActive
-            fun contact(device: Sighting, persist: Boolean = true): Triple<Offset, Color, Boolean>? {
-                val plotRssi = device.sortRssi(sort, windowMs, now)
-                if (!RadarPlot.onDisc(plotRssi.toInt(), maxR, z)) return null
-                val pos = radarPoint(device, c, maxR, plotRssi, z)
-                val named = device.fleetIds.isNotEmpty()
-                val paint = if (persist) sweepPaint(sweepBehindDegrees(sweep.floatValue, device.mac)) else 1f
-                val alpha = (if (device.gone) 0.45f else 1f) * (0.35f + 0.65f * paint)
-                val color = (device.fleetIds.firstOrNull()
-                    ?.let { Color(Palette.color(vm.fleetColor(it))) }
-                    ?: rssiColor(plotRssi.toInt()))
-                    .copy(alpha = alpha)
-                return Triple(pos, color, named)
-            }
-            devices.forEach { device ->
-                val (pos, color, named) = contact(device) ?: return@forEach
-                if (device.key !in flashKeys && device.key !in alertedKeys) {
-                    drawRadarContact(pos, color, named, device.gone, null)
-                }
-                val rad = if (named) 11f else 7f
-                val label = when {
-                    showFleet && named -> device.fleetIds.firstOrNull()?.let { vm.fleetName(it) }?.take(14)
-                        ?: MacUtil.redactMacIn(device.rowTitle(vm), device.mac, demoMode).take(14)
-                    named -> MacUtil.redactMacIn(device.rowTitle(vm), device.mac, demoMode).take(14)
-                    devices.size <= 24 -> MacUtil.redactMacIn(device.rowTitle(vm), device.mac, demoMode).take(12)
-                    else -> null
-                }
-                if (label != null) {
-                    val layout = measurer.measure(label, nameStyle)
-                    drawText(
-                        layout,
-                        topLeft = Offset(
-                            (pos.x - layout.size.width / 2f).coerceIn(0f, size.width - layout.size.width),
-                            (pos.y + rad + 4f).coerceAtMost(size.height - layout.size.height),
-                        ),
-                    )
-                }
-            }
-            devices.forEach { device ->
-                if (device.key in flashKeys || device.key !in alertedKeys) return@forEach
-                val (pos, color, named) = contact(device, persist = false) ?: return@forEach
-                val ring = phosphor.copy(alpha = if (device.gone) 0.45f else 1f)
-                drawRadarContact(pos, color, named, device.gone, null, alertedRing = ring)
-            }
-            devices.forEach { device ->
-                if (device.key !in flashKeys) return@forEach
-                val (pos, color, named) = contact(device, persist = false) ?: return@forEach
-                val started = flashAt[device.key] ?: now
-                drawRadarContact(pos, color, named, device.gone, now - started)
-            }
-
-            drawCircle(youColor, radius = 7f, center = c)
-            drawCircle(youColor.copy(alpha = 0.2f), radius = 16f, center = c)
-            val you = measurer.measure("YOU", ringStyle.copy(color = youColor, fontWeight = FontWeight.Bold))
-            drawText(you, topLeft = Offset(c.x - you.size.width / 2f, c.y + 12f))
-        }
-
-        Column(
-            Modifier
-                .align(Alignment.BottomStart)
-                .padding(12.dp),
-        ) {
-            Text(
-                if (devices.isEmpty()) {
-                    emptyHint ?: RADAR_EMPTY
-                } else {
-                    val zoomBit = if (zoom > 1.04f) {
-                        " · ×${"%.1f".format(Locale.US, zoom)} · double-tap reset"
-                    } else {
-                        (" " + LanguageText.text("ui.pinch.zoom"))
-                    }
-                    "$onAir on-air · ${devices.size} in filter · dim = gone · tap a blip$zoomBit"
-                },
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontFamily = OxProto,
-            )
-        }
-    }
 }
 
 private fun LazyListState.indexVisible(index: Int): Boolean {

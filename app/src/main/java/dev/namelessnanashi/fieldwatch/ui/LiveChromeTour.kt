@@ -122,7 +122,7 @@ fun LiveChromeTour(
                     color = ring,
                 )
                 Text(
-                    LanguageText.text("ui.radar.list.timeline.hybrid"),
+                    LanguageText.text("ui.list.timeline.hybrid.class"),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(top = 2.dp),

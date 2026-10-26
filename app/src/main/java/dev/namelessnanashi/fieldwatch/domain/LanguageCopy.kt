@@ -383,7 +383,6 @@ private fun buildLines(): List<EnglishLine> = listOf(
     en("display.advertised", "Advertised name", LanguageSlot.CONTROL),
     en("display.name.type", "Name + type", LanguageSlot.CONTROL),
     en("display.none", "None", LanguageSlot.CONTROL),
-    en("view.radar", "Classic radar", LanguageSlot.CONTROL),
     en("view.list", "Strength list", LanguageSlot.CONTROL),
     en("view.timeline", "Timeline", LanguageSlot.CONTROL),
     en("view.hybrid", "Hybrid + sparklines", LanguageSlot.CONTROL),

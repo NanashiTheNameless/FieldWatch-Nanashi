@@ -1006,35 +1006,6 @@ private fun RowScope.FieldwatchNavTab(
     }
 }
 
-private val radarSweepGlyph: ImageVector by lazy {
-    ImageVector.Builder(
-        name = "RadarSweep",
-        defaultWidth = 24.dp,
-        defaultHeight = 24.dp,
-        viewportWidth = 24f,
-        viewportHeight = 24f,
-    ).apply {
-        path(
-            fill = null,
-            stroke = SolidColor(Color.Black),
-            strokeLineWidth = 2f,
-        ) {
-            moveTo(12f, 3f)
-            arcTo(9f, 9f, 0f, false, true, 21f, 12f)
-            arcTo(9f, 9f, 0f, false, true, 12f, 21f)
-            arcTo(9f, 9f, 0f, false, true, 3f, 12f)
-            arcTo(9f, 9f, 0f, false, true, 12f, 3f)
-        }
-        // Upper-right sector, from 12 o'clock clockwise, inside the ring.
-        path(fill = SolidColor(Color.Black)) {
-            moveTo(12f, 12f)
-            lineTo(12f, 4.8f)
-            arcTo(7.2f, 7.2f, 0f, false, true, 18.53f, 8.96f)
-            close()
-        }
-    }.build()
-}
-
 private val dashedLineGlyph: ImageVector by lazy {
     ImageVector.Builder(
         name = "DashedLine",
@@ -1089,7 +1060,6 @@ private val classBarsGlyph: ImageVector by lazy {
 }
 
 private fun ViewMode.glyph(): ImageVector = when (this) {
-    ViewMode.RADAR -> radarSweepGlyph
     ViewMode.LIST -> Icons.AutoMirrored.Outlined.FormatListBulleted
     ViewMode.TIMELINE -> dashedLineGlyph
     ViewMode.HYBRID -> Icons.AutoMirrored.Outlined.ShowChart
@@ -1140,14 +1110,7 @@ private fun ViewPicker(
     var openDecay by remember { mutableStateOf(false) }
     var openTitle by remember { mutableStateOf(false) }
     var openSubtitle by remember { mutableStateOf(false) }
-    val listFields = mode.usesListFields()
     val rssiBars = mode.usesRssiBars()
-    LaunchedEffect(listFields) {
-        if (!listFields) {
-            openTitle = false
-            openSubtitle = false
-        }
-    }
     val sortLabel = when (listSort) {
         ListSort.STRENGTH -> if (sort == StrengthSort.AVERAGE) "Strongest · avg ${windowSec}s" else LanguageText.text("ui.strongest.label")
         ListSort.NEWEST -> LanguageText.text("ui.newest.heard")
@@ -1254,14 +1217,13 @@ private fun ViewPicker(
                     }
                 }
             }
-            ExposedDropdownMenuBox(openTitle && listFields, { if (listFields) openTitle = it }, dropdownPad) {
+            ExposedDropdownMenuBox(openTitle, { openTitle = it }, dropdownPad) {
                 FieldwatchDropdownField(
                     LanguageText.text("ui.title.line"),
                     listLineLabel(titleLine),
-                    openTitle && listFields,
-                    enabled = listFields,
+                    openTitle,
                 )
-                ExposedDropdownMenu(openTitle && listFields, { openTitle = false }) {
+                ExposedDropdownMenu(openTitle, { openTitle = false }) {
                     listOf(ListLine.ADVERTISED_NAME, ListLine.NAME_AND_TYPE, ListLine.MAC).forEach { item ->
                         DropdownMenuItem(
                             text = { Text(listLineLabel(item)) },
@@ -1270,14 +1232,13 @@ private fun ViewPicker(
                     }
                 }
             }
-            ExposedDropdownMenuBox(openSubtitle && listFields, { if (listFields) openSubtitle = it }, dropdownPad) {
+            ExposedDropdownMenuBox(openSubtitle, { openSubtitle = it }, dropdownPad) {
                 FieldwatchDropdownField(
                     LanguageText.text("ui.subtitle.line"),
                     listLineLabel(subtitleLine),
-                    openSubtitle && listFields,
-                    enabled = listFields,
+                    openSubtitle,
                 )
-                ExposedDropdownMenu(openSubtitle && listFields, { openSubtitle = false }) {
+                ExposedDropdownMenu(openSubtitle, { openSubtitle = false }) {
                     listOf(
                         ListLine.ADVERTISED_NAME,
                         ListLine.NAME_AND_TYPE,
@@ -1291,26 +1252,11 @@ private fun ViewPicker(
                     }
                 }
             }
-            OptionSwitch(
-                LanguageText.text("display.live.path"),
-                showLivePath,
-                onToggleLivePath,
-                enabled = listFields,
-            )
+            OptionSwitch(LanguageText.text("display.live.path"), showLivePath, onToggleLivePath)
             OptionSwitch(LanguageText.text("display.rssi"), showBar, onToggleBar, enabled = rssiBars)
             OptionSwitch(LanguageText.text("ui.signature.names"), showFleet, onToggleFleet)
-            OptionSwitch(
-                LanguageText.text("ui.frequency.label"),
-                showFrequency,
-                onToggleFrequency,
-                enabled = listFields,
-            )
-            OptionSwitch(
-                LanguageText.text("ui.first.last.seen"),
-                showSeenTimes,
-                onToggleSeenTimes,
-                enabled = listFields,
-            )
+            OptionSwitch(LanguageText.text("ui.frequency.label"), showFrequency, onToggleFrequency)
+            OptionSwitch(LanguageText.text("ui.first.last.seen"), showSeenTimes, onToggleSeenTimes)
         }
         if (scroll.canScrollForward) {
             Box(

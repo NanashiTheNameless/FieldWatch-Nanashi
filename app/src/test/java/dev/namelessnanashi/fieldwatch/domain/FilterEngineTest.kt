@@ -241,6 +241,22 @@ class FilterEngineTest {
         assertFalse(engine.pass(signed.copy(key = other.key), both, namedRadioKeys = setOf(labeled.key)))
     }
 
+    @Test
+    fun macQueriesIgnoreSeparatorsAndCase() {
+        for (query in listOf("aa:bb:cc", "aabbcc", "AA-BB-CC", "aa.bb.cc", "aa bb cc", "bbccdd")) {
+            assertTrue(query, engine.pass(labeled, FilterState(nameQuery = query)))
+            assertTrue(query, engine.pass(labeled, FilterState(ouiQuery = query)))
+        }
+        assertFalse(engine.pass(other, FilterState(nameQuery = "aabbcc")))
+        assertFalse(engine.pass(labeled, FilterState(nameQuery = "aabbcc00")))
+    }
+
+    @Test
+    fun separatorOnlyMacQueryMatchesNothing() {
+        assertFalse(TextMatch.containsMac("AA:BB:CC:DD:EE:FF", "::"))
+        assertFalse(TextMatch.containsMac("AA:BB:CC:DD:EE:FF", " "))
+    }
+
     private fun ble(key: String) = Sighting(
         key = key,
         kind = RadioKind.BLE,

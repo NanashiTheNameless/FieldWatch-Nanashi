@@ -122,7 +122,14 @@ class ClassOutlineTest {
     @Test
     fun viewModeLabelExists() {
         assertEquals("By class", ViewMode.BY_CLASS.label())
-        assertEquals(5, ViewMode.entries.size)
+        assertEquals(4, ViewMode.entries.size)
+    }
+
+    @Test
+    fun savedRadarViewOpensByClass() {
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val settings = json.decodeFromString(AppSettings.serializer(), """{"viewMode":"RADAR"}""")
+        assertEquals(ViewMode.BY_CLASS, settings.viewMode)
     }
 
     @Test

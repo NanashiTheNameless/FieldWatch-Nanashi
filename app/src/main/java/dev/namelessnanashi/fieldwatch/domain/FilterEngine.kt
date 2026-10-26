@@ -38,9 +38,9 @@ class FilterEngine {
         val rssiOk = device.rssi >= filter.rssiMin
         val nameOk = filter.nameQuery.isBlank() ||
             TextMatch.contains(device.name, filter.nameQuery) ||
-            TextMatch.contains(device.mac, filter.nameQuery)
+            TextMatch.containsMac(device.mac, filter.nameQuery)
         val ouiOk = filter.ouiQuery.isBlank() ||
-            TextMatch.contains(device.mac, filter.ouiQuery) ||
+            TextMatch.containsMac(device.mac, filter.ouiQuery) ||
             (device.vendor != null && TextMatch.contains(device.vendor, filter.ouiQuery))
 
         val gates = if (filter.logic == FilterLogic.AND) {

@@ -1,6 +1,7 @@
 package dev.namelessnanashi.fieldwatch.domain
 
 import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -9,27 +10,31 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonNames
 
 @Serializable
 enum class RadioKind { WIFI, BLE }
 
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 enum class ViewMode {
-    RADAR, LIST, TIMELINE, HYBRID, BY_CLASS,
+    LIST,
+    TIMELINE,
+    HYBRID,
+
+    /** Classic radar was removed; configs and backups that saved it open here. */
+    @JsonNames("RADAR")
+    BY_CLASS,
     ;
 
     fun label(): String = when (this) {
-        RADAR -> LanguageText.text("view.radar")
         LIST -> LanguageText.text("view.list")
         TIMELINE -> LanguageText.text("view.timeline")
         HYBRID -> LanguageText.text("view.hybrid")
         BY_CLASS -> LanguageText.text("view.by.class")
     }
 
-    /** Title, subtitle, frequency, first/last, and the live path are list fields. Radar has none of them. */
-    fun usesListFields(): Boolean = this != RADAR
-
-    /** Strength bar on Strength list, Hybrid, and By class. Radar and Timeline show strength another way. */
+    /** Strength bar on Strength list, Hybrid, and By class. Timeline shows strength another way. */
     fun usesRssiBars(): Boolean = this == LIST || this == HYBRID || this == BY_CLASS
 }
 
@@ -1082,7 +1087,7 @@ data class AppSettings(
     val averageWindowSec: Int = 30,
     val listSort: ListSort = ListSort.STRENGTH,
     val showRssiBar: Boolean = true,
-    /** Map of this phone's walk above the live list. Off until chosen. Radar leaves the saved value and does not show the map. */
+    /** Map of this phone's walk above the live list. Off until chosen. */
     val showLivePath: Boolean = false,
     /** Share of the live list area given to the path. Dragging clamps it. */
     val livePathSplit: Float = 0.5f,
@@ -1210,8 +1215,8 @@ fun AppSettings.offerLiveTourOnce(): AppSettings {
     return copy(liveTourDone = false, liveTourRev = LIVE_TOUR_REV)
 }
 
-/** The path band sits over a list. Radar has no list, so the switch stays as saved and the band stays off. */
-fun AppSettings.livePathOnScreen(): Boolean = showLivePath && viewMode != ViewMode.RADAR
+/** The path band sits over the live list. */
+fun AppSettings.livePathOnScreen(): Boolean = showLivePath
 
 data class DetectionPolicy(
     val ssidKeywords: Boolean = true,
@@ -1611,6 +1616,15 @@ object TextMatch {
         if (needle.isBlank()) return false
         return hay.contains(needle, ignoreCase = true)
     }
+
+    /** Like [contains], but `aabbcc`, `aa-bb-cc`, `aa.bb.cc` and `aa:bb:cc` all hit `AA:BB:CC:..`. */
+    fun containsMac(mac: String, needle: String): Boolean {
+        val bare = needle.filterNot { it in MAC_SEPARATORS }
+        if (bare.isEmpty()) return false
+        return mac.filterNot { it in MAC_SEPARATORS }.contains(bare, ignoreCase = true)
+    }
+
+    private const val MAC_SEPARATORS = ":-. "
 
     fun glob(text: String, pattern: String): Boolean {
         if (pattern.isBlank()) return false
