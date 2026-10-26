@@ -4,6 +4,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,7 +21,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import dev.namelessnanashi.fieldwatch.ui.icons.Icons
 import dev.namelessnanashi.fieldwatch.ui.icons.automirrored.filled.ArrowBack
@@ -38,6 +39,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,29 +63,31 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.namelessnanashi.fieldwatch.domain.FlockApproach
 import dev.namelessnanashi.fieldwatch.domain.Geo
+import dev.namelessnanashi.fieldwatch.domain.MacUtil
+import dev.namelessnanashi.fieldwatch.ui.RadioClassBadge
+import dev.namelessnanashi.fieldwatch.ui.RadioKindMark
 import dev.namelessnanashi.fieldwatch.domain.LanguageText
+import dev.namelessnanashi.fieldwatch.domain.PathCameras
 import dev.namelessnanashi.fieldwatch.domain.LogExportKind
 import dev.namelessnanashi.fieldwatch.domain.LogExportRadios
-import dev.namelessnanashi.fieldwatch.domain.MacUtil
 import dev.namelessnanashi.fieldwatch.domain.Sit
 import dev.namelessnanashi.fieldwatch.domain.SitDiff
 import dev.namelessnanashi.fieldwatch.domain.SitPathPlot
+import dev.namelessnanashi.fieldwatch.ui.component.AircraftAmber
+import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchDropdownField
+import dev.namelessnanashi.fieldwatch.ui.component.SitPathCanvas
+import dev.namelessnanashi.fieldwatch.ui.component.rememberMapFooter
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.namelessnanashi.fieldwatch.ui.FieldwatchUi
 import dev.namelessnanashi.fieldwatch.ui.FieldwatchViewModel
 import dev.namelessnanashi.fieldwatch.ui.NestedTabInsets
 import dev.namelessnanashi.fieldwatch.ui.NestedTopBar
-import dev.namelessnanashi.fieldwatch.ui.RadioClassBadge
-import dev.namelessnanashi.fieldwatch.ui.RadioKindMark
-import dev.namelessnanashi.fieldwatch.ui.component.AircraftAmber
 import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchActionButton
-import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchDropdownField
 import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchOutlinedField
 import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchSwitch
 import dev.namelessnanashi.fieldwatch.ui.component.SectionCard
-import dev.namelessnanashi.fieldwatch.ui.component.SitPathCanvas
-import dev.namelessnanashi.fieldwatch.ui.component.rememberMapFooter
 import dev.namelessnanashi.fieldwatch.ui.component.spectreSectionFill
 import dev.namelessnanashi.fieldwatch.ui.theme.Cyan
 import dev.namelessnanashi.fieldwatch.ui.theme.OxProto
@@ -115,11 +119,32 @@ fun ReportsScreen(
     val scroll = rememberScrollState()
     LaunchedEffect(topicName) { scroll.scrollTo(0) }
     val pathModel by vm.sitPath.collectAsStateWithLifecycle()
+    val sitKey = "${state.sit.selectedId}:${state.sit.open?.id}"
+    var pathViewport by remember(sitKey) { mutableStateOf<SitPathPlot.Viewport?>(null) }
+    var pathTileWindow by remember(sitKey) { mutableStateOf<DoubleArray?>(null) }
+    val pathTileWindowKey = pathTileWindow?.let { SitPathPlot.tileWindowKey(it) }.orEmpty()
+    val pathHeld = pathViewport != null
+    val mapKeyRev by vm.mapKeyRevision.collectAsStateWithLifecycle()
     LaunchedEffect(state.sit.selectedId, state.sit.open?.id) {
         while (true) {
             vm.refreshSitPath()
             kotlinx.coroutines.delay(3_000L)
         }
+    }
+    DisposableEffect(sitKey) {
+        onDispose { vm.noteSitPathHold(false) }
+    }
+    LaunchedEffect(
+        pathTileWindowKey,
+        pathHeld,
+        settings.onlineLookup,
+        settings.mapBasemap,
+        settings.mapOverlays,
+        mapKeyRev,
+    ) {
+        if (!pathHeld) return@LaunchedEffect
+        val window = pathTileWindow ?: return@LaunchedEffect
+        vm.refreshSitPathWindow(window[0], window[1], window[2], window[3])
     }
     val sitKind by vm.sitExportKind.collectAsStateWithLifecycle()
     val logKind by vm.logExportKind.collectAsStateWithLifecycle()
@@ -286,6 +311,7 @@ fun ReportsScreen(
                     )
                 } else {
                     val pathTiles by vm.pathTiles.collectAsStateWithLifecycle()
+                    val pathZoomIn by vm.pathZoomIn.collectAsStateWithLifecycle()
                     val aircraftTiles by vm.pathAircraftTiles.collectAsStateWithLifecycle()
                     val mapPosition = rememberMapFooter(
                         settings.mapFooter,
@@ -301,6 +327,9 @@ fun ReportsScreen(
                         )
                     }
                     if (showWalk) {
+                    val pathShown = model.pathCameraTally?.let { tally ->
+                        PathCameras.shownOnPath(tally, settings.flockLayer, settings.sensorLayer)
+                    }
                     val stopN = model.dots.size
                     val gnssN = model.gnss.size
                     Text(
@@ -320,7 +349,21 @@ fun ReportsScreen(
                         model,
                         tiles = pathTiles,
                         onOpenRadio = onOpenPathRadio,
-                        position = mapPosition,
+                        position = if (model.live) mapPosition else null,
+                        zoomIn = pathZoomIn,
+                        pathCameras = pathShown?.cameras.orEmpty(),
+                        viewport = pathViewport,
+                        onViewport = { next ->
+                            pathViewport = next
+                            vm.noteSitPathHold(next != null)
+                        },
+                        fitButton = false,
+                        splitStacked = true,
+                        onTileWindow = { next ->
+                            if (SitPathPlot.tileWindowKey(next) != pathTileWindowKey) {
+                                pathTileWindow = next
+                            }
+                        },
                     )
                     Text(
                         LanguageText.text("ui.tap.number.radios.there"),
@@ -401,6 +444,9 @@ fun ReportsScreen(
                             }
                         }
                     }
+                    pathShown?.let { tally ->
+                        PathCameraSection(tally)
+                    }
                     }
                     model.aircraftCards.forEachIndexed { index, card ->
                         val fixes = card.craft.sumOf { it.samples.size }
@@ -430,7 +476,7 @@ fun ReportsScreen(
                             card,
                             tiles = aircraftTiles.getOrElse(index) { emptyList() },
                             onOpenRadio = onOpenPathRadio,
-                            position = mapPosition,
+                            position = if (model.live) mapPosition else null,
                         )
                         if (card.dots.isNotEmpty()) {
                             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -923,6 +969,91 @@ private fun privacyAircraftCaption(caption: String, title: String, demo: Boolean
     if (!demo || caption.isBlank()) return caption
     val stripped = if (title.isBlank()) caption else caption.replace(title, "masked", ignoreCase = true)
     return Geo.redactCoordsIn(MacUtil.redactMacIn(stripped, title, true), true)
+}
+
+@Composable
+private fun PathCameraSection(tally: PathCameras.Tally) {
+    if (!tally.plates && !tally.others) return
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    Column(
+        Modifier.padding(top = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            LanguageText.text("ui.cameras.on.path"),
+            style = MaterialTheme.typography.titleSmall,
+        )
+        if (!tally.pathReady) {
+            Text(
+                LanguageText.text("ui.cameras.no.path"),
+                style = MaterialTheme.typography.bodySmall,
+                color = muted,
+            )
+            return
+        }
+        Text(
+            LanguageText.text(
+                "ui.cameras.within",
+                mapOf("meters" to FlockApproach.PATH_M.toInt().toString()),
+            ),
+            style = MaterialTheme.typography.bodySmall,
+            color = muted,
+        )
+        if (tally.counts.isEmpty()) {
+            Text(
+                LanguageText.text("ui.cameras.none.along"),
+                style = MaterialTheme.typography.bodySmall,
+                color = muted,
+            )
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                tally.counts.forEach { count -> PathCameraRow(count) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PathCameraRow(count: PathCameras.Count) {
+    Row(verticalAlignment = Alignment.Top) {
+        Box(
+            Modifier
+                .padding(top = 5.dp)
+                .size(10.dp)
+                .background(cameraMarkColor(count.labelKey), CircleShape),
+        )
+        Spacer(Modifier.width(8.dp))
+        Column {
+            Text(
+                LanguageText.text(count.labelKey),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                LanguageText.text(
+                    "ui.cameras.facing.count",
+                    mapOf("count" to count.facing.toString()),
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                LanguageText.text(
+                    "ui.cameras.near.count",
+                    mapOf("count" to count.near.toString()),
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+private fun cameraMarkColor(labelKey: String): Color = when (labelKey) {
+    "ui.cameras.kind.flock" -> Color(0xFF3B82F6)
+    "ui.cameras.kind.plate" -> Color(0xFFF59E0B)
+    "ui.cameras.kind.speed" -> Color(0xFF14B8A6)
+    "ui.cameras.kind.red" -> Color(0xFFEF4444)
+    else -> Color(0xFF64748B)
 }
 
 @Composable

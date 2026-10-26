@@ -66,43 +66,46 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dev.namelessnanashi.fieldwatch.alert.TtsEngines
-import dev.namelessnanashi.fieldwatch.alert.VoiceOption
-import dev.namelessnanashi.fieldwatch.domain.AlertOtherAudio
 import dev.namelessnanashi.fieldwatch.domain.AlertVoiceWhat
-import dev.namelessnanashi.fieldwatch.domain.AppSettings
-import dev.namelessnanashi.fieldwatch.domain.CatalogSource
-import dev.namelessnanashi.fieldwatch.domain.GnssAlertFloor
-import dev.namelessnanashi.fieldwatch.domain.GnssSensitivity
 import dev.namelessnanashi.fieldwatch.domain.LanguageText
+import dev.namelessnanashi.fieldwatch.domain.AppSettings
+import dev.namelessnanashi.fieldwatch.domain.anySensorAlert
 import dev.namelessnanashi.fieldwatch.domain.MapBasemap
 import dev.namelessnanashi.fieldwatch.domain.MapFooter
+import dev.namelessnanashi.fieldwatch.domain.MapOverlay
 import dev.namelessnanashi.fieldwatch.domain.MapKey
+import dev.namelessnanashi.fieldwatch.domain.GnssAlertFloor
+import dev.namelessnanashi.fieldwatch.domain.GnssSensitivity
 import dev.namelessnanashi.fieldwatch.domain.ScanIntensity
 import dev.namelessnanashi.fieldwatch.domain.TakDefaults
+import dev.namelessnanashi.fieldwatch.domain.TakInstall
 import dev.namelessnanashi.fieldwatch.domain.TakFeedStatus
 import dev.namelessnanashi.fieldwatch.domain.TakFloodSend
 import dev.namelessnanashi.fieldwatch.domain.TakGnssHold
 import dev.namelessnanashi.fieldwatch.domain.TakGnssSend
-import dev.namelessnanashi.fieldwatch.domain.TakInstall
 import dev.namelessnanashi.fieldwatch.domain.TakPublish
 import dev.namelessnanashi.fieldwatch.domain.TakUdpPreset
-import dev.namelessnanashi.fieldwatch.radio.ScanService
 import dev.namelessnanashi.fieldwatch.radio.WifiRadio
-import dev.namelessnanashi.fieldwatch.ui.FieldwatchUi
-import dev.namelessnanashi.fieldwatch.ui.FieldwatchViewModel
 import dev.namelessnanashi.fieldwatch.ui.NestedTabInsets
 import dev.namelessnanashi.fieldwatch.ui.NestedTopBar
+import dev.namelessnanashi.fieldwatch.ui.FieldwatchUi
+import dev.namelessnanashi.fieldwatch.ui.FieldwatchViewModel
+import dev.namelessnanashi.fieldwatch.ui.FlockLayerUi
+import dev.namelessnanashi.fieldwatch.ui.component.SectionCard
+import dev.namelessnanashi.fieldwatch.ui.component.StableCaption
+import dev.namelessnanashi.fieldwatch.ui.component.StickyHeight
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.namelessnanashi.fieldwatch.alert.TtsEngines
+import dev.namelessnanashi.fieldwatch.alert.VoiceOption
+import dev.namelessnanashi.fieldwatch.domain.AlertOtherAudio
+import dev.namelessnanashi.fieldwatch.domain.CatalogSource
+import dev.namelessnanashi.fieldwatch.radio.ScanService
 import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchActionButton
 import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchDropdownField
 import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchFilterChip
 import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchOutlinedField
 import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchSlider
 import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchSwitch
-import dev.namelessnanashi.fieldwatch.ui.component.SectionCard
-import dev.namelessnanashi.fieldwatch.ui.component.StableCaption
-import dev.namelessnanashi.fieldwatch.ui.component.StickyHeight
 import dev.namelessnanashi.fieldwatch.ui.icons.Icons
 import dev.namelessnanashi.fieldwatch.ui.icons.automirrored.filled.ArrowBack
 import dev.namelessnanashi.fieldwatch.ui.icons.automirrored.filled.KeyboardArrowRight
@@ -122,6 +125,8 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val settings = state.settings
+    val flock by vm.flockLayerUi.collectAsStateWithLifecycle()
+    val sensors by vm.sensorLayerUi.collectAsStateWithLifecycle()
     val saveSignatures = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json"),
     ) { uri -> uri?.let(vm::saveSignaturesToUri) }
@@ -143,6 +148,7 @@ fun SettingsScreen(
     var topicName by rememberSaveable { mutableStateOf<String?>(null) }
     var mapMenu by rememberSaveable { mutableStateOf(false) }
     var positionMenu by rememberSaveable { mutableStateOf(false) }
+    var confirmClearMaps by rememberSaveable { mutableStateOf(false) }
     val topic = topicName?.let { name -> SettingsTopic.entries.firstOrNull { it.name == name } }
     BackHandler(enabled = topic != null) { topicName = null }
     val scroll = rememberScrollState()
@@ -475,7 +481,7 @@ fun SettingsScreen(
                     FieldwatchFilterChip(
                         selected = settings.alertOtherAudio == item,
                         onClick = { vm.updateSettings { it.copy(alertOtherAudio = item) } },
-                        enabled = (settings.alertsEnabled && (settings.alertBeep || settings.alertVoice)) || settings.gnssBeep || settings.gnssVoice,
+                        enabled = (settings.alertsEnabled && (settings.alertBeep || settings.alertVoice)) || settings.gnssBeep || settings.gnssVoice || settings.anySensorAlert(),
                         label = { Text(item.label()) },
                     )
                 }
@@ -606,6 +612,7 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Spacer(Modifier.height(8.dp))
             val mapsOn = settings.onlineLookup
             val open = mapMenu && mapsOn
             ExposedDropdownMenuBox(
@@ -625,8 +632,11 @@ fun SettingsScreen(
                     enabled = mapsOn,
                 )
                 ExposedDropdownMenu(open, { mapMenu = false }) {
-                    MapBasemap.entries.forEach { choice ->
+                    MapBasemap.entries.filter { it.inPicker }.forEach { choice ->
                         val selected = choice == settings.mapBasemap
+                        val subtitle = choice.subtitleKeys
+                            .joinToString(" · ") { LanguageText.text(it) }
+                            .ifBlank { null }
                         Row(
                             Modifier
                                 .fillMaxWidth()
@@ -635,14 +645,22 @@ fun SettingsScreen(
                                     mapMenu = false
                                     if (choice != settings.mapBasemap) vm.selectMap(choice)
                                 }
-                                .padding(horizontal = 12.dp, vertical = 2.dp),
+                                .padding(horizontal = 12.dp, vertical = if (subtitle == null) 2.dp else 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(
-                                LanguageText.text(choice.labelKey),
-                                style = MaterialTheme.typography.labelLarge,
-                                modifier = Modifier.weight(1f),
-                            )
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    LanguageText.text(choice.labelKey),
+                                    style = MaterialTheme.typography.labelLarge,
+                                )
+                                if (subtitle != null) {
+                                    Text(
+                                        subtitle,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
                             if (choice.needsKey) {
                                 Text(
                                     LanguageText.text("map.key.mark"),
@@ -705,6 +723,99 @@ fun SettingsScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+            Text(
+                LanguageText.text("settings.map.overlays"),
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+            MapOverlay.entries.forEach { overlay ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f).padding(vertical = 4.dp)) {
+                        Text(
+                            LanguageText.text(overlay.basemap.labelKey),
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                        Text(
+                            LanguageText.text("map.united.states"),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    FieldwatchSwitch(
+                        overlay in settings.mapOverlays,
+                        { on ->
+                            vm.updateSettings { current ->
+                                val next = if (on) current.mapOverlays + overlay else current.mapOverlays - overlay
+                                current.copy(mapOverlays = next)
+                            }
+                        },
+                        enabled = mapsOn,
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            FieldwatchActionButton(onClick = { confirmClearMaps = true }) {
+                Text(LanguageText.text("settings.map.clear"))
+            }
+            Text(
+                LanguageText.text("settings.map.clear.body"),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                LanguageText.text("settings.layer.heading"),
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+            SensorLayerBlock(
+                title = LanguageText.text("settings.layer.flock"),
+                note = LanguageText.text("settings.layer.note"),
+                state = flock,
+                checked = settings.flockLayer,
+                onChecked = vm::setFlockLayer,
+                onUpdate = vm::updateFlockLayer,
+                more = if (!flock.fullList && flock.savedAt > 0L && !flock.busy) {
+                    LanguageText.text("settings.layer.more")
+                } else {
+                    null
+                },
+            ) {
+                SensorAlertRow(
+                    LanguageText.text("settings.layer.alert.plate"),
+                    settings.flockAlert,
+                    !flock.busy,
+                ) { on -> vm.updateSettings { it.copy(flockAlert = on) } }
+            }
+            Spacer(Modifier.height(8.dp))
+            SensorLayerBlock(
+                title = LanguageText.text("settings.layer.other"),
+                note = LanguageText.text("settings.layer.other.note"),
+                state = sensors,
+                checked = settings.sensorLayer,
+                onChecked = vm::setSensorLayer,
+                onUpdate = vm::updateSensorLayer,
+            ) {
+                SensorAlertRow(
+                    LanguageText.text("settings.layer.alert.speed"),
+                    settings.speedAlert,
+                    !sensors.busy,
+                ) { on -> vm.updateSettings { it.copy(speedAlert = on) } }
+                SensorAlertRow(
+                    LanguageText.text("settings.layer.alert.red"),
+                    settings.redAlert,
+                    !sensors.busy,
+                ) { on -> vm.updateSettings { it.copy(redAlert = on) } }
+                SensorAlertRow(
+                    LanguageText.text("settings.layer.alert.gun"),
+                    settings.gunshotAlert,
+                    !sensors.busy,
+                ) { on -> vm.updateSettings { it.copy(gunshotAlert = on) } }
+                SensorAlertRow(
+                    LanguageText.text("settings.layer.alert.camera"),
+                    settings.cameraAlert,
+                    !sensors.busy,
+                ) { on -> vm.updateSettings { it.copy(cameraAlert = on) } }
             }
             Spacer(Modifier.height(8.dp))
             ExposedDropdownMenuBox(
@@ -1224,6 +1335,60 @@ fun SettingsScreen(
             },
         )
     }
+    if (confirmClearMaps) {
+        AlertDialog(
+            onDismissRequest = { confirmClearMaps = false },
+            title = { Text(LanguageText.text("settings.map.clear")) },
+            text = { Text(LanguageText.text("settings.map.clear.body")) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmClearMaps = false
+                        vm.clearSavedMaps()
+                    },
+                ) { Text(LanguageText.text("settings.map.clear")) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmClearMaps = false }) {
+                    Text(LanguageText.text("language.cancel"))
+                }
+            },
+        )
+    }
+    if (flock.confirm) {
+        AlertDialog(
+            onDismissRequest = vm::dismissFlockDownload,
+            title = { Text(LanguageText.text("settings.layer.download.title")) },
+            text = { Text(LanguageText.text("settings.layer.download.body")) },
+            confirmButton = {
+                TextButton(onClick = vm::confirmFlockDownload) {
+                    Text(LanguageText.text("settings.layer.download.action"))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = vm::dismissFlockDownload) {
+                    Text(LanguageText.text("language.cancel"))
+                }
+            },
+        )
+    }
+    if (sensors.confirm) {
+        AlertDialog(
+            onDismissRequest = vm::dismissSensorDownload,
+            title = { Text(LanguageText.text("settings.layer.other.download.title")) },
+            text = { Text(LanguageText.text("settings.layer.other.download.body")) },
+            confirmButton = {
+                TextButton(onClick = vm::confirmSensorDownload) {
+                    Text(LanguageText.text("settings.layer.download.action"))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = vm::dismissSensorDownload) {
+                    Text(LanguageText.text("language.cancel"))
+                }
+            },
+        )
+    }
     if (confirmRestore) {
         AlertDialog(
             onDismissRequest = { confirmRestore = false },
@@ -1247,6 +1412,95 @@ fun SettingsScreen(
                 TextButton(onClick = { confirmRestore = false }) { Text(LanguageText.text("language.cancel")) }
             },
         )
+    }
+}
+
+@Composable
+private fun SensorLayerBlock(
+    title: String,
+    note: String,
+    state: FlockLayerUi,
+    checked: Boolean,
+    onChecked: (Boolean) -> Unit,
+    onUpdate: () -> Unit,
+    more: String? = null,
+    alerts: @Composable () -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f).padding(vertical = 4.dp)) {
+            Text(title, style = MaterialTheme.typography.labelLarge)
+            Text(
+                note,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            val status = when {
+                state.busy && state.processing -> LanguageText.text("settings.layer.processing")
+                state.busy -> LanguageText.text(
+                    "settings.layer.downloading",
+                    mapOf("n" to state.percent.coerceIn(0, 99).toString()),
+                )
+                state.savedAt > 0L -> {
+                    val date = java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM)
+                        .format(java.util.Date(state.savedAt))
+                    LanguageText.text("settings.layer.saved", mapOf("date" to date))
+                }
+                else -> null
+            }
+            if (status != null) {
+                Text(
+                    status,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (more != null) {
+                Text(
+                    more,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            val notice = state.noticeKey
+            if (notice != null) {
+                Text(
+                    LanguageText.text(notice),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        FieldwatchSwitch(checked, onChecked, enabled = !state.busy)
+    }
+    if (checked && state.savedAt > 0L) {
+        FieldwatchActionButton(onClick = onUpdate, enabled = !state.busy) {
+            Text(LanguageText.text("settings.layer.update"))
+        }
+    }
+    if (checked) {
+        Text(
+            LanguageText.text("settings.layer.alerts"),
+            style = MaterialTheme.typography.labelLarge,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        alerts()
+    }
+}
+
+@Composable
+private fun SensorAlertRow(
+    label: String,
+    on: Boolean,
+    enabled: Boolean,
+    set: (Boolean) -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            label,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.labelLarge,
+        )
+        FieldwatchSwitch(on, set, enabled = enabled)
     }
 }
 
