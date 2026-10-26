@@ -1691,6 +1691,7 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
             if (prev.alertSoundUri != next.alertSoundUri) app.alerter.setAlertSound(next.alertSoundUri)
             if (prev.ttsVoice != next.ttsVoice) app.alerter.setTtsVoice(next.ttsVoice)
             if (prev.alertLeadInMs != next.alertLeadInMs) app.alerter.setLeadIn(next.alertLeadInMs)
+            if (prev.alertOtherAudio != next.alertOtherAudio) app.alerter.setOtherAudio(next.alertOtherAudio)
             if (next.alertVoice || next.gnssVoice) app.alerter.prepareVoice()
         }
     }
@@ -2324,6 +2325,7 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
         app.alerter.setAlertSound(next.alertSoundUri)
         app.alerter.setTtsVoice(next.ttsVoice)
         app.alerter.setLeadIn(next.alertLeadInMs)
+        app.alerter.setOtherAudio(next.alertOtherAudio)
         if (next.alertVoice || next.gnssVoice) app.alerter.prepareVoice()
         _export.value = ExportUi(
             noticeTitle = LanguageText.text("ui.settings.imported"),

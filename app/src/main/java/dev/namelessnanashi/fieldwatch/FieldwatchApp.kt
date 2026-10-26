@@ -313,6 +313,7 @@ class FieldwatchApp : Application() {
         alerter.setAlertSound(config.settings.alertSoundUri)
         alerter.setTtsVoice(config.settings.ttsVoice)
         alerter.setLeadIn(config.settings.alertLeadInMs)
+        alerter.setOtherAudio(config.settings.alertOtherAudio)
         if (config.settings.alertVoice || config.settings.gnssVoice) alerter.prepareVoice()
         if (config.filter.arrivalsOnly) {
             beginArrivals(keepRemembered = true)

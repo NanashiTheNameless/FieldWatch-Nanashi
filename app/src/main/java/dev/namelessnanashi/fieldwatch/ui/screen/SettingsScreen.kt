@@ -69,6 +69,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.namelessnanashi.fieldwatch.alert.TtsEngines
 import dev.namelessnanashi.fieldwatch.alert.VoiceOption
+import dev.namelessnanashi.fieldwatch.domain.AlertOtherAudio
 import dev.namelessnanashi.fieldwatch.domain.AlertVoiceWhat
 import dev.namelessnanashi.fieldwatch.domain.AppSettings
 import dev.namelessnanashi.fieldwatch.domain.CatalogSource
@@ -465,6 +466,22 @@ fun SettingsScreen(
             )
             Text(
                 LanguageText.text("settings.leadin.about"),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(LanguageText.text("settings.otheraudio.title"), style = MaterialTheme.typography.labelLarge)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AlertOtherAudio.entries.forEach { item ->
+                    FieldwatchFilterChip(
+                        selected = settings.alertOtherAudio == item,
+                        onClick = { vm.updateSettings { it.copy(alertOtherAudio = item) } },
+                        enabled = (settings.alertsEnabled && (settings.alertBeep || settings.alertVoice)) || settings.gnssBeep || settings.gnssVoice,
+                        label = { Text(item.label()) },
+                    )
+                }
+            }
+            Text(
+                LanguageText.text("settings.otheraudio.about"),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

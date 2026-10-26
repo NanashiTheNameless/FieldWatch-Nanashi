@@ -28,6 +28,7 @@ import kotlin.math.sin
 import androidx.core.app.NotificationCompat
 import dev.namelessnanashi.fieldwatch.MainActivity
 import dev.namelessnanashi.fieldwatch.R
+import dev.namelessnanashi.fieldwatch.domain.AlertOtherAudio
 import dev.namelessnanashi.fieldwatch.domain.AlertVoiceWhat
 import dev.namelessnanashi.fieldwatch.domain.Fleet
 import dev.namelessnanashi.fieldwatch.domain.MacUtil
@@ -54,7 +55,10 @@ class Alerter(private val context: Context) {
     /** Chosen alert sound; null plays the built-in double pip. */
     @Volatile private var alertSound: Uri? = null
     private var huntTrack: AudioTrack? = null
+    /** Held from the alert's first sound until its phrase ends, so other audio stays down throughout. */
     private var focusRequest: AudioFocusRequest? = null
+    @Volatile private var otherAudio = AlertOtherAudio.LOWER
+    private val focusCap = Runnable { releaseFocus() }
     private var tts: TextToSpeech? = null
     private var ttsReady = false
     /** Package of the chosen speech engine; blank uses the system default. */
@@ -82,8 +86,7 @@ class Alerter(private val context: Context) {
         val retry = pendingSpeak
         speaking = false
         utteranceStarted = false
-        releaseFocus()
-        if (retry != null && ttsSpeakTries < 2) speakClassName(retry)
+        if (retry != null && ttsSpeakTries < 2) speakClassName(retry) else releaseFocusIfIdle()
     }
     private val _flashes = MutableSharedFlow<String>(extraBufferCapacity = 16)
     val flashes: SharedFlow<String> = _flashes.asSharedFlow()
@@ -119,7 +122,7 @@ class Alerter(private val context: Context) {
     ) {
         if (speakClass) prepareVoice()
         if (beepOn) {
-            beep(holdFocus = !speakClass)
+            beep()
             vibrate()
         }
         if (speakClass) queueVoice(testWatchPhrase(voiceWhat), afterBeep = beepOn)
@@ -160,6 +163,10 @@ class Alerter(private val context: Context) {
         leadInMs = ms.coerceIn(0, MAX_LEAD_IN_MS)
     }
 
+    fun setOtherAudio(mode: AlertOtherAudio) {
+        otherAudio = mode
+    }
+
     /** Warm the TTS engine on the main thread so the first alert is not silent. */
     fun prepareVoice() {
         if (Looper.myLooper() == Looper.getMainLooper()) ensureTts()
@@ -197,7 +204,7 @@ class Alerter(private val context: Context) {
         } else {
             manager.cancel(GNSS_NOTE_ID)
         }
-        if (beep) beep(holdFocus = phrase.isNullOrBlank())
+        if (beep) beep()
         if (!phrase.isNullOrBlank()) {
             prepareVoice()
             queueVoice(phrase, afterBeep = beep)
@@ -257,7 +264,7 @@ class Alerter(private val context: Context) {
                 if (shadeOn && target.notify) notify(label, device, demoMode)
                 if (target.vibrate) vibrate()
                 if (beepOn && !beepFired) {
-                    beep(holdFocus = !voiceOn)
+                    beep()
                     beepFired = true
                 }
                 if (beepOn || voiceOn) _flashes.tryEmit(device.key)
@@ -275,7 +282,10 @@ class Alerter(private val context: Context) {
         if (afterBeep) {
             speakAfterBeep = phrase
         } else {
-            main.post { afterWake { speakClassName(phrase) } }
+            main.post {
+                takeFocus()
+                afterWake { speakClassName(phrase) }
+            }
         }
     }
 
@@ -319,15 +329,15 @@ class Alerter(private val context: Context) {
         alertSound = uri.trim().takeIf { it.isNotEmpty() }?.let { runCatching { Uri.parse(it) }.getOrNull() }
     }
 
-    private fun beep(holdFocus: Boolean = true) {
+    private fun beep() {
         main.post {
             val sound = alertSound
-            if (sound == null) playSynthBeep(holdFocus) else playSoundBeep(sound, holdFocus)
+            if (sound == null) playSynthBeep() else playSoundBeep(sound)
         }
     }
 
     /** Plays the chosen sound, at most [CUSTOM_SOUND_MAX_MS]; falls back to the double pip on error. */
-    private fun playSoundBeep(sound: Uri, holdFocus: Boolean) {
+    private fun playSoundBeep(sound: Uri) {
         stopBeep()
         val attrs = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -351,21 +361,13 @@ class Alerter(private val context: Context) {
                 main.removeCallbacks(done)
                 if (beepPlayer === player) {
                     stopBeep()
-                    playSynthBeep(holdFocus)
+                    playSynthBeep()
                 }
                 true
             }
             player.setOnPreparedListener {
                 if (beepPlayer !== player) return@setOnPreparedListener
-                // Same rule as the pip: holding focus would silence the phrase that follows.
-                if (holdFocus) {
-                    val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
-                        .setAudioAttributes(attrs)
-                        .setAcceptsDelayedFocusGain(false)
-                        .build()
-                    audio.requestAudioFocus(req)
-                    focusRequest = req
-                }
+                takeFocus()
                 // Preparation and focus changes finish before warming the actual playback route.
                 afterWake {
                     if (beepPlayer === player) {
@@ -374,7 +376,7 @@ class Alerter(private val context: Context) {
                             main.postDelayed(done, CUSTOM_SOUND_MAX_MS)
                         }.onFailure {
                             stopBeep()
-                            playSynthBeep(holdFocus)
+                            playSynthBeep()
                         }
                     }
                 }
@@ -385,11 +387,11 @@ class Alerter(private val context: Context) {
         if (!started) {
             runCatching { player.release() }
             if (beepPlayer === player) beepPlayer = null
-            playSynthBeep(holdFocus)
+            playSynthBeep()
         }
     }
 
-    private fun playSynthBeep(holdFocus: Boolean) {
+    private fun playSynthBeep() {
         runCatching {
             stopBeep()
             val sampleRate = 22_050
@@ -428,16 +430,7 @@ class Alerter(private val context: Context) {
                 finishBeep()
                 return@runCatching
             }
-            // TTS engines run in another process. Holding media focus here ducks
-            // or silences them, so skip focus when a phrase will follow the pip.
-            if (holdFocus) {
-                val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
-                    .setAudioAttributes(attrs)
-                    .setAcceptsDelayedFocusGain(false)
-                    .build()
-                audio.requestAudioFocus(req)
-                focusRequest = req
-            }
+            takeFocus()
             beepTrack = track
             track.play()
             val playMs = total * 1000L / sampleRate
@@ -471,19 +464,57 @@ class Alerter(private val context: Context) {
             runCatching { player.stop() }
             runCatching { player.release() }
         }
-        releaseFocus()
+    }
+
+    /**
+     * Lowers or pauses other apps for the whole alert, pip through phrase. One request covers
+     * overlapping alerts. Android ducks only the apps that lose focus, so the speech engine's
+     * own process keeps full volume. Leave alone skips focus for engines that misbehave.
+     */
+    private fun takeFocus() {
+        val gain = when (otherAudio) {
+            AlertOtherAudio.LOWER -> AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
+            AlertOtherAudio.PAUSE -> AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+            AlertOtherAudio.OFF -> return
+        }
+        main.removeCallbacks(focusCap)
+        main.postDelayed(focusCap, FOCUS_CAP_MS)
+        if (focusRequest != null) return
+        val req = AudioFocusRequest.Builder(gain)
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build(),
+            )
+            .setAcceptsDelayedFocusGain(false)
+            .build()
+        if (runCatching { audio.requestAudioFocus(req) }.getOrNull() == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+            focusRequest = req
+        }
     }
 
     private fun releaseFocus() {
+        main.removeCallbacks(focusCap)
         val req = focusRequest ?: return
         focusRequest = null
         runCatching { audio.abandonAudioFocusRequest(req) }
     }
 
-    private fun finishBeep() {
-        val phrase = speakAfterBeep ?: return
-        speakAfterBeep = null
+    /** Gives focus back once no alert sound or phrase is playing or queued. */
+    private fun releaseFocusIfIdle() {
+        if (beepTrack != null || beepPlayer != null || speakAfterBeep != null) return
+        if (speaking || pendingSpeak != null) return
         releaseFocus()
+    }
+
+    private fun finishBeep() {
+        val phrase = speakAfterBeep
+        if (phrase == null) {
+            releaseFocusIfIdle()
+            return
+        }
+        speakAfterBeep = null
         main.postDelayed({ speakClassName(phrase) }, VOICE_AFTER_TRACK_MS)
     }
 
@@ -586,7 +617,13 @@ class Alerter(private val context: Context) {
         if (tts != null) return
         tts = TextToSpeech(context, { status ->
             ttsReady = status == TextToSpeech.SUCCESS
-            if (!ttsReady) return@TextToSpeech
+            if (!ttsReady) {
+                main.post {
+                    pendingSpeak = null
+                    releaseFocusIfIdle()
+                }
+                return@TextToSpeech
+            }
             val engine = tts ?: return@TextToSpeech
             engine.setAudioAttributes(
                 AudioAttributes.Builder()
@@ -609,17 +646,22 @@ class Alerter(private val context: Context) {
                     pendingSpeak = null
                     ttsSpeakTries = 0
                     main.removeCallbacks(speakWatchdog)
+                    main.post { releaseFocusIfIdle() }
                 }
                 @Deprecated("Deprecated in Java")
                 override fun onError(utteranceId: String?) {
                     speaking = false
                     utteranceStarted = false
+                    pendingSpeak = null
                     main.removeCallbacks(speakWatchdog)
+                    main.post { releaseFocusIfIdle() }
                 }
                 override fun onError(utteranceId: String?, errorCode: Int) {
                     speaking = false
                     utteranceStarted = false
+                    pendingSpeak = null
                     main.removeCallbacks(speakWatchdog)
+                    main.post { releaseFocusIfIdle() }
                 }
             })
             // Samsung often drops the first speak() if it runs inside onInit.
@@ -719,6 +761,10 @@ class Alerter(private val context: Context) {
             speaking = false
             if (ttsSpeakTries < 2) {
                 main.postDelayed({ startSpeak(text) }, TTS_AFTER_INIT_MS)
+            } else {
+                pendingSpeak = null
+                ttsSpeakTries = 0
+                releaseFocusIfIdle()
             }
             return
         }
@@ -731,6 +777,7 @@ class Alerter(private val context: Context) {
                 speaking = false
                 pendingSpeak = null
                 ttsSpeakTries = 0
+                releaseFocusIfIdle()
             }
         }, startWaitMs())
     }
@@ -811,6 +858,8 @@ class Alerter(private val context: Context) {
         private const val SLOW_START_WAIT_MS = 15_000L
         private const val SLOW_SPEAK_TIMEOUT_MS = 30_000L
         private const val UTTERANCE = "fieldwatch-class"
+        /** Last resort if an engine never reports the phrase ending; other audio must come back. */
+        private const val FOCUS_CAP_MS = 45_000L
     }
 }
 

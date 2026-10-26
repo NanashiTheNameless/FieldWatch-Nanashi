@@ -135,6 +135,24 @@ enum class SignatureClass {
     }
 }
 
+/** What other playing audio does while an alert sound or phrase plays. */
+@Serializable
+enum class AlertOtherAudio {
+    /** Lowered for the alert, then back to full volume. */
+    LOWER,
+    /** Paused for the alert, then resumed. Apps that ignore audio focus keep playing. */
+    PAUSE,
+    /** Left alone; the alert plays over it. */
+    OFF,
+    ;
+
+    fun label(): String = when (this) {
+        LOWER -> LanguageText.text("settings.otheraudio.lower")
+        PAUSE -> LanguageText.text("settings.otheraudio.pause")
+        OFF -> LanguageText.text("settings.otheraudio.off")
+    }
+}
+
 /** What watchlist voice says. Class is the Live glyph bucket; signature is the catalog row. */
 @Serializable
 enum class AlertVoiceWhat {
@@ -1059,6 +1077,8 @@ data class AppSettings(
     val ttsVoice: String = "",
     /** Silence before alert audio so sleeping Bluetooth audio wakes in time. 0 turns it off. Missing JSON is 500. */
     val alertLeadInMs: Int = 500,
+    /** Other audio while an alert plays. Missing JSON lowers it. */
+    val alertOtherAudio: AlertOtherAudio = AlertOtherAudio.LOWER,
     /** Alert beep: a phone sound (content URI) or a copied file (file URI). Blank is the built-in double pip. */
     val alertSoundUri: String = "",
     /** Display name for [alertSoundUri]. */
