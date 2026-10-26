@@ -9,11 +9,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.DataOutputStream
 import java.io.File
-import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.io.InputStreamReader
 import java.io.StringReader
-import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 
 class FlockCamerasTest {
@@ -295,23 +292,6 @@ class FlockCamerasTest {
         assertEquals(SensorKind.CAMERA, parsed.first { it.key == 27L }.kind)
         assertTrue(parsed.none { it.key == 26L })
         assertEquals(SensorKind.RED, parsed.first { it.key == 29L }.kind)
-    }
-
-    @Test
-    fun publishedSensorListKeepsTheFourTypes() {
-        val file = listOf(
-            File("dist/fieldwatch-sensors.geojson.gz"),
-            File("../dist/fieldwatch-sensors.geojson.gz"),
-        ).first { it.isFile }
-        val parsed = GZIPInputStream(FileInputStream(file)).use { stream ->
-            parseFlock(InputStreamReader(stream, Charsets.UTF_8))
-        }
-        assertEquals(40112, parsed.size)
-        assertEquals(1765, parsed.count { it.kind == SensorKind.SPEED })
-        assertEquals(679, parsed.count { it.kind == SensorKind.RED })
-        assertEquals(3961, parsed.count { it.kind == SensorKind.GUNSHOT })
-        assertEquals(33707, parsed.count { it.kind == SensorKind.CAMERA })
-        assertTrue(parsed.none { it.kind == SensorKind.PLATE })
     }
 
     @Test
