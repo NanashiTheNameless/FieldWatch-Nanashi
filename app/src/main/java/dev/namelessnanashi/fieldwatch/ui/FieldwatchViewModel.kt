@@ -12,31 +12,28 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import dev.namelessnanashi.fieldwatch.alert.AlertSounds
 import dev.namelessnanashi.fieldwatch.BuildConfig
 import dev.namelessnanashi.fieldwatch.FieldwatchApp
 import dev.namelessnanashi.fieldwatch.domain.AircraftTrail
 import dev.namelessnanashi.fieldwatch.domain.AppSettings
 import dev.namelessnanashi.fieldwatch.domain.MapBasemap
+import dev.namelessnanashi.fieldwatch.domain.MapOverlay
 import dev.namelessnanashi.fieldwatch.domain.MapFrame
+import dev.namelessnanashi.fieldwatch.domain.MapLookAhead
 import dev.namelessnanashi.fieldwatch.domain.MapKey
 import dev.namelessnanashi.fieldwatch.domain.MapKeyNotice
 import dev.namelessnanashi.fieldwatch.domain.MapKeyProblem
+import dev.namelessnanashi.fieldwatch.domain.anySensorAlert
 import dev.namelessnanashi.fieldwatch.domain.attentionNotes
 import dev.namelessnanashi.fieldwatch.domain.signatureNotes
 import dev.namelessnanashi.fieldwatch.domain.detectionPolicy
 import dev.namelessnanashi.fieldwatch.domain.gnssSettings
 import dev.namelessnanashi.fieldwatch.data.CatalogRemote
 import dev.namelessnanashi.fieldwatch.data.DebriefPdf
+import dev.namelessnanashi.fieldwatch.data.FlockFiles
+import dev.namelessnanashi.fieldwatch.data.SensorList
 import dev.namelessnanashi.fieldwatch.data.PathTiles
 import dev.namelessnanashi.fieldwatch.data.PlaceLookup
-import dev.namelessnanashi.fieldwatch.elevated.DeviceAdmin
-import dev.namelessnanashi.fieldwatch.elevated.ElevatedItem
-import dev.namelessnanashi.fieldwatch.elevated.ElevatedItems
-import dev.namelessnanashi.fieldwatch.elevated.ElevatedShell
-import dev.namelessnanashi.fieldwatch.elevated.ElevatedStatus
-import dev.namelessnanashi.fieldwatch.elevated.RootShell
-import dev.namelessnanashi.fieldwatch.elevated.VectorBridge
 import dev.namelessnanashi.fieldwatch.domain.DeviceDetailPrompt
 import dev.namelessnanashi.fieldwatch.domain.DeviceDetailText
 import dev.namelessnanashi.fieldwatch.domain.DebriefDoc
@@ -47,6 +44,9 @@ import dev.namelessnanashi.fieldwatch.domain.DefaultCatalog
 import dev.namelessnanashi.fieldwatch.domain.DISCLAIMER_REV
 import dev.namelessnanashi.fieldwatch.domain.disclaimerOk
 import dev.namelessnanashi.fieldwatch.domain.FilterEngine
+import dev.namelessnanashi.fieldwatch.domain.FlockCamera
+import dev.namelessnanashi.fieldwatch.domain.FlockIndex
+import dev.namelessnanashi.fieldwatch.domain.PathCameras
 import dev.namelessnanashi.fieldwatch.domain.Geo
 import dev.namelessnanashi.fieldwatch.domain.GeoExport
 import dev.namelessnanashi.fieldwatch.domain.GpsSample
@@ -66,10 +66,12 @@ import dev.namelessnanashi.fieldwatch.domain.Fleet
 import dev.namelessnanashi.fieldwatch.domain.Hunt
 import dev.namelessnanashi.fieldwatch.domain.HuntCue
 import dev.namelessnanashi.fieldwatch.domain.HuntHeat
+import dev.namelessnanashi.fieldwatch.domain.HuntPlain
 import dev.namelessnanashi.fieldwatch.domain.FamilyVerdict
 import dev.namelessnanashi.fieldwatch.domain.LogRadio
 import dev.namelessnanashi.fieldwatch.domain.RadioBookmarks
 import dev.namelessnanashi.fieldwatch.domain.RadioKind
+import dev.namelessnanashi.fieldwatch.domain.Rssi
 import dev.namelessnanashi.fieldwatch.domain.RssiSample
 import dev.namelessnanashi.fieldwatch.domain.Sighting
 import dev.namelessnanashi.fieldwatch.domain.SignatureCandidate
@@ -90,7 +92,6 @@ import dev.namelessnanashi.fieldwatch.domain.ListLine
 import dev.namelessnanashi.fieldwatch.domain.MacUtil
 import dev.namelessnanashi.fieldwatch.domain.PairingFlood
 import dev.namelessnanashi.fieldwatch.domain.PlaceMemory
-import dev.namelessnanashi.fieldwatch.domain.LiveDeviceOrder
 import dev.namelessnanashi.fieldwatch.domain.ListSort
 import dev.namelessnanashi.fieldwatch.domain.StrengthSort
 import dev.namelessnanashi.fieldwatch.domain.ViewMode
@@ -101,8 +102,18 @@ import dev.namelessnanashi.fieldwatch.domain.SitDiff
 import dev.namelessnanashi.fieldwatch.domain.SitDiffPrompt
 import dev.namelessnanashi.fieldwatch.domain.SitPathPlot
 import dev.namelessnanashi.fieldwatch.domain.SitUi
-import dev.namelessnanashi.fieldwatch.radio.ScanRunState
 import dev.namelessnanashi.fieldwatch.radio.RadioPermissions
+import kotlinx.coroutines.CancellationException
+import dev.namelessnanashi.fieldwatch.alert.AlertSounds
+import dev.namelessnanashi.fieldwatch.elevated.DeviceAdmin
+import dev.namelessnanashi.fieldwatch.elevated.ElevatedItem
+import dev.namelessnanashi.fieldwatch.elevated.ElevatedItems
+import dev.namelessnanashi.fieldwatch.elevated.ElevatedShell
+import dev.namelessnanashi.fieldwatch.elevated.ElevatedStatus
+import dev.namelessnanashi.fieldwatch.elevated.RootShell
+import dev.namelessnanashi.fieldwatch.elevated.VectorBridge
+import dev.namelessnanashi.fieldwatch.domain.LiveDeviceOrder
+import dev.namelessnanashi.fieldwatch.radio.ScanRunState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -110,6 +121,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -174,6 +186,18 @@ data class ExportUi(
     val followUpMessage: String? = null,
 )
 
+data class FlockLayerUi(
+    val busy: Boolean = false,
+    val percent: Int = 0,
+    val processing: Boolean = false,
+    val savedAt: Long = 0L,
+    val noticeKey: String? = null,
+    val confirm: Boolean = false,
+    val confirmUpdate: Boolean = false,
+    /** False when the saved file is the older Flock-only list. */
+    val fullList: Boolean = true,
+)
+
 data class FieldwatchUi(
     /** False until the first complete configuration, permission, and radio snapshot arrives. */
     val initialized: Boolean = false,
@@ -224,6 +248,12 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
     private val app = application as FieldwatchApp
     private val permissionsOk = MutableStateFlow(RadioPermissions.granted(app))
     val mapKeyRevision: StateFlow<Int> = app.mapKeys.revision
+    val flockIndex: FlockIndex get() = app.flockIndex
+    val flockRevision: StateFlow<Int> = app.flockRevision
+    private val _flockLayer = MutableStateFlow(FlockLayerUi())
+    val flockLayerUi: StateFlow<FlockLayerUi> = _flockLayer.asStateFlow()
+    private val _sensorLayer = MutableStateFlow(FlockLayerUi())
+    val sensorLayerUi: StateFlow<FlockLayerUi> = _sensorLayer.asStateFlow()
     private val _mapNotice = MutableStateFlow<MapKeyNotice?>(null)
     val mapNotice: StateFlow<MapKeyNotice?> = _mapNotice
     private var silencedMapNotice: MapKeyNotice? = null
@@ -255,14 +285,27 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
     val sitPath: StateFlow<SitPathPlot.Model?> = _sitPath
     private val _pathTiles = MutableStateFlow<List<PathTiles.Tile>>(emptyList())
     val pathTiles: StateFlow<List<PathTiles.Tile>> = _pathTiles
+    private val _pathZoomIn = MutableStateFlow(false)
+    val pathZoomIn: StateFlow<Boolean> = _pathZoomIn
     private val _livePathTiles = MutableStateFlow<List<PathTiles.Tile>>(emptyList())
     val livePathTiles: StateFlow<List<PathTiles.Tile>> = _livePathTiles
-    private var livePathTileJob: Job? = null
-    private var livePathTileKey: String? = null
+    private val _livePathZoomIn = MutableStateFlow(false)
+    val livePathZoomIn: StateFlow<Boolean> = _livePathZoomIn
+    private val liveFlight = MapFlight()
     private val _huntTiles = MutableStateFlow<List<PathTiles.Tile>>(emptyList())
     val huntTiles: StateFlow<List<PathTiles.Tile>> = _huntTiles
-    private var huntTileJob: Job? = null
-    private var huntTileKey: String? = null
+    private val _huntZoomIn = MutableStateFlow(false)
+    val huntZoomIn: StateFlow<Boolean> = _huntZoomIn
+    private val huntFlight = MapFlight()
+    private val pathFlight = MapFlight()
+    /** A finger is holding Reports → Path. The fitted tile load must not replace that picture. */
+    @Volatile private var sitPathHeld = false
+    private var livePrefetchJob: Job? = null
+    private var livePrefetchKey: String? = null
+    private var livePrefetchCourse = Double.NaN
+    private var huntPrefetchJob: Job? = null
+    private var huntPrefetchKey: String? = null
+    private var huntPrefetchCourse = Double.NaN
     private val _pathAircraftTiles = MutableStateFlow<List<List<PathTiles.Tile>>>(emptyList())
     val pathAircraftTiles: StateFlow<List<List<PathTiles.Tile>>> = _pathAircraftTiles
     @Volatile private var pathRadios: List<Sighting> = emptyList()
@@ -326,6 +369,10 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
     private val huntTrail = MutableStateFlow<List<GpsSample>>(emptyList())
     /** Radio whose cloud is kept after leaving Hunt. Reset or a new radio replaces it. */
     private var carriedHuntKey: String? = null
+    /** Cloud already on the map when this session opened. New hears append after it. */
+    private var huntBase = emptyList<GpsSample>()
+    /** A walk that was not on a map when Hunt closed. Coming back continues it. */
+    private var huntPlain: HuntPlain? = null
     private val _outlineOpenClasses = MutableStateFlow<Set<String>>(emptySet())
     val outlineOpenClasses: StateFlow<Set<String>> = _outlineOpenClasses
     private val _outlineOpenSigs = MutableStateFlow<Set<String>>(emptySet())
@@ -584,23 +631,24 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
     )
 
     val hunt: StateFlow<HuntUi> = combine(
-        combine(huntKey, huntStartedAt, huntPeakRssi, huntSamples, huntTrail) { key, started, peak, samples, trail ->
-            arrayOf(key, started, peak, samples, trail)
+        combine(huntKey, huntStartedAt, huntPeakRssi, huntSamples, app.huntCloud) { key, started, peak, samples, cloud ->
+            arrayOf(key, started, peak, samples, cloud)
         },
         app.devices.devices,
         clock,
-        app.huntPlace,
-    ) { bits, devices, now, place ->
+        app.huntPose,
+    ) { bits, devices, now, pose ->
         val key = bits[0] as String?
         val started = bits[1] as Long
         val peak = bits[2] as Int
         @Suppress("UNCHECKED_CAST")
         val samples = bits[3] as List<RssiSample>
         @Suppress("UNCHECKED_CAST")
-        val trail = bits[4] as List<GpsSample>
+        val cloud = bits[4] as List<GpsSample>
         if (key == null) return@combine HuntUi()
         val device = devices.firstOrNull { it.key == key }
-        val fix = place ?: app.huntFix(now)
+        val fix = pose?.let { it.lat to it.lon } ?: app.huntFix(now)
+        val shown = HuntHeat.shown(huntBase, cloud)
         HuntUi(
             active = true,
             device = device,
@@ -609,9 +657,12 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
             peakRssi = peak,
             samples = samples,
             lastSeen = device?.lastSeen ?: 0L,
-            trail = trail,
+            trail = shown,
             hereLat = fix?.first,
             hereLon = fix?.second,
+            onGlobe = pose?.onGlobe == true,
+            uncertaintyM = pose?.uncertaintyM ?: 0.0,
+            holdFlat = pose?.holdFlat == true,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HuntUi())
 
@@ -626,6 +677,18 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     init {
+        viewModelScope.launch(Dispatchers.IO) {
+            val header = FlockFiles.peek(app.filesDir, SensorList.PLATES)
+            if (header != null) {
+                _flockLayer.update {
+                    it.copy(savedAt = header.savedAt, fullList = header.version >= FlockFiles.ALL_PLATES)
+                }
+            }
+            val other = FlockFiles.peek(app.filesDir, SensorList.OTHER)
+            if (other != null) {
+                _sensorLayer.update { it.copy(savedAt = other.savedAt, fullList = true) }
+            }
+        }
         armLivePath()
         ContextCompat.registerReceiver(
             app,
@@ -670,17 +733,15 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
                 key to devices.firstOrNull { it.key == key }
             }.collect { (key, device) ->
                 if (key == null || device == null) return@collect
+                val rssi = Rssi.lastMeasured(device.rssi, device.rssiHistory) ?: return@collect
+                val now = System.currentTimeMillis()
+                // Remember the strength for the next place. Do not repaint a spot already saved.
+                if (now - device.lastSeen <= Hunt.QUIET_MS) app.armHuntRssi(rssi, now)
                 val last = huntSamples.value.lastOrNull()
                 if (last != null && device.lastSeen <= last.at) return@collect
-                val sample = RssiSample(device.lastSeen, device.rssi)
+                val sample = RssiSample(device.lastSeen, rssi)
                 huntSamples.update { (it + sample).takeLast(120) }
-                if (device.rssi > huntPeakRssi.value) huntPeakRssi.value = device.rssi
-                val fix = app.huntFix()
-                if (fix != null) {
-                    huntTrail.update {
-                        HuntHeat.note(it, fix.first, fix.second, device.rssi, device.lastSeen)
-                    }
-                }
+                if (rssi > huntPeakRssi.value) huntPeakRssi.value = rssi
             }
         }
         viewModelScope.launch {
@@ -803,7 +864,16 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
     fun startHunt(device: Sighting, fresh: Boolean = false) {
         val now = System.currentTimeMillis()
         val resume = HuntHeat.resumes(carriedHuntKey, device.key, fresh)
-        app.beginHuntMotion()
+        val plain = if (resume) huntPlain else null
+        if (!resume) huntPlain = null
+        val kept = huntTrail.value
+        val seed = if (resume && plain == null) {
+            app.huntFix() ?: kept.lastOrNull()?.let { it.lat to it.lon }
+        } else {
+            null
+        }
+        huntBase = if (resume && plain == null) kept else emptyList()
+        app.beginHuntMotion(seed, plain, if (plain != null) kept else emptyList())
         if (resume) {
             if (HuntHeat.level(device.rssi) != null && device.rssi > huntPeakRssi.value) {
                 huntPeakRssi.value = device.rssi
@@ -812,23 +882,26 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
             if (last == null || device.lastSeen > last.at) {
                 huntSamples.value = (huntSamples.value + RssiSample(device.lastSeen, device.rssi)).takeLast(120)
             }
+            huntKey.value = device.key
+            carriedHuntKey = device.key
+            return
         }
+        huntStartedAt.value = now
+        val rssi = Rssi.lastMeasured(device.rssi, device.rssiHistory) ?: device.rssi
+        huntPeakRssi.value = rssi
+        huntSamples.value = listOf(RssiSample(now, rssi))
+        huntTrail.value = emptyList()
+        app.noteHunt(rssi, now)
         huntKey.value = device.key
         carriedHuntKey = device.key
-        if (resume) return
-        huntStartedAt.value = now
-        huntPeakRssi.value = device.rssi
-        huntSamples.value = listOf(RssiSample(now, device.rssi))
-        val fix = app.huntFix()
-        huntTrail.value = if (fix == null) {
-            emptyList()
-        } else {
-            HuntHeat.note(emptyList(), fix.first, fix.second, device.rssi, now)
-        }
-        huntTileJob?.cancel()
-        huntTileJob = null
-        huntTileKey = null
+        huntFlight.pending = null
+        huntFlight.from = null
+        huntFlight.held = false
+        huntFlight.job?.cancel()
+        huntFlight.job = null
+        huntFlight.key = null
         _huntTiles.value = emptyList()
+        _huntZoomIn.value = false
     }
 
     fun resetHunt() {
@@ -837,12 +910,21 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
         startHunt(live, fresh = true)
     }
 
+    /** The step sensor is on this phone, and Hunt does not have permission for it yet. */
+    fun huntNeedsStepPermission(): Boolean = app.huntNeedsStepPermission()
+
+    /** Permission just arrived. Follow the step sensor and leave the walk where it is. */
+    fun useHardwareSteps() = app.useHardwareSteps()
+
     /** Sensors stop. The cloud stays until Reset, or until a different radio is hunted. */
     fun stopHunt() {
+        huntPlain = app.plainSnapshot()
+        huntTrail.value = HuntHeat.shown(huntBase, app.huntCloud.value)
         app.endHuntMotion()
         huntKey.value = null
-        huntTileJob?.cancel()
-        huntTileJob = null
+        huntFlight.pending = null
+        huntFlight.job?.cancel()
+        huntFlight.job = null
     }
 
     fun huntTick(beepOn: Boolean, vibrateOn: Boolean) {
@@ -997,145 +1079,577 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
      * One fix is enough to show the neighborhood. The line still needs a second point.
      * A coarse key skips a fetch while the walk has barely moved.
      */
-    fun refreshLivePathTiles(samples: List<GpsSample>, online: Boolean, basemap: MapBasemap) {
+    fun refreshLivePathTiles(
+        samples: List<GpsSample>,
+        online: Boolean,
+        basemap: MapBasemap,
+        overlays: Set<MapOverlay> = emptySet(),
+    ) {
         if (!online || samples.isEmpty()) {
-            livePathTileJob?.cancel()
-            livePathTileJob = null
-            livePathTileKey = null
+            cancelFlight(liveFlight, live = true)
             if (_livePathTiles.value.isNotEmpty()) _livePathTiles.value = emptyList()
+            _livePathZoomIn.value = false
             return
         }
         if (missingMapKey(basemap)) {
-            livePathTileJob?.cancel()
-            livePathTileJob = null
-            livePathTileKey = "missing:${basemap.name}:${app.mapKeys.revision.value}"
+            cancelFlight(liveFlight, live = true)
+            liveFlight.key = "missing:${basemap.name}:${app.mapKeys.revision.value}"
             _livePathTiles.value = emptyList()
+            _livePathZoomIn.value = false
             noteMapTiles(basemap, MapKeyProblem.MISSING)
             return
         }
         val end = samples.last()
-        val key = tileRequestKey(basemap, "${samples.size / 4}:${(end.lat * 1000.0).roundToInt()}:${(end.lon * 1000.0).roundToInt()}")
-        if (key == livePathTileKey) return
-        livePathTileKey = key
-        livePathTileJob?.cancel()
-        livePathTileJob = viewModelScope.launch(Dispatchers.Default) {
-            val batch = runCatching {
-                PathTiles.load(app, samples, onlineLookup = true, basemap = basemap, mapKey = keyFor(basemap))
-            }.getOrDefault(PathTiles.Batch(problem = if (basemap.needsKey) MapKeyProblem.FAILED else MapKeyProblem.NONE))
-            if (isActive && livePathTileKey == key) {
+        val key = tileRequestKey(
+            basemap,
+            overlays,
+            "${samples.size / 4}:${(end.lat * 1000.0).roundToInt()}:${(end.lon * 1000.0).roundToInt()}",
+        )
+        if (key == liveFlight.key) return
+        liveFlight.pending = null
+        liveFlight.from = null
+        liveFlight.held = false
+        liveFlight.key = key
+        liveFlight.job?.cancel()
+        liveFlight.job = viewModelScope.launch(Dispatchers.Default) {
+            val batch = try {
+                PathTiles.load(
+                    app, samples,
+                    onlineLookup = true,
+                    basemap = basemap,
+                    mapKey = keyFor(basemap),
+                    overlays = overlays,
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                PathTiles.Batch(problem = if (basemap.needsKey) MapKeyProblem.FAILED else MapKeyProblem.NONE)
+            }
+            if (isActive && liveFlight.key == key) {
                 noteMapTiles(basemap, batch.problem)
-                _livePathTiles.value = batch.tiles
+                _livePathZoomIn.value = batch.zoomIn
+                _livePathTiles.value = if (batch.zoomIn) emptyList() else batch.tiles
             }
         }
     }
 
     /**
-     * Tiles for the area the user is looking at. The pictures already on screen stay
-     * until the new ones arrive. The same tile set is not fetched again.
+     * Tiles for the area the user is looking at. Pictures already on screen stay.
+     * A finger move does not cancel the load that is already running.
      */
-    fun refreshLivePathViewport(view: SitPathPlot.Viewport, online: Boolean, basemap: MapBasemap) {
-        if (!online) {
-            refreshLivePathTiles(emptyList(), false, basemap)
-            return
-        }
-        if (missingMapKey(basemap)) {
-            refreshLivePathTiles(emptyList(), false, basemap)
-            noteMapTiles(basemap, MapKeyProblem.MISSING)
-            return
-        }
+    fun refreshLivePathViewport(
+        view: SitPathPlot.Viewport,
+        online: Boolean,
+        basemap: MapBasemap,
+        overlays: Set<MapOverlay> = emptySet(),
+        held: Boolean = false,
+    ) {
         val bounds = view.coveredBounds()
-        val key = tileRequestKey(basemap, "v:" + PathTiles.coverageKey(bounds[0], bounds[1], bounds[2], bounds[3], basemap))
-        if (key.endsWith(":off") || key == livePathTileKey) return
-        livePathTileKey = key
-        livePathTileJob?.cancel()
-        livePathTileJob = viewModelScope.launch(Dispatchers.Default) {
-            val batch = runCatching {
-                PathTiles.loadBounds(
-                    app,
-                    south = bounds[0],
-                    north = bounds[1],
-                    west = bounds[2],
-                    east = bounds[3],
-                    onlineLookup = true,
-                    basemap = basemap,
-                    mapKey = keyFor(basemap),
-                )
-            }.getOrDefault(PathTiles.Batch(problem = if (basemap.needsKey) MapKeyProblem.FAILED else MapKeyProblem.NONE))
-            if (isActive && livePathTileKey == key) {
-                noteMapTiles(basemap, batch.problem)
-                val shown = _livePathTiles.value.firstOrNull()?.basemap
-                if (batch.tiles.isNotEmpty() || shown != basemap) _livePathTiles.value = batch.tiles
-            }
-        }
+        refreshLivePathArea(
+            bounds[0], bounds[1], bounds[2], bounds[3], online, basemap, overlays, held,
+        )
+    }
+
+    /**
+     * Tiles for a south, north, west, east window. Each picture is shown as it arrives.
+     * Tiles that still meet the window, plus one screen around it, stay so a scroll back
+     * is not black. [held] asks for the next screen along the finger once this load ends.
+     */
+    fun refreshLivePathArea(
+        south: Double,
+        north: Double,
+        west: Double,
+        east: Double,
+        online: Boolean,
+        basemap: MapBasemap,
+        overlays: Set<MapOverlay> = emptySet(),
+        held: Boolean = false,
+    ) {
+        refreshArea(
+            liveFlight, _livePathTiles, _livePathZoomIn, live = true,
+            south, north, west, east, online, basemap, overlays, held,
+        )
     }
 
     /** Street tiles under the Hunt cloud. A held view uses [refreshHuntViewport]. */
-    fun refreshHuntTiles(samples: List<GpsSample>, online: Boolean, basemap: MapBasemap) {
+    fun refreshHuntTiles(
+        samples: List<GpsSample>,
+        online: Boolean,
+        basemap: MapBasemap,
+        overlays: Set<MapOverlay> = emptySet(),
+    ) {
         if (!online || samples.isEmpty()) {
-            huntTileJob?.cancel()
-            huntTileJob = null
-            huntTileKey = null
+            cancelFlight(huntFlight, live = false)
             if (_huntTiles.value.isNotEmpty()) _huntTiles.value = emptyList()
+            _huntZoomIn.value = false
             return
         }
         if (missingMapKey(basemap)) {
-            huntTileJob?.cancel()
-            huntTileJob = null
-            huntTileKey = "missing:${basemap.name}:${app.mapKeys.revision.value}"
+            cancelFlight(huntFlight, live = false)
+            huntFlight.key = "missing:${basemap.name}:${app.mapKeys.revision.value}"
             _huntTiles.value = emptyList()
+            _huntZoomIn.value = false
             noteMapTiles(basemap, MapKeyProblem.MISSING)
             return
         }
         val end = samples.last()
-        val key = tileRequestKey(basemap, "${samples.size / 4}:${(end.lat * 1000.0).roundToInt()}:${(end.lon * 1000.0).roundToInt()}")
-        if (key == huntTileKey) return
-        huntTileKey = key
-        huntTileJob?.cancel()
-        huntTileJob = viewModelScope.launch(Dispatchers.Default) {
-            val batch = runCatching {
-                PathTiles.load(app, samples, onlineLookup = true, basemap = basemap, mapKey = keyFor(basemap))
-            }.getOrDefault(PathTiles.Batch(problem = if (basemap.needsKey) MapKeyProblem.FAILED else MapKeyProblem.NONE))
-            if (isActive && huntTileKey == key) {
+        val key = tileRequestKey(
+            basemap,
+            overlays,
+            "${samples.size / 4}:${(end.lat * 1000.0).roundToInt()}:${(end.lon * 1000.0).roundToInt()}",
+        )
+        if (key == huntFlight.key) return
+        huntFlight.pending = null
+        huntFlight.from = null
+        huntFlight.held = false
+        huntFlight.key = key
+        huntFlight.job?.cancel()
+        huntFlight.job = viewModelScope.launch(Dispatchers.Default) {
+            val batch = try {
+                PathTiles.load(
+                    app, samples,
+                    onlineLookup = true,
+                    basemap = basemap,
+                    mapKey = keyFor(basemap),
+                    overlays = overlays,
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                PathTiles.Batch(problem = if (basemap.needsKey) MapKeyProblem.FAILED else MapKeyProblem.NONE)
+            }
+            if (isActive && huntFlight.key == key) {
                 noteMapTiles(basemap, batch.problem)
-                _huntTiles.value = batch.tiles
+                _huntZoomIn.value = batch.zoomIn
+                _huntTiles.value = if (batch.zoomIn) emptyList() else batch.tiles
             }
         }
     }
 
-    fun refreshHuntViewport(view: SitPathPlot.Viewport, online: Boolean, basemap: MapBasemap) {
+    fun refreshHuntViewport(
+        view: SitPathPlot.Viewport,
+        online: Boolean,
+        basemap: MapBasemap,
+        overlays: Set<MapOverlay> = emptySet(),
+        held: Boolean = false,
+    ) {
+        val bounds = view.coveredBounds()
+        refreshHuntArea(
+            bounds[0], bounds[1], bounds[2], bounds[3], online, basemap, overlays, held,
+        )
+    }
+
+    /** Tiles for the hunt picture, including corners that appear when the map turns. */
+    fun refreshHuntArea(
+        south: Double,
+        north: Double,
+        west: Double,
+        east: Double,
+        online: Boolean,
+        basemap: MapBasemap,
+        overlays: Set<MapOverlay> = emptySet(),
+        held: Boolean = false,
+    ) {
+        refreshArea(
+            huntFlight, _huntTiles, _huntZoomIn, live = false,
+            south, north, west, east, online, basemap, overlays, held,
+        )
+    }
+
+    private class MapFlight {
+        var job: Job? = null
+        var key: String? = null
+        var pending: AreaTicket? = null
+        var from: DoubleArray? = null
+        var held: Boolean = false
+    }
+
+    private data class AreaTicket(
+        val south: Double,
+        val north: Double,
+        val west: Double,
+        val east: Double,
+        val basemap: MapBasemap,
+        val overlays: Set<MapOverlay>,
+        val key: String,
+        val held: Boolean,
+    )
+
+    /**
+     * Drop a screen load and anything waiting behind it. Does not recycle bitmaps.
+     * [prefetch] false leaves the live and hunt look-ahead alone. Reports → Path uses that.
+     */
+    private fun cancelFlight(flight: MapFlight, live: Boolean, prefetch: Boolean = true) {
+        flight.pending = null
+        flight.from = null
+        flight.held = false
+        flight.job?.cancel()
+        flight.job = null
+        flight.key = null
+        if (prefetch) {
+            if (live) stopLivePrefetch() else stopHuntPrefetch()
+        }
+    }
+
+    /**
+     * One screen load at a time. A newer window waits, and only the latest wait is kept.
+     * Pictures already shown stay until a tile for that ground replaces them.
+     */
+    private fun refreshArea(
+        flight: MapFlight,
+        tiles: MutableStateFlow<List<PathTiles.Tile>>,
+        zoomIn: MutableStateFlow<Boolean>,
+        live: Boolean,
+        south: Double,
+        north: Double,
+        west: Double,
+        east: Double,
+        online: Boolean,
+        basemap: MapBasemap,
+        overlays: Set<MapOverlay>,
+        held: Boolean,
+        prefetch: Boolean = true,
+    ) {
         if (!online) {
-            refreshHuntTiles(emptyList(), false, basemap)
+            cancelFlight(flight, live, prefetch)
+            tiles.value = emptyList()
+            zoomIn.value = false
             return
         }
         if (missingMapKey(basemap)) {
-            refreshHuntTiles(emptyList(), false, basemap)
+            cancelFlight(flight, live, prefetch)
+            flight.key = "missing:${basemap.name}:${app.mapKeys.revision.value}"
+            tiles.value = emptyList()
+            zoomIn.value = false
             noteMapTiles(basemap, MapKeyProblem.MISSING)
             return
         }
-        val bounds = view.coveredBounds()
-        val key = tileRequestKey(basemap, "v:" + PathTiles.coverageKey(bounds[0], bounds[1], bounds[2], bounds[3], basemap))
-        if (key.endsWith(":off") || key == huntTileKey) return
-        huntTileKey = key
-        huntTileJob?.cancel()
-        huntTileJob = viewModelScope.launch(Dispatchers.Default) {
-            val batch = runCatching {
+        val coverage = PathTiles.coverageKey(south, north, west, east, basemap)
+        val key = tileRequestKey(basemap, overlays, "v:$coverage")
+        if (coverage == "zoom") {
+            cancelFlight(flight, live, prefetch)
+            flight.key = key
+            tiles.value = emptyList()
+            zoomIn.value = true
+            return
+        }
+        if (key.endsWith(":off")) return
+        val ticket = AreaTicket(south, north, west, east, basemap, overlays, key, held)
+        if (key == flight.key) {
+            flight.pending = null
+            flight.held = held
+            if (prefetch && held && flight.job?.isActive != true) {
+                val to = doubleArrayOf(south, north, west, east)
+                val pan = MapLookAhead.panCourse(flight.from, to)
+                if (pan != null) {
+                    flight.from = to
+                    prefetchPan(live, ticket, pan)
+                }
+            }
+            return
+        }
+        if (flight.job?.isActive == true) {
+            flight.pending = ticket
+            if (prefetch) {
+                if (live) stopLivePrefetch() else stopHuntPrefetch()
+            }
+            return
+        }
+        beginArea(flight, tiles, zoomIn, live, ticket, prefetch)
+    }
+
+    private fun beginArea(
+        flight: MapFlight,
+        tiles: MutableStateFlow<List<PathTiles.Tile>>,
+        zoomIn: MutableStateFlow<Boolean>,
+        live: Boolean,
+        ticket: AreaTicket,
+        prefetch: Boolean = true,
+    ) {
+        if (prefetch) {
+            if (live) stopLivePrefetch() else stopHuntPrefetch()
+        }
+        flight.key = ticket.key
+        flight.held = ticket.held
+        flight.job = viewModelScope.launch(Dispatchers.Default) {
+            val batch = try {
                 PathTiles.loadBounds(
                     app,
-                    south = bounds[0],
-                    north = bounds[1],
-                    west = bounds[2],
-                    east = bounds[3],
+                    south = ticket.south,
+                    north = ticket.north,
+                    west = ticket.west,
+                    east = ticket.east,
                     onlineLookup = true,
-                    basemap = basemap,
-                    mapKey = keyFor(basemap),
+                    basemap = ticket.basemap,
+                    mapKey = keyFor(ticket.basemap),
+                    overlays = ticket.overlays,
+                    onTile = { tile ->
+                        withContext(Dispatchers.Main.immediate) {
+                            if (flight.key != ticket.key) return@withContext
+                            zoomIn.value = false
+                            tiles.value = mergeShown(tiles.value, ticket, listOf(tile))
+                        }
+                    },
                 )
-            }.getOrDefault(PathTiles.Batch(problem = if (basemap.needsKey) MapKeyProblem.FAILED else MapKeyProblem.NONE))
-            if (isActive && huntTileKey == key) {
-                noteMapTiles(basemap, batch.problem)
-                val shown = _huntTiles.value.firstOrNull()?.basemap
-                if (batch.tiles.isNotEmpty() || shown != basemap) _huntTiles.value = batch.tiles
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                PathTiles.Batch(
+                    problem = if (ticket.basemap.needsKey) MapKeyProblem.FAILED else MapKeyProblem.NONE,
+                )
+            }
+            if (!isActive || flight.key != ticket.key) return@launch
+            withContext(Dispatchers.Main.immediate) {
+                if (!isActive || flight.key != ticket.key) return@withContext
+                noteMapTiles(ticket.basemap, batch.problem)
+                zoomIn.value = batch.zoomIn
+                if (batch.zoomIn) {
+                    tiles.value = emptyList()
+                } else if (batch.tiles.isNotEmpty() || tiles.value.firstOrNull()?.basemap != ticket.basemap) {
+                    tiles.value = mergeShown(tiles.value, ticket, batch.tiles)
+                }
+                val next = flight.pending
+                flight.pending = null
+                val to = doubleArrayOf(ticket.south, ticket.north, ticket.west, ticket.east)
+                val pan = if (next == null && flight.held) {
+                    MapLookAhead.panCourse(flight.from, to)
+                } else {
+                    null
+                }
+                flight.from = to
+                if (next != null) {
+                    beginArea(flight, tiles, zoomIn, live, next, prefetch)
+                    return@withContext
+                }
+                if (prefetch && pan != null) prefetchPan(live, ticket, pan)
             }
         }
+    }
+
+    /**
+     * Keep tiles that still meet this window plus one screen around it.
+     * The new picture replaces the same ground. Another map's pictures drop.
+     * A closer zoom that sits inside a wider new picture drops too, so the two
+     * do not stack. One older zoom can remain in the gaps.
+     * Bitmaps are not recycled. The canvas may still be drawing the previous list.
+     */
+    private fun mergeShown(
+        shown: List<PathTiles.Tile>,
+        window: AreaTicket,
+        incoming: List<PathTiles.Tile>,
+    ): List<PathTiles.Tile> {
+        if (incoming.isEmpty()) {
+            val shownMap = shown.firstOrNull()?.basemap
+            return if (shownMap != null && shownMap != window.basemap) emptyList() else shown
+        }
+        val latSpan = (window.north - window.south).coerceAtLeast(0.0)
+        val lonSpan = (window.east - window.west).coerceAtLeast(0.0)
+        val keepSouth = window.south - latSpan
+        val keepNorth = window.north + latSpan
+        val keepWest = window.west - lonSpan
+        val keepEast = window.east + lonSpan
+        val fresh = incoming.first()
+        val frontSpan = fresh.east - fresh.west
+        var underlaySpan = Double.NaN
+        for (old in shown.asReversed()) {
+            val span = old.east - old.west
+            if (!PathTiles.sameTileZoom(span, frontSpan)) {
+                underlaySpan = span
+                break
+            }
+        }
+        val kept = ArrayList<PathTiles.Tile>(shown.size + incoming.size)
+        for (old in shown) {
+            if (old.basemap != fresh.basemap || old.overlays != fresh.overlays) continue
+            val inPad = old.north > keepSouth && old.south < keepNorth &&
+                old.east > keepWest && old.west < keepEast
+            val covered = incoming.any { covers(it, old) }
+            if (PathTiles.keepShownPicture(
+                    oldWest = old.west,
+                    oldEast = old.east,
+                    frontSpan = frontSpan,
+                    underlaySpan = underlaySpan,
+                    inPad = inPad,
+                    replaced = incoming.any { sameGround(it, old) },
+                    coveredByWider = covered,
+                )
+            ) {
+                kept += old
+            }
+        }
+        kept += incoming
+        return kept
+    }
+
+    /** [outer] contains [inner], edges included. */
+    private fun covers(outer: PathTiles.Tile, inner: PathTiles.Tile): Boolean {
+        return outer.south <= inner.south && outer.north >= inner.north &&
+            outer.west <= inner.west && outer.east >= inner.east
+    }
+
+    private fun sameGround(a: PathTiles.Tile, b: PathTiles.Tile): Boolean {
+        return a.north == b.north && a.south == b.south && a.west == b.west && a.east == b.east
+    }
+
+    /** Save one screen along a finger drag. This does not move the travel-ahead course. */
+    private fun prefetchPan(live: Boolean, ticket: AreaTicket, courseDeg: Double) {
+        val box = MapLookAhead.boxes(
+            ticket.south, ticket.north, ticket.west, ticket.east, courseDeg, 0.0,
+        ).firstOrNull() ?: return
+        val coverage = PathTiles.coverageKey(box[0], box[1], box[2], box[3], ticket.basemap)
+        if (coverage == "zoom" || coverage == "off") return
+        val key = tileRequestKey(ticket.basemap, ticket.overlays, "pan:$coverage")
+        val currentKey = if (live) livePrefetchKey else huntPrefetchKey
+        val currentJob = if (live) livePrefetchJob else huntPrefetchJob
+        if (key == currentKey && currentJob?.isActive == true) return
+        if (live) {
+            livePrefetchKey = key
+            livePrefetchJob?.cancel()
+        } else {
+            huntPrefetchKey = key
+            huntPrefetchJob?.cancel()
+        }
+        val job = viewModelScope.launch(Dispatchers.Default) {
+            try {
+                PathTiles.prefetch(
+                    app,
+                    south = box[0],
+                    north = box[1],
+                    west = box[2],
+                    east = box[3],
+                    onlineLookup = true,
+                    basemap = ticket.basemap,
+                    mapKey = keyFor(ticket.basemap),
+                    overlays = ticket.overlays,
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+            }
+        }
+        if (live) livePrefetchJob = job else huntPrefetchJob = job
+    }
+
+    /** Save the next screen along the course. A held view does not call this. */
+    fun prefetchLivePath(
+        south: Double,
+        north: Double,
+        west: Double,
+        east: Double,
+        courseDeg: Double,
+        online: Boolean,
+        basemap: MapBasemap,
+        overlays: Set<MapOverlay> = emptySet(),
+    ) {
+        prefetchFollow(
+            live = true,
+            south = south,
+            north = north,
+            west = west,
+            east = east,
+            courseDeg = courseDeg,
+            online = online,
+            basemap = basemap,
+            overlays = overlays,
+        )
+    }
+
+    /** Save the next screen under a following Hunt map. A held view does not call this. */
+    fun prefetchHunt(
+        south: Double,
+        north: Double,
+        west: Double,
+        east: Double,
+        courseDeg: Double,
+        online: Boolean,
+        basemap: MapBasemap,
+        overlays: Set<MapOverlay> = emptySet(),
+    ) {
+        prefetchFollow(
+            live = false,
+            south = south,
+            north = north,
+            west = west,
+            east = east,
+            courseDeg = courseDeg,
+            online = online,
+            basemap = basemap,
+            overlays = overlays,
+        )
+    }
+
+    fun stopLivePrefetch() {
+        livePrefetchJob?.cancel()
+        livePrefetchJob = null
+        livePrefetchKey = null
+    }
+
+    fun stopHuntPrefetch() {
+        huntPrefetchJob?.cancel()
+        huntPrefetchJob = null
+        huntPrefetchKey = null
+    }
+
+    private fun prefetchFollow(
+        live: Boolean,
+        south: Double,
+        north: Double,
+        west: Double,
+        east: Double,
+        courseDeg: Double,
+        online: Boolean,
+        basemap: MapBasemap,
+        overlays: Set<MapOverlay>,
+    ) {
+        if (!online || !courseDeg.isFinite() || missingMapKey(basemap)) {
+            if (live) stopLivePrefetch() else stopHuntPrefetch()
+            return
+        }
+        val prior = if (live) livePrefetchCourse else huntPrefetchCourse
+        val turn = MapLookAhead.turnDegrees(prior, courseDeg)
+        // Keep the earlier course while a turn is still small, so a slow swing can add up.
+        if (!prior.isFinite() || turn <= -MapLookAhead.TURN_DEG || turn >= MapLookAhead.TURN_DEG) {
+            if (live) livePrefetchCourse = courseDeg else huntPrefetchCourse = courseDeg
+        }
+        val boxes = MapLookAhead.boxes(south, north, west, east, courseDeg, turn).filter { box ->
+            val coverage = PathTiles.coverageKey(box[0], box[1], box[2], box[3], basemap)
+            coverage != "zoom" && coverage != "off"
+        }
+        if (boxes.isEmpty()) return
+        val key = boxes.joinToString("|") { box ->
+            PathTiles.coverageKey(box[0], box[1], box[2], box[3], basemap)
+        }.let { tileRequestKey(basemap, overlays, "ahead:$it") }
+        val current = if (live) livePrefetchKey else huntPrefetchKey
+        if (key == current) return
+        if (live) {
+            livePrefetchKey = key
+            livePrefetchJob?.cancel()
+        } else {
+            huntPrefetchKey = key
+            huntPrefetchJob?.cancel()
+        }
+        val job = viewModelScope.launch(Dispatchers.Default) {
+            for (box in boxes) {
+                if (!isActive) return@launch
+                try {
+                    PathTiles.prefetch(
+                        app,
+                        south = box[0],
+                        north = box[1],
+                        west = box[2],
+                        east = box[3],
+                        onlineLookup = true,
+                        basemap = basemap,
+                        mapKey = keyFor(basemap),
+                        overlays = overlays,
+                    )
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                }
+            }
+        }
+        if (live) livePrefetchJob = job else huntPrefetchJob = job
     }
 
     fun mapKey(basemap: MapBasemap): String {
@@ -1153,6 +1667,13 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
             silencedMapNotice = null
             _mapNotice.value = null
             if (missingMapKey(choice)) noteMapTiles(choice, MapKeyProblem.MISSING)
+        }
+    }
+
+    /** Deletes saved map pictures. Plate readers and other sensors stay. */
+    fun clearSavedMaps() {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { PathTiles.clearSaved(app) }
         }
     }
 
@@ -1191,8 +1712,8 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
 
     private fun missingMapKey(basemap: MapBasemap): Boolean = basemap.needsKey && keyFor(basemap) == null
 
-    private fun tileRequestKey(basemap: MapBasemap, body: String): String =
-        "${app.mapKeys.revision.value}:${basemap.name}:$body"
+    private fun tileRequestKey(basemap: MapBasemap, overlays: Set<MapOverlay>, body: String): String =
+        "${app.mapKeys.revision.value}:${basemap.name}:${MapOverlay.key(overlays)}:$body"
 
     private fun noteMapTiles(basemap: MapBasemap, problem: MapKeyProblem) {
         if (problem == MapKeyProblem.NONE || !basemap.needsKey) return
@@ -1691,8 +2212,151 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
             if (prev.alertSoundUri != next.alertSoundUri) app.alerter.setAlertSound(next.alertSoundUri)
             if (prev.ttsVoice != next.ttsVoice) app.alerter.setTtsVoice(next.ttsVoice)
             if (prev.alertLeadInMs != next.alertLeadInMs) app.alerter.setLeadIn(next.alertLeadInMs)
-            if (next.alertVoice || next.gnssVoice) app.alerter.prepareVoice()
+            if (prev.alertOtherAudio != next.alertOtherAudio) app.alerter.setOtherAudio(next.alertOtherAudio)
+            if (next.alertVoice || next.gnssVoice || next.anySensorAlert()) app.alerter.prepareVoice()
+            if (layerAlertsChanged(prev, next)) {
+                app.syncFlock(force = prev.flockLayer != next.flockLayer || prev.sensorLayer != next.sensorLayer)
+            }
         }
+    }
+
+    fun setFlockLayer(on: Boolean) = setSensorList(SensorList.PLATES, on)
+
+    fun setSensorLayer(on: Boolean) = setSensorList(SensorList.OTHER, on)
+
+    fun updateFlockLayer() = updateSensorList(SensorList.PLATES)
+
+    fun updateSensorLayer() = updateSensorList(SensorList.OTHER)
+
+    fun confirmFlockDownload() = confirmSensorDownload(SensorList.PLATES)
+
+    fun confirmSensorDownload() = confirmSensorDownload(SensorList.OTHER)
+
+    fun dismissFlockDownload() = dismissSensorDownload(SensorList.PLATES)
+
+    fun dismissSensorDownload() = dismissSensorDownload(SensorList.OTHER)
+
+    private fun layerFlow(list: SensorList): MutableStateFlow<FlockLayerUi> =
+        if (list == SensorList.PLATES) _flockLayer else _sensorLayer
+
+    private fun setSensorList(list: SensorList, on: Boolean) {
+        val flow = layerFlow(list)
+        if (flow.value.busy) return
+        if (!on) {
+            flow.update { it.copy(noticeKey = null, confirm = false) }
+            updateSettings { if (list == SensorList.PLATES) it.copy(flockLayer = false) else it.copy(sensorLayer = false) }
+            return
+        }
+        if (FlockFiles.peek(app.filesDir, list) != null || flow.value.savedAt > 0L) {
+            flow.update { it.copy(noticeKey = null, confirm = false) }
+            updateSettings { if (list == SensorList.PLATES) it.copy(flockLayer = true) else it.copy(sensorLayer = true) }
+            return
+        }
+        if (!PlaceLookup.online(app)) {
+            flow.update { it.copy(noticeKey = "settings.layer.needs.network", confirm = false) }
+            return
+        }
+        flow.update { it.copy(noticeKey = null, confirm = true, confirmUpdate = false) }
+    }
+
+    private fun updateSensorList(list: SensorList) {
+        val flow = layerFlow(list)
+        val enabled = if (list == SensorList.PLATES) app.config.settings.flockLayer else app.config.settings.sensorLayer
+        if (flow.value.busy || !enabled) return
+        viewModelScope.launch {
+            if (!PlaceLookup.online(app)) {
+                flow.update { it.copy(noticeKey = "settings.layer.needs.network", confirm = false) }
+                return@launch
+            }
+            val header = withContext(Dispatchers.IO) { FlockFiles.peek(app.filesDir, list) }
+            if (list.refillFlockOnly && header != null && header.version < FlockFiles.ALL_PLATES) {
+                flow.update { it.copy(noticeKey = null, confirm = true, confirmUpdate = true) }
+                return@launch
+            }
+            val probe = withContext(Dispatchers.IO) { FlockFiles.probe(app.filesDir, list) }
+            when (probe) {
+                FlockFiles.Probe.SAME ->
+                    flow.update { it.copy(noticeKey = "settings.layer.current", confirm = false) }
+                FlockFiles.Probe.CHANGED ->
+                    flow.update { it.copy(noticeKey = null, confirm = true, confirmUpdate = true) }
+                FlockFiles.Probe.FAILED ->
+                    flow.update { it.copy(noticeKey = "settings.layer.failed.keep", confirm = false) }
+            }
+        }
+    }
+
+    private fun confirmSensorDownload(list: SensorList) {
+        val flow = layerFlow(list)
+        if (flow.value.busy) return
+        flow.update {
+            it.copy(confirm = false, busy = true, percent = 0, processing = false, noticeKey = null)
+        }
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                FlockFiles.download(app.filesDir, list) { pct ->
+                    flow.update { row ->
+                        if (pct >= 100) row.copy(processing = true) else row.copy(percent = pct)
+                    }
+                }
+            }
+            when (result) {
+                is FlockFiles.Fetch.Saved -> {
+                    flow.update {
+                        it.copy(
+                            busy = false,
+                            processing = false,
+                            percent = 100,
+                            savedAt = result.savedAt,
+                            noticeKey = null,
+                            fullList = true,
+                        )
+                    }
+                    val already = if (list == SensorList.PLATES) {
+                        app.config.settings.flockLayer
+                    } else {
+                        app.config.settings.sensorLayer
+                    }
+                    if (already) app.syncFlock(force = true)
+                    else updateSettings {
+                        if (list == SensorList.PLATES) it.copy(flockLayer = true) else it.copy(sensorLayer = true)
+                    }
+                }
+                FlockFiles.Fetch.Current -> {
+                    val had = FlockFiles.peek(app.filesDir, list) != null
+                    flow.update {
+                        it.copy(
+                            busy = false,
+                            processing = false,
+                            noticeKey = if (had) "settings.layer.current" else "settings.layer.failed.first",
+                        )
+                    }
+                }
+                FlockFiles.Fetch.Failed -> {
+                    val had = FlockFiles.peek(app.filesDir, list) != null
+                    flow.update {
+                        it.copy(
+                            busy = false,
+                            processing = false,
+                            noticeKey = if (had) "settings.layer.failed.keep" else "settings.layer.failed.first",
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private fun dismissSensorDownload(list: SensorList) {
+        layerFlow(list).update { it.copy(confirm = false) }
+    }
+
+    private fun layerAlertsChanged(prev: AppSettings, next: AppSettings): Boolean {
+        return prev.flockLayer != next.flockLayer ||
+            prev.sensorLayer != next.sensorLayer ||
+            prev.flockAlert != next.flockAlert ||
+            prev.speedAlert != next.speedAlert ||
+            prev.redAlert != next.redAlert ||
+            prev.gunshotAlert != next.gunshotAlert ||
+            prev.cameraAlert != next.cameraAlert
     }
 
     /** New install tag. A typed callsign stays. Blank keeps meaning Fieldwatch- plus the tag. */
@@ -1885,6 +2549,7 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
     fun restoreDefaults() {
         viewModelScope.launch {
             app.config.restoreDefaults()
+            app.syncFlock()
             app.syncLocationUpdates()
             app.syncArrivals(false)
             app.devices.refresh(
@@ -2324,7 +2989,11 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
         app.alerter.setAlertSound(next.alertSoundUri)
         app.alerter.setTtsVoice(next.ttsVoice)
         app.alerter.setLeadIn(next.alertLeadInMs)
-        if (next.alertVoice || next.gnssVoice) app.alerter.prepareVoice()
+        app.alerter.setOtherAudio(next.alertOtherAudio)
+        if (next.alertVoice || next.gnssVoice || next.anySensorAlert()) app.alerter.prepareVoice()
+        if (layerAlertsChanged(prev, next)) {
+            app.syncFlock(force = prev.flockLayer != next.flockLayer || prev.sensorLayer != next.sensorLayer)
+        }
         _export.value = ExportUi(
             noticeTitle = LanguageText.text("ui.settings.imported"),
             noticeMessage = result.summary(),
@@ -2361,36 +3030,77 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
             forPrint = true,
             basemap = settings.mapBasemap,
             mapKey = keyFor(settings.mapBasemap),
+            overlays = settings.mapOverlays,
         )
         noteMapTiles(settings.mapBasemap, batch.problem)
         return batch.tiles
     }
 
+    /** Pinch or drag on Reports → Path. Letting go reloads the whole-path picture. */
+    fun noteSitPathHold(held: Boolean) {
+        val was = sitPathHeld
+        sitPathHeld = held
+        if (was && !held) {
+            pathFlight.pending = null
+            pathFlight.from = null
+            pathFlight.held = false
+            pathFlight.job?.cancel()
+            pathFlight.job = null
+            pathFlight.key = null
+            refreshSitPath()
+        }
+    }
+
+    /** Tiles for the part of Reports → Path the finger is looking at. */
+    fun refreshSitPathWindow(
+        south: Double,
+        north: Double,
+        west: Double,
+        east: Double,
+    ) {
+        if (!sitPathHeld) return
+        val settings = app.config.settings
+        refreshArea(
+            pathFlight, _pathTiles, _pathZoomIn, live = false,
+            south, north, west, east,
+            settings.onlineLookup, settings.mapBasemap, settings.mapOverlays,
+            held = false,
+            prefetch = false,
+        )
+    }
+
     fun refreshSitPath() {
         viewModelScope.launch(Dispatchers.Default) {
-            val model = buildSitPath()
+            val cameras = withContext(Dispatchers.IO) { cachedCameraReport() }
+            val model = buildSitPath(cameras)
             _sitPath.value = model
             val settings = app.config.settings
             if (!settings.onlineLookup) {
                 _pathTiles.value = emptyList()
                 _pathAircraftTiles.value = emptyList()
+                _pathZoomIn.value = false
                 return@launch
             }
             val phone = Geo.despikePath(model.samples).let { if (it.size >= 2) it else model.samples }
             val walk = phone + model.craft.flatMap { it.samples }
-            _pathTiles.value = if (walk.isNotEmpty()) {
+            if (walk.isEmpty()) {
+                if (!sitPathHeld) {
+                    _pathTiles.value = emptyList()
+                    _pathZoomIn.value = false
+                }
+            } else if (!sitPathHeld) {
                 val batch = runCatching {
                     PathTiles.load(
                         app, walk,
                         onlineLookup = settings.onlineLookup,
                         basemap = settings.mapBasemap,
                         mapKey = keyFor(settings.mapBasemap),
+                        overlays = settings.mapOverlays,
                     )
                 }.getOrDefault(PathTiles.Batch(problem = if (settings.mapBasemap.needsKey) MapKeyProblem.FAILED else MapKeyProblem.NONE))
                 noteMapTiles(settings.mapBasemap, batch.problem)
-                batch.tiles
-            } else {
-                emptyList()
+                _pathZoomIn.value = batch.zoomIn
+                _pathTiles.value = if (batch.zoomIn) emptyList() else batch.tiles
             }
             _pathAircraftTiles.value = model.aircraftCards.map { card ->
                 val samples = card.craft.flatMap { it.samples }
@@ -2403,6 +3113,7 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
                             onlineLookup = settings.onlineLookup,
                             basemap = settings.mapBasemap,
                             mapKey = keyFor(settings.mapBasemap),
+                            overlays = settings.mapOverlays,
                         )
                     }.getOrDefault(PathTiles.Batch(problem = if (settings.mapBasemap.needsKey) MapKeyProblem.FAILED else MapKeyProblem.NONE))
                     noteMapTiles(settings.mapBasemap, batch.problem)
@@ -2412,7 +3123,7 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    private fun buildSitPath(): SitPathPlot.Model {
+    private fun buildSitPath(cameras: PathCameras.Report): SitPathPlot.Model {
         val now = System.currentTimeMillis()
         val source = app.sits.debriefSource(now)
         val customNames = RadioBookmarks.labels(app.config.watchlist)
@@ -2438,6 +3149,7 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
                 else -> null
             }
             pathRadios = source.devices
+            val tally = PathCameras.tally(raw, cameras.plates, cameras.others, cameras.near)
             val pictures = AircraftTrail.pictures(
                 source.devices.mapNotNull { device ->
                     AircraftTrail.source(
@@ -2457,6 +3169,8 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
                     emptyHint = empty,
                     live = app.sits.ui.value.open != null,
                     gnss = if (samples.isNotEmpty()) SitPathPlot.gnssPins(source.gnss, samples) else emptyList(),
+                    pathCameras = tally.cameras,
+                    pathCameraTally = tally,
                 ),
                 pictures,
             )
@@ -2483,6 +3197,7 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
             SitPathPlot.PlotRadios(emptyList())
         }
         val windowPath = app.operatorPathCopy().filter { it.at >= start }
+        val tally = PathCameras.tally(windowPath, cameras.plates, cameras.others, cameras.near)
         val gnssMarks = app.gnss.marks().filter { it.at >= start || (it.endedAt > 0L && it.endedAt >= start) }
         return AircraftTrail.overlay(
             SitPathPlot.Model(
@@ -2494,6 +3209,8 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
                 emptyHint = empty,
                 live = true,
                 gnss = if (samples.isNotEmpty()) SitPathPlot.gnssPins(gnssMarks, samples) else emptyList(),
+                pathCameras = tally.cameras,
+                pathCameraTally = tally,
             ),
             AircraftTrail.pictures(
                 devices.mapNotNull { device ->
@@ -2602,6 +3319,49 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
+    private val cameraCacheLock = Any()
+    private var cameraCacheStamp = Long.MIN_VALUE
+    private var cameraCache: PathCameras.Report? = null
+
+    /** Length and time of the two list files. A change reloads them. */
+    private fun cameraStamp(): Long {
+        fun part(list: SensorList): Long {
+            val file = FlockFiles.file(app.filesDir, list)
+            if (!file.isFile) return 0L
+            return file.lastModified() xor file.length()
+        }
+        val plates = part(SensorList.PLATES)
+        val other = part(SensorList.OTHER)
+        return plates xor other.rotateLeft(1) xor if (plates == 0L && other == 0L) 1L else 0L
+    }
+
+    /** Same lists as [cameraReport], kept until a file on disk changes. */
+    private fun cachedCameraReport(): PathCameras.Report {
+        val stamp = cameraStamp()
+        synchronized(cameraCacheLock) {
+            val held = cameraCache
+            if (held != null && stamp == cameraCacheStamp) return held
+        }
+        val fresh = cameraReport()
+        synchronized(cameraCacheLock) {
+            cameraCache = fresh
+            cameraCacheStamp = stamp
+        }
+        return fresh
+    }
+
+    /** Lists saved on this phone. A layer that is off still counts if its file is here. */
+    private fun cameraReport(): PathCameras.Report {
+        val plates = FlockFiles.read(app.filesDir, SensorList.PLATES)?.cameras
+        val others = FlockFiles.read(app.filesDir, SensorList.OTHER)?.cameras
+        val index = FlockIndex()
+        val all = ArrayList<FlockCamera>((plates?.size ?: 0) + (others?.size ?: 0))
+        if (plates != null) all.addAll(plates)
+        if (others != null) all.addAll(others)
+        if (all.isNotEmpty()) index.replace(all)
+        return PathCameras.Report(plates != null, others != null, index::near)
+    }
+
     private fun debriefSubject(doc: DebriefDoc): String =
         if (doc.heading.startsWith("FIELDWATCH SIT")) doc.heading else LanguageText.text("ui.fieldwatch.field.debrief.last")
 
@@ -2633,6 +3393,7 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
             DebriefPlaces.Off
         }
         publishExport(0.32f, LanguageText.text("ui.building.debrief"))
+        val cameras = withContext(Dispatchers.IO) { cachedCameraReport() }
         return withContext(Dispatchers.Default) {
             DebriefReport.document(
                 devices = devices,
@@ -2650,6 +3411,7 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
                 floods = source?.floods ?: app.floodBursts(),
                 gnss = source?.gnss ?: app.gnss.marks(),
                 placeRecords = if (settings.placeWatch) app.places.snapshot() else emptyList(),
+                cameras = cameras,
             ).withDemoMacs(
                 devices.map { it.mac },
                 settings.demoMode,
@@ -2689,6 +3451,7 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
                     DebriefPlaces.Off
                 }
                 publishExport(0.4f, LanguageText.text("ui.building.ai.export.prompt"))
+                val cameras = withContext(Dispatchers.IO) { cachedCameraReport() }
                 val text = withContext(Dispatchers.Default) {
                     val raw = DebriefPrompt.build(
                         devices = devices,
@@ -2705,6 +3468,7 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
                         floods = source?.floods ?: app.floodBursts(),
                         gnss = source?.gnss ?: app.gnss.marks(),
                         placeRecords = if (settings.placeWatch) app.places.snapshot() else emptyList(),
+                        cameras = cameras,
                     )
                     val masked = MacUtil.redactPrivateText(
                         raw,
@@ -3324,7 +4088,13 @@ data class HuntUi(
     val lastSeen: Long = 0L,
     /** Where this phone heard the radio during this hunt. */
     val trail: List<GpsSample> = emptyList(),
-    /** GPS fix for the dot on the cloud. Null when there is no fresh GPS. */
+    /** Where the dot is. A local picture until the walk is placed on a fix. */
     val hereLat: Double? = null,
     val hereLon: Double? = null,
+    /** False while the dot is still a local picture. Streets, tiles, and the place corner stay off. */
+    val onGlobe: Boolean = false,
+    /** Meters. The circle on the dot. Zero hides it. */
+    val uncertaintyM: Double = 0.0,
+    /** The phone has been tilted. Steps are paused. */
+    val holdFlat: Boolean = false,
 )

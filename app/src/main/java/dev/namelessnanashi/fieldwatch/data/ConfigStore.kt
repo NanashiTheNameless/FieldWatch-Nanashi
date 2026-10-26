@@ -23,6 +23,7 @@ import dev.namelessnanashi.fieldwatch.domain.SignaturePack
 import dev.namelessnanashi.fieldwatch.domain.StockCatalogUpdateResult
 import dev.namelessnanashi.fieldwatch.domain.TakInstall
 import dev.namelessnanashi.fieldwatch.domain.WatchTarget
+import dev.namelessnanashi.fieldwatch.domain.withOverlayBasemaps
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -69,7 +70,7 @@ class ConfigStore(context: Context) {
                     _config.value = seeded
                 } else {
                     val patched = TakInstall.ensure(patchBuiltIn(loaded)).let {
-                        it.copy(settings = it.settings.offerLiveTourOnce())
+                        it.copy(settings = it.settings.offerLiveTourOnce().withOverlayBasemaps())
                     }
                     _config.value = patched
                     if (patched != loaded) {
