@@ -27,6 +27,7 @@ import dev.namelessnanashi.fieldwatch.domain.TakInstall
 import java.io.FileDescriptor
 import java.net.DatagramPacket
 import java.net.DatagramSocket
+import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.MulticastSocket
@@ -520,7 +521,8 @@ class TakPublisher(context: Context? = null) {
                         runCatching { sock.timeToLive = 1 }
                         sock.send(packet)
                     }
-                    addr.isLoopbackAddress -> loopbackSock().send(packet)
+                    // The loopback socket is bound to 127.0.0.1; ::1 keeps the unbound unicast socket.
+                    addr is Inet4Address && addr.isLoopbackAddress -> loopbackSock().send(packet)
                     else -> unicastSock().send(packet)
                 }
                 true
