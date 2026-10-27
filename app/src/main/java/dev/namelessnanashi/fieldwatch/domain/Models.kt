@@ -199,6 +199,19 @@ fun spokenWatchClass(
     target: WatchTarget? = null,
 ): String = spokenWatchPhrase(device, fleets, AlertVoiceWhat.CLASS, target)
 
+/**
+ * One spoken line per distinct phrase, in first-heard order, so every alert in a batch is read.
+ * A phrase heard more than once says how many: "Apple AirTags, 3 of them".
+ */
+fun groupSpokenPhrases(phrases: List<String>): List<String> {
+    val counts = LinkedHashMap<String, Int>()
+    for (raw in phrases) {
+        val phrase = raw.trim()
+        if (phrase.isNotEmpty()) counts[phrase] = (counts[phrase] ?: 0) + 1
+    }
+    return counts.map { (phrase, n) -> if (n > 1) "$phrase, $n of them" else phrase }
+}
+
 fun spokenWatchPhrase(
     device: Sighting,
     fleets: List<Fleet>,
