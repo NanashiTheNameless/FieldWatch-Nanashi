@@ -30,18 +30,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.namelessnanashi.fieldwatch.BuildConfig
 import dev.namelessnanashi.fieldwatch.FieldwatchApp
+import dev.namelessnanashi.fieldwatch.radio.WifiRadio
 import dev.namelessnanashi.fieldwatch.domain.GnssCalibration
-import dev.namelessnanashi.fieldwatch.domain.LanguageText
 import dev.namelessnanashi.fieldwatch.domain.ScanPhoneFacts
 import dev.namelessnanashi.fieldwatch.domain.ScanStatus
-import dev.namelessnanashi.fieldwatch.radio.WifiRadio
+import dev.namelessnanashi.fieldwatch.domain.TakDiagFacts
+import dev.namelessnanashi.fieldwatch.domain.TakPublish
 import dev.namelessnanashi.fieldwatch.ui.FieldwatchUi
 import dev.namelessnanashi.fieldwatch.ui.NestedTabInsets
 import dev.namelessnanashi.fieldwatch.ui.NestedTopBar
 import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchActionButton
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.namelessnanashi.fieldwatch.domain.LanguageText
 import dev.namelessnanashi.fieldwatch.ui.theme.OxProto
 import kotlinx.coroutines.delay
 
@@ -69,6 +71,7 @@ fun ScanStatusScreen(
         now = now,
         radiosOnAir = state.wifiNow + state.bleNow,
         gnssRows = gnss.diagRows + GnssCalibration.diagRows(gnssProfile),
+        tak = takDiag(state, app),
     )
     Scaffold(
         contentWindowInsets = NestedTabInsets,
@@ -128,6 +131,21 @@ fun ScanStatusScreen(
             }
         }
     }
+}
+
+internal fun takDiag(state: FieldwatchUi, app: FieldwatchApp): TakDiagFacts {
+    val settings = state.settings
+    val facts = app.tak.loopbackFacts()
+    return TakDiagFacts(
+        enabled = settings.takEnabled && !settings.demoMode,
+        preset = TakPublish.udpPreset(settings.takHost, settings.takPort),
+        port = settings.takPort,
+        open = facts.open,
+        pinned = facts.pinned,
+        bindError = facts.bindError,
+        birth = facts.birth,
+        lastSendOk = facts.lastSendOk,
+    )
 }
 
 internal fun scanPhoneFacts(context: Context, state: FieldwatchUi, now: Long): ScanPhoneFacts {
