@@ -604,7 +604,7 @@ class FieldwatchApp : Application() {
             logs = LogStore(this@FieldwatchApp)
             sits = SitStore(this@FieldwatchApp, scope)
             places = PlaceStore(File(filesDir, "place-memory.json"))
-            tak = TakPublisher()
+            tak = TakPublisher(this@FieldwatchApp)
             gnssRaw = GnssRawFiles(File(filesDir, "gnss-raw"))
             logs.configure(
                 config.settings.logFormat,
