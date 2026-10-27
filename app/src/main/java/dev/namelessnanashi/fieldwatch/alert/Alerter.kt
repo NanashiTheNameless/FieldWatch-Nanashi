@@ -31,6 +31,7 @@ import dev.namelessnanashi.fieldwatch.R
 import dev.namelessnanashi.fieldwatch.domain.AlertOtherAudio
 import dev.namelessnanashi.fieldwatch.domain.AlertVoiceWhat
 import dev.namelessnanashi.fieldwatch.domain.Fleet
+import dev.namelessnanashi.fieldwatch.domain.groupSpokenPhrases
 import dev.namelessnanashi.fieldwatch.domain.MacUtil
 import dev.namelessnanashi.fieldwatch.domain.RadioBookmarks
 import dev.namelessnanashi.fieldwatch.domain.Sighting
@@ -79,14 +80,19 @@ class Alerter(private val context: Context) {
     private var speaking = false
     private var utteranceStarted = false
     private var ttsSpeakTries = 0
+    /** Phrase being spoken or retried. The queue holds the rest, in order. Main thread only. */
     private var pendingSpeak: String? = null
-    private var speakAfterBeep: String? = null
+    private val speechQueue = ArrayDeque<String>()
+    /** Phrases waiting for the alert sound to finish. */
+    private val afterBeepPhrases = ArrayList<String>()
+    /** Bumped on every speak attempt, so a start check left from an earlier attempt does nothing. */
+    private var speakSeq = 0
     private val speakWatchdog = Runnable {
         if (!speaking) return@Runnable
         val retry = pendingSpeak
         speaking = false
         utteranceStarted = false
-        if (retry != null && ttsSpeakTries < 2) speakClassName(retry) else releaseFocusIfIdle()
+        if (retry != null && ttsSpeakTries < 2) startSpeak(retry) else finishPhrase()
     }
     private val _flashes = MutableSharedFlow<String>(extraBufferCapacity = 16)
     val flashes: SharedFlow<String> = _flashes.asSharedFlow()
@@ -147,6 +153,11 @@ class Alerter(private val context: Context) {
         ttsReady = false
         speaking = false
         utteranceStarted = false
+        // A phrase cut off by the switch is spoken again by the new engine once it starts.
+        if (pendingSpeak != null) {
+            ttsSpeakTries = 0
+            ensureTts()
+        }
     }
 
     /** Picks a voice by name. Applies now if the engine is running, otherwise when it starts. */
@@ -280,7 +291,7 @@ class Alerter(private val context: Context) {
         val fleetNames = fleets.associateBy { it.id }
         val mineKeys = RadioBookmarks.mineKeys(watchlist)
         var beepFired = false
-        var voicePhrase: String? = null
+        val voicePhrases = ArrayList<String>()
         if (voiceOn) prepareVoice()
         for (target in watchlist) {
             for (device in onAir) {
@@ -304,23 +315,23 @@ class Alerter(private val context: Context) {
                     beepFired = true
                 }
                 if (beepOn || voiceOn) _flashes.tryEmit(device.key)
-                if (voiceOn && voicePhrase == null) {
-                    voicePhrase = spokenWatchPhrase(device, fleets, voiceWhat, target)
-                }
+                if (voiceOn) voicePhrases += spokenWatchPhrase(device, fleets, voiceWhat, target)
             }
         }
-        if (voicePhrase != null) queueVoice(voicePhrase, afterBeep = beepFired)
+        groupSpokenPhrases(voicePhrases).forEach { queueVoice(it, afterBeep = beepFired) }
     }
 
+    /** Adds a phrase to the speech queue, after the alert sound when one is playing. */
     private fun queueVoice(text: String, afterBeep: Boolean) {
         val phrase = text.trim()
         if (phrase.isEmpty()) return
-        if (afterBeep) {
-            speakAfterBeep = phrase
-        } else {
-            main.post {
-                takeFocus()
-                afterWake { speakClassName(phrase) }
+        main.post {
+            takeFocus()
+            // beep() posted first, so a sound that started is playing now; one that failed is not.
+            if (afterBeep && (beepTrack != null || beepPlayer != null)) {
+                afterBeepPhrases += phrase
+            } else {
+                afterWake { enqueueSpeech(phrase) }
             }
         }
     }
@@ -539,19 +550,19 @@ class Alerter(private val context: Context) {
 
     /** Gives focus back once no alert sound or phrase is playing or queued. */
     private fun releaseFocusIfIdle() {
-        if (beepTrack != null || beepPlayer != null || speakAfterBeep != null) return
-        if (speaking || pendingSpeak != null) return
+        if (beepTrack != null || beepPlayer != null || afterBeepPhrases.isNotEmpty()) return
+        if (speaking || pendingSpeak != null || speechQueue.isNotEmpty()) return
         releaseFocus()
     }
 
     private fun finishBeep() {
-        val phrase = speakAfterBeep
-        if (phrase == null) {
+        if (afterBeepPhrases.isEmpty()) {
             releaseFocusIfIdle()
             return
         }
-        speakAfterBeep = null
-        main.postDelayed({ speakClassName(phrase) }, VOICE_AFTER_TRACK_MS)
+        val phrases = afterBeepPhrases.toList()
+        afterBeepPhrases.clear()
+        main.postDelayed({ phrases.forEach { enqueueSpeech(it) } }, VOICE_AFTER_TRACK_MS)
     }
 
     private fun writeSine(dest: ShortArray, offset: Int, n: Int, sampleRate: Int, freqHz: Double) {
@@ -640,28 +651,39 @@ class Alerter(private val context: Context) {
         }
     }
 
-    /** Speak now, interrupting a phrase already in progress. The engine keeps the line if it is still starting. */
+    /** Speaks next, ahead of queued phrases, without cutting off the phrase being spoken. */
     private fun speakOver(text: String) {
         val phrase = text.trim()
         if (phrase.isEmpty()) return
-        takeFocus()
-        pendingSpeak = phrase
-        ensureTts()
-        if (!ttsReady) return
-        if (speaking) {
-            speaking = false
-            utteranceStarted = false
-        }
-        startSpeak(phrase)
+        enqueueSpeech(phrase, next = true)
     }
 
-    private fun speakClassName(text: String) {
-        val phrase = text.trim()
-        if (phrase.isEmpty()) return
+    /** Queues a phrase; it starts now when nothing is being spoken. Main thread. */
+    private fun enqueueSpeech(phrase: String, next: Boolean = false) {
+        takeFocus()
+        if (next) speechQueue.addFirst(phrase) else speechQueue.addLast(phrase)
+        if (pendingSpeak == null) nextPhrase() else if (tts == null) ensureTts()
+    }
+
+    private fun nextPhrase() {
+        val phrase = speechQueue.removeFirstOrNull()
         pendingSpeak = phrase
+        ttsSpeakTries = 0
+        if (phrase == null) {
+            releaseFocusIfIdle()
+            return
+        }
         ensureTts()
-        if (!ttsReady) return
-        startSpeak(phrase)
+        if (ttsReady) startSpeak(phrase)
+    }
+
+    /** The current phrase finished, failed, or was given up on. Main thread. */
+    private fun finishPhrase() {
+        main.removeCallbacks(speakWatchdog)
+        speakSeq++
+        speaking = false
+        utteranceStarted = false
+        nextPhrase()
     }
 
     private fun ensureTts() {
@@ -670,6 +692,7 @@ class Alerter(private val context: Context) {
             ttsReady = status == TextToSpeech.SUCCESS
             if (!ttsReady) {
                 main.post {
+                    speechQueue.clear()
                     pendingSpeak = null
                     releaseFocusIfIdle()
                 }
@@ -692,27 +715,14 @@ class Alerter(private val context: Context) {
                     main.postDelayed(speakWatchdog, speakTimeoutMs())
                 }
                 override fun onDone(utteranceId: String?) {
-                    speaking = false
-                    utteranceStarted = false
-                    pendingSpeak = null
-                    ttsSpeakTries = 0
-                    main.removeCallbacks(speakWatchdog)
-                    main.post { releaseFocusIfIdle() }
+                    main.post { finishPhrase() }
                 }
                 @Deprecated("Deprecated in Java")
                 override fun onError(utteranceId: String?) {
-                    speaking = false
-                    utteranceStarted = false
-                    pendingSpeak = null
-                    main.removeCallbacks(speakWatchdog)
-                    main.post { releaseFocusIfIdle() }
+                    main.post { finishPhrase() }
                 }
                 override fun onError(utteranceId: String?, errorCode: Int) {
-                    speaking = false
-                    utteranceStarted = false
-                    pendingSpeak = null
-                    main.removeCallbacks(speakWatchdog)
-                    main.post { releaseFocusIfIdle() }
+                    main.post { finishPhrase() }
                 }
             })
             // Samsung often drops the first speak() if it runs inside onInit.
@@ -811,24 +821,22 @@ class Alerter(private val context: Context) {
         if (ok != TextToSpeech.SUCCESS) {
             speaking = false
             if (ttsSpeakTries < 2) {
-                main.postDelayed({ startSpeak(text) }, TTS_AFTER_INIT_MS)
+                val seq = ++speakSeq
+                main.postDelayed({ if (seq == speakSeq) startSpeak(text) }, TTS_AFTER_INIT_MS)
             } else {
-                pendingSpeak = null
-                ttsSpeakTries = 0
-                releaseFocusIfIdle()
+                finishPhrase()
             }
             return
         }
         main.removeCallbacks(speakWatchdog)
+        val seq = ++speakSeq
         main.postDelayed({
+            if (seq != speakSeq) return@postDelayed
             if (speaking && !utteranceStarted && ttsSpeakTries < 2) {
                 speaking = false
                 startSpeak(text)
             } else if (speaking && !utteranceStarted) {
-                speaking = false
-                pendingSpeak = null
-                ttsSpeakTries = 0
-                releaseFocusIfIdle()
+                finishPhrase()
             }
         }, startWaitMs())
     }
