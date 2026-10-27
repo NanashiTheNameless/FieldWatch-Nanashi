@@ -89,7 +89,7 @@ import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchOutlinedField
 import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchSwitch
 import dev.namelessnanashi.fieldwatch.ui.component.SectionCard
 import dev.namelessnanashi.fieldwatch.ui.component.spectreSectionFill
-import dev.namelessnanashi.fieldwatch.ui.theme.Cyan
+import dev.namelessnanashi.fieldwatch.ui.theme.LocalStatusColors
 import dev.namelessnanashi.fieldwatch.ui.theme.OxProto
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1122,7 +1122,7 @@ private fun PathRadioRow(
                 Text(
                     note,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Cyan,
+                    color = LocalStatusColors.current.cyan,
                 )
             }
         }

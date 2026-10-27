@@ -7,7 +7,10 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
@@ -94,6 +97,47 @@ private val LightColors = lightColorScheme(
     error = Color(0xFFBA1A1A),
 )
 
+/**
+ * Status and signal-strength colors that sit on the app background. Dark keeps the original
+ * bright values tuned for black; light uses darker inks of the same hues that read on white.
+ * Map marks, class colors, and fleet swatches are data colors and do not use this.
+ */
+@Immutable
+data class StatusColors(
+    val healthy: Color,
+    val amber: Color,
+    val cyan: Color,
+    val signalStrong: Color,
+    val signalGood: Color,
+    val signalFair: Color,
+    val signalWeak: Color,
+    val trendFlat: Color,
+)
+
+private val DarkStatus = StatusColors(
+    healthy = Healthy,
+    amber = Amber,
+    cyan = Cyan,
+    signalStrong = Healthy,
+    signalGood = Amber,
+    signalFair = Color(0xFFFF8A4C),
+    signalWeak = SignalRed,
+    trendFlat = Color(0xFF8A93A0),
+)
+
+private val LightStatus = StatusColors(
+    healthy = Color(0xFF1B7F4B),
+    amber = Color(0xFF8A5A00),
+    cyan = Color(0xFF0277BD),
+    signalStrong = Color(0xFF1B7F4B),
+    signalGood = Color(0xFF8A5A00),
+    signalFair = Color(0xFFC2410C),
+    signalWeak = AccentActive,
+    trendFlat = Color(0xFF5F6B78),
+)
+
+val LocalStatusColors = staticCompositionLocalOf { DarkStatus }
+
 /** 0xProto, the app-wide font. OFL-1.1, see assets/licenses/0xProto-OFL.txt. */
 val OxProto = FontFamily(
     Font(R.font.oxproto_regular, FontWeight.Normal),
@@ -145,9 +189,11 @@ fun FieldwatchTheme(
             }
         }
     }
-    MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
-        typography = AppTypography,
-        content = content,
-    )
+    CompositionLocalProvider(LocalStatusColors provides if (darkTheme) DarkStatus else LightStatus) {
+        MaterialTheme(
+            colorScheme = if (darkTheme) DarkColors else LightColors,
+            typography = AppTypography,
+            content = content,
+        )
+    }
 }

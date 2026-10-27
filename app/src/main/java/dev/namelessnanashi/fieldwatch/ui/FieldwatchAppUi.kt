@@ -142,7 +142,7 @@ import dev.namelessnanashi.fieldwatch.ui.screen.ReportsScreen
 import dev.namelessnanashi.fieldwatch.ui.screen.ScanStatusScreen
 import dev.namelessnanashi.fieldwatch.ui.screen.SettingsScreen
 import dev.namelessnanashi.fieldwatch.ui.theme.FieldwatchTheme
-import dev.namelessnanashi.fieldwatch.ui.theme.Healthy
+import dev.namelessnanashi.fieldwatch.ui.theme.LocalStatusColors
 import dev.namelessnanashi.fieldwatch.ui.theme.OxProto
 
 @Composable
@@ -926,7 +926,7 @@ private fun FieldwatchShell(state: FieldwatchUi, vm: FieldwatchViewModel) {
 @Composable
 private fun headerTint(tone: HeaderTone, muted: Color): Color {
     return when (tone) {
-        HeaderTone.HEALTHY -> Healthy
+        HeaderTone.HEALTHY -> LocalStatusColors.current.healthy
         HeaderTone.PROBLEM -> MaterialTheme.colorScheme.error
         HeaderTone.OFF -> muted.copy(alpha = 0.38f)
         HeaderTone.IDLE -> muted

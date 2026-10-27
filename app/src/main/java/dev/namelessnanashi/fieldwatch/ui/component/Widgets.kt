@@ -30,6 +30,7 @@ import dev.namelessnanashi.fieldwatch.domain.Rssi
 import dev.namelessnanashi.fieldwatch.domain.RssiSample
 import dev.namelessnanashi.fieldwatch.domain.RssiTrend
 import dev.namelessnanashi.fieldwatch.domain.Sighting
+import dev.namelessnanashi.fieldwatch.ui.theme.LocalStatusColors
 import dev.namelessnanashi.fieldwatch.ui.theme.OxProto
 import kotlin.math.abs
 
@@ -177,11 +178,15 @@ fun PresenceTrack(
     }
 }
 
-fun rssiColor(rssi: Int): Color = when {
-    rssi >= -55 -> Color(0xFF3DFF9A)
-    rssi >= -70 -> Color(0xFFFFB020)
-    rssi >= -85 -> Color(0xFFFF8A4C)
-    else -> Color(0xFFFF3D5A)
+@Composable
+fun rssiColor(rssi: Int): Color {
+    val status = LocalStatusColors.current
+    return when {
+        rssi >= -55 -> status.signalStrong
+        rssi >= -70 -> status.signalGood
+        rssi >= -85 -> status.signalFair
+        else -> status.signalWeak
+    }
 }
 
 fun RssiTrend.mark(): String = when (this) {
@@ -193,11 +198,15 @@ fun RssiTrend.mark(): String = when (this) {
     RssiTrend.UNKNOWN -> ""
 }
 
-fun RssiTrend.tint(): Color = when (this) {
-    RssiTrend.UP_FAST, RssiTrend.UP -> Color(0xFF3DFF9A)
-    RssiTrend.DOWN, RssiTrend.DOWN_FAST -> Color(0xFFFF3D5A)
-    RssiTrend.FLAT -> Color(0xFF8A93A0)
-    RssiTrend.UNKNOWN -> Color.Transparent
+@Composable
+fun RssiTrend.tint(): Color {
+    val status = LocalStatusColors.current
+    return when (this) {
+        RssiTrend.UP_FAST, RssiTrend.UP -> status.signalStrong
+        RssiTrend.DOWN, RssiTrend.DOWN_FAST -> status.signalWeak
+        RssiTrend.FLAT -> status.trendFlat
+        RssiTrend.UNKNOWN -> Color.Transparent
+    }
 }
 
 @Composable
