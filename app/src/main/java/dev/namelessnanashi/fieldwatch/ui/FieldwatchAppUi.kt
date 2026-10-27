@@ -13,6 +13,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -112,6 +113,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import dev.namelessnanashi.fieldwatch.domain.AppTheme
 import dev.namelessnanashi.fieldwatch.domain.FieldwatchDisclaimer
 import dev.namelessnanashi.fieldwatch.domain.HeaderTone
 import dev.namelessnanashi.fieldwatch.domain.LanguageText
@@ -140,15 +142,18 @@ import dev.namelessnanashi.fieldwatch.ui.screen.ReportsScreen
 import dev.namelessnanashi.fieldwatch.ui.screen.ScanStatusScreen
 import dev.namelessnanashi.fieldwatch.ui.screen.SettingsScreen
 import dev.namelessnanashi.fieldwatch.ui.theme.FieldwatchTheme
-import dev.namelessnanashi.fieldwatch.ui.theme.Healthy
+import dev.namelessnanashi.fieldwatch.ui.theme.LocalStatusColors
 import dev.namelessnanashi.fieldwatch.ui.theme.OxProto
 
 @Composable
 fun FieldwatchRoot(vm: FieldwatchViewModel, onRequestPermissions: () -> Unit) {
     val state by vm.ui.collectAsStateWithLifecycle()
-    FieldwatchTheme(
-        darkTheme = true,
-    ) {
+    val darkTheme = when (state.settings.appTheme) {
+        AppTheme.DARK -> true
+        AppTheme.LIGHT -> false
+        AppTheme.SYSTEM -> isSystemInDarkTheme()
+    }
+    FieldwatchTheme(darkTheme = darkTheme) {
         if (!state.initialized) {
             StartupLogo()
         } else if (!state.settings.disclaimerOk()) {
@@ -921,7 +926,7 @@ private fun FieldwatchShell(state: FieldwatchUi, vm: FieldwatchViewModel) {
 @Composable
 private fun headerTint(tone: HeaderTone, muted: Color): Color {
     return when (tone) {
-        HeaderTone.HEALTHY -> Healthy
+        HeaderTone.HEALTHY -> LocalStatusColors.current.healthy
         HeaderTone.PROBLEM -> MaterialTheme.colorScheme.error
         HeaderTone.OFF -> muted.copy(alpha = 0.38f)
         HeaderTone.IDLE -> muted

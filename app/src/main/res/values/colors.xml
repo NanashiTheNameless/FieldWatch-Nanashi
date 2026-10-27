@@ -1,3 +1,5 @@
 <resources>
     <color name="ic_launcher_bg">#000000</color>
+    <!-- Window and splash background; values-notnight has the light theme's. -->
+    <color name="window_bg">#000000</color>
 </resources>

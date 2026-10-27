@@ -110,7 +110,7 @@ import dev.namelessnanashi.fieldwatch.ui.component.Sparkline
 import dev.namelessnanashi.fieldwatch.ui.component.TrendMark
 import dev.namelessnanashi.fieldwatch.ui.component.rssiColor
 import dev.namelessnanashi.fieldwatch.ui.theme.AccentActive
-import dev.namelessnanashi.fieldwatch.ui.theme.Cyan
+import dev.namelessnanashi.fieldwatch.ui.theme.LocalStatusColors
 import dev.namelessnanashi.fieldwatch.ui.theme.OxProto
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
@@ -1032,6 +1032,7 @@ private fun outlineRadioRow(
     )
 }
 
+@Composable
 private fun ClassSlice.accent(vm: FieldwatchViewModel): Color {
     val id = signatures.firstOrNull()?.fleetId ?: radios.firstOrNull()?.fleetIds?.firstOrNull()
     return if (id != null) Color(Palette.color(vm.fleetColor(id))) else rssiColor(-80)
@@ -1419,7 +1420,7 @@ private fun FleetNameChips(
             }
         }
         if (observed) {
-            val ink = Cyan
+            val ink = LocalStatusColors.current.cyan
             Surface(
                 shape = RoundedCornerShape(99.dp),
                 color = ink.copy(alpha = 0.22f),

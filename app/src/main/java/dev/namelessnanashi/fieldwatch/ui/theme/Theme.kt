@@ -1,18 +1,25 @@
 package dev.namelessnanashi.fieldwatch.ui.theme
 
+import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import dev.namelessnanashi.fieldwatch.R
 
 /** Default accent: red on black. */
@@ -59,20 +66,77 @@ private val DarkColors = darkColorScheme(
     error = SignalRed,
 )
 
+/**
+ * Light scheme: same red chrome on warm white. Primary is the darker [AccentActive] so red
+ * text and controls keep enough contrast on white. Flat surfaces, like the dark scheme.
+ */
 private val LightColors = lightColorScheme(
-    primary = Color(0xFF0B7A48),
+    primary = AccentActive,
     onPrimary = Color.White,
-    secondary = Color(0xFF9A6400),
+    primaryContainer = Color(0xFFFFDAD6),
+    onPrimaryContainer = Color(0xFF410002),
+    secondary = Color(0xFF8A5A00),
+    onSecondary = Color.White,
     tertiary = Color(0xFF0277BD),
-    background = Color(0xFFF4F6F8),
-    onBackground = Color(0xFF12171C),
+    background = Color(0xFFFFFBFA),
+    onBackground = Color(0xFF1F1515),
     surface = Color.White,
-    onSurface = Color(0xFF12171C),
-    surfaceVariant = Color(0xFFE6EBEF),
-    onSurfaceVariant = Color(0xFF3F4A55),
-    outline = Color(0xFFC5CDD4),
-    error = Color(0xFFB00020),
+    onSurface = Color(0xFF1F1515),
+    surfaceVariant = Color(0xFFF5E6E4),
+    onSurfaceVariant = Color(0xFF5A4442),
+    surfaceTint = Color.White,
+    surfaceDim = Color(0xFFEDE0DE),
+    surfaceBright = Color.White,
+    surfaceContainerLowest = Color.White,
+    surfaceContainerLow = Color(0xFFFFF8F7),
+    surfaceContainer = Color(0xFFFCEFED),
+    surfaceContainerHigh = Color(0xFFF7E9E7),
+    surfaceContainerHighest = Color(0xFFF2E3E1),
+    outline = Color(0xFFB59A97),
+    outlineVariant = Color(0xFFEAD8D6),
+    error = Color(0xFFBA1A1A),
 )
+
+/**
+ * Status and signal-strength colors that sit on the app background. Dark keeps the original
+ * bright values tuned for black; light uses darker inks of the same hues that read on white.
+ * Map marks, class colors, and fleet swatches are data colors and do not use this.
+ */
+@Immutable
+data class StatusColors(
+    val healthy: Color,
+    val amber: Color,
+    val cyan: Color,
+    val signalStrong: Color,
+    val signalGood: Color,
+    val signalFair: Color,
+    val signalWeak: Color,
+    val trendFlat: Color,
+)
+
+private val DarkStatus = StatusColors(
+    healthy = Healthy,
+    amber = Amber,
+    cyan = Cyan,
+    signalStrong = Healthy,
+    signalGood = Amber,
+    signalFair = Color(0xFFFF8A4C),
+    signalWeak = SignalRed,
+    trendFlat = Color(0xFF8A93A0),
+)
+
+private val LightStatus = StatusColors(
+    healthy = Color(0xFF1B7F4B),
+    amber = Color(0xFF8A5A00),
+    cyan = Color(0xFF0277BD),
+    signalStrong = Color(0xFF1B7F4B),
+    signalGood = Color(0xFF8A5A00),
+    signalFair = Color(0xFFC2410C),
+    signalWeak = AccentActive,
+    trendFlat = Color(0xFF5F6B78),
+)
+
+val LocalStatusColors = staticCompositionLocalOf { DarkStatus }
 
 /** 0xProto, the app-wide font. OFL-1.1, see assets/licenses/0xProto-OFL.txt. */
 val OxProto = FontFamily(
@@ -114,9 +178,22 @@ fun FieldwatchTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
-    MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
-        typography = AppTypography,
-        content = content,
-    )
+    // Bars are transparent, so their icons must contrast with the app background.
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as? Activity)?.window ?: return@SideEffect
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightNavigationBars = !darkTheme
+            }
+        }
+    }
+    CompositionLocalProvider(LocalStatusColors provides if (darkTheme) DarkStatus else LightStatus) {
+        MaterialTheme(
+            colorScheme = if (darkTheme) DarkColors else LightColors,
+            typography = AppTypography,
+            content = content,
+        )
+    }
 }

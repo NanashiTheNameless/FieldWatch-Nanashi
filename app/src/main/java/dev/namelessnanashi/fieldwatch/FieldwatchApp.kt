@@ -2,6 +2,7 @@ package dev.namelessnanashi.fieldwatch
 
 import android.Manifest
 import android.app.Application
+import android.app.UiModeManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.hardware.Sensor
@@ -36,6 +37,7 @@ import dev.namelessnanashi.fieldwatch.domain.FlockLatch
 import dev.namelessnanashi.fieldwatch.domain.alertsFor
 import dev.namelessnanashi.fieldwatch.domain.anySensorAlert
 import dev.namelessnanashi.fieldwatch.domain.sensorNotice
+import dev.namelessnanashi.fieldwatch.domain.AppTheme
 import dev.namelessnanashi.fieldwatch.domain.Geo
 import dev.namelessnanashi.fieldwatch.domain.GpsSample
 import dev.namelessnanashi.fieldwatch.domain.Hunt
@@ -549,6 +551,20 @@ class FieldwatchApp : Application() {
     val isReady: Boolean get() = startup.value == StartupState.READY
     suspend fun awaitStartup(): Boolean = startupLoader.awaitReady()
     fun retryStartup() = startupLoader.start()
+
+    /**
+     * Sets this app's night mode with Android, which keeps it across launches. The splash,
+     * window background, and screens drawn before settings load then match the chosen theme.
+     */
+    fun applyTheme(theme: AppTheme) {
+        val mode = when (theme) {
+            AppTheme.DARK -> UiModeManager.MODE_NIGHT_YES
+            AppTheme.LIGHT -> UiModeManager.MODE_NIGHT_NO
+            AppTheme.SYSTEM -> UiModeManager.MODE_NIGHT_AUTO
+        }
+        val ui = getSystemService(UiModeManager::class.java) ?: return
+        runCatching { ui.setApplicationNightMode(mode) }
+    }
     private val gpsListener = LocationListener { loc -> onProviderFix(loc, gps = true) }
     private val netListener = LocationListener { loc -> onProviderFix(loc, gps = false) }
 
@@ -611,6 +627,7 @@ class FieldwatchApp : Application() {
         alerter.setTtsVoice(config.settings.ttsVoice)
         alerter.setLeadIn(config.settings.alertLeadInMs)
         alerter.setOtherAudio(config.settings.alertOtherAudio)
+        applyTheme(config.settings.appTheme)
         syncFlock()
         if (config.settings.alertVoice || config.settings.gnssVoice || config.settings.anySensorAlert()) {
             alerter.prepareVoice()

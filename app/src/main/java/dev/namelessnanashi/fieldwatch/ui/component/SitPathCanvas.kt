@@ -76,7 +76,7 @@ import dev.namelessnanashi.fieldwatch.domain.SignatureClass
 import dev.namelessnanashi.fieldwatch.domain.SitPathPlot
 import dev.namelessnanashi.fieldwatch.ui.ClassGlyphs
 import dev.namelessnanashi.fieldwatch.ui.RadioClassBadge
-import dev.namelessnanashi.fieldwatch.ui.theme.Cyan
+import dev.namelessnanashi.fieldwatch.ui.theme.LocalStatusColors
 import dev.namelessnanashi.fieldwatch.ui.theme.AccentActive
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -141,7 +141,7 @@ fun SitPathCanvas(
     splitStacked: Boolean = false,
 ) {
     val track = MaterialTheme.colorScheme.onSurface
-    val you = Cyan
+    val you = LocalStatusColors.current.cyan
     val glyphs = classGlyphPainters()
     val pilotPainter = rememberVectorPainter(Icons.Outlined.Person)
     val muted = MaterialTheme.colorScheme.onSurfaceVariant

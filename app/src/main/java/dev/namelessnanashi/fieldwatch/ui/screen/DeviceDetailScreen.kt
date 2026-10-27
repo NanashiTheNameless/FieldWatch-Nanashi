@@ -78,8 +78,7 @@ import dev.namelessnanashi.fieldwatch.ui.component.PresenceTrack
 import dev.namelessnanashi.fieldwatch.ui.component.Sparkline
 import dev.namelessnanashi.fieldwatch.ui.component.StickyHeight
 import dev.namelessnanashi.fieldwatch.ui.component.rssiColor
-import dev.namelessnanashi.fieldwatch.ui.theme.Amber
-import dev.namelessnanashi.fieldwatch.ui.theme.Cyan
+import dev.namelessnanashi.fieldwatch.ui.theme.LocalStatusColors
 import dev.namelessnanashi.fieldwatch.ui.theme.OxProto
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -706,7 +705,7 @@ private fun FamilyCard(hint: SignatureFamilyHint) {
     val scheme = MaterialTheme.colorScheme
     val container = when (hint.verdict) {
         FamilyVerdict.STRONG -> scheme.primaryContainer
-        FamilyVerdict.POSSIBLE -> Amber.copy(alpha = 0.22f)
+        FamilyVerdict.POSSIBLE -> LocalStatusColors.current.amber.copy(alpha = 0.22f)
         FamilyVerdict.SINGLE, FamilyVerdict.TAGGED -> scheme.surfaceVariant.copy(alpha = 0.55f)
     }
     val onContainer = when (hint.verdict) {
@@ -790,7 +789,7 @@ private fun ObserverNotesCard(
     saveEnabled: Boolean,
     saved: Boolean,
 ) {
-    val ink = Cyan
+    val ink = LocalStatusColors.current.cyan
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -858,7 +857,7 @@ private fun ObserverNotesCard(
 @Composable
 private fun ExtraAttentionCard(notes: List<Pair<String, String>>) {
     if (notes.isEmpty()) return
-    val warn = Amber
+    val warn = LocalStatusColors.current.amber
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
