@@ -676,6 +676,11 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
         super.onCleared()
     }
 
+    // Above init: its coroutines can reach cachedCameraReport() before later fields are assigned.
+    private val cameraCacheLock = Any()
+    private var cameraCacheStamp = Long.MIN_VALUE
+    private var cameraCache: PathCameras.Report? = null
+
     init {
         viewModelScope.launch(Dispatchers.IO) {
             val header = FlockFiles.peek(app.filesDir, SensorList.PLATES)
@@ -3319,9 +3324,6 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    private val cameraCacheLock = Any()
-    private var cameraCacheStamp = Long.MIN_VALUE
-    private var cameraCache: PathCameras.Report? = null
 
     /** Length and time of the two list files. A change reloads them. */
     private fun cameraStamp(): Long {
