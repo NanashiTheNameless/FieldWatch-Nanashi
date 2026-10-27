@@ -1,0 +1,4 @@
+<resources>
+    <!-- Light theme background, matching LightColors.background. -->
+    <color name="window_bg">#FFFBFA</color>
+</resources>

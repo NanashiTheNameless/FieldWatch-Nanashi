@@ -2218,6 +2218,7 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
             if (prev.ttsVoice != next.ttsVoice) app.alerter.setTtsVoice(next.ttsVoice)
             if (prev.alertLeadInMs != next.alertLeadInMs) app.alerter.setLeadIn(next.alertLeadInMs)
             if (prev.alertOtherAudio != next.alertOtherAudio) app.alerter.setOtherAudio(next.alertOtherAudio)
+            if (prev.appTheme != next.appTheme) app.applyTheme(next.appTheme)
             if (next.alertVoice || next.gnssVoice || next.anySensorAlert()) app.alerter.prepareVoice()
             if (layerAlertsChanged(prev, next)) {
                 app.syncFlock(force = prev.flockLayer != next.flockLayer || prev.sensorLayer != next.sensorLayer)
@@ -2995,6 +2996,7 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
         app.alerter.setTtsVoice(next.ttsVoice)
         app.alerter.setLeadIn(next.alertLeadInMs)
         app.alerter.setOtherAudio(next.alertOtherAudio)
+        app.applyTheme(next.appTheme)
         if (next.alertVoice || next.gnssVoice || next.anySensorAlert()) app.alerter.prepareVoice()
         if (layerAlertsChanged(prev, next)) {
             app.syncFlock(force = prev.flockLayer != next.flockLayer || prev.sensorLayer != next.sensorLayer)

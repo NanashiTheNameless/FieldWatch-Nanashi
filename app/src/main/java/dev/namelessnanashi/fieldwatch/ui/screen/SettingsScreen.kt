@@ -98,6 +98,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.namelessnanashi.fieldwatch.alert.TtsEngines
 import dev.namelessnanashi.fieldwatch.alert.VoiceOption
 import dev.namelessnanashi.fieldwatch.domain.AlertOtherAudio
+import dev.namelessnanashi.fieldwatch.domain.AppTheme
 import dev.namelessnanashi.fieldwatch.domain.CatalogSource
 import dev.namelessnanashi.fieldwatch.radio.ScanService
 import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchActionButton
@@ -192,6 +193,21 @@ fun SettingsScreen(
             }
             if (topic == SettingsTopic.APPEARANCE) {
             SectionCard(LanguageText.text("settings.topic.appearance"), showTitle = false) {
+            Text(LanguageText.text("settings.theme.title"), style = MaterialTheme.typography.labelLarge)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AppTheme.entries.forEach { item ->
+                    FieldwatchFilterChip(
+                        selected = settings.appTheme == item,
+                        onClick = { vm.updateSettings { it.copy(appTheme = item) } },
+                        label = { Text(item.label()) },
+                    )
+                }
+            }
+            Text(
+                LanguageText.text("settings.theme.about"),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(LanguageText.text("ui.keep.screen"), Modifier.weight(1f))
                 FieldwatchSwitch(settings.keepScreenOn, { on -> vm.updateSettings { it.copy(keepScreenOn = on) } })

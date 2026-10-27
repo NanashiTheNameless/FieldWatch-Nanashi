@@ -135,6 +135,22 @@ enum class SignatureClass {
     }
 }
 
+/** App color theme. Dark is the OLED black default. */
+@Serializable
+enum class AppTheme {
+    DARK,
+    LIGHT,
+    /** Follows the phone's dark theme setting. */
+    SYSTEM,
+    ;
+
+    fun label(): String = when (this) {
+        DARK -> LanguageText.text("settings.theme.dark")
+        LIGHT -> LanguageText.text("settings.theme.light")
+        SYSTEM -> LanguageText.text("settings.theme.system")
+    }
+}
+
 /** What other playing audio does while an alert sound or phrase plays. */
 @Serializable
 enum class AlertOtherAudio {
@@ -1305,6 +1321,8 @@ data class AppSettings(
     val detectBleRaven: Boolean = true,
     /** On-screen and sit-report MAC tail and GPS mask. Does not change logs or matching. JSON key demoMode. */
     val demoMode: Boolean = false,
+    /** Color theme. Missing JSON is dark. */
+    val appTheme: AppTheme = AppTheme.DARK,
     /**
      * When false (default), Debrief text/PDF inventories omit unmatched rotating BLE.
      * Counts, Extra attention, named signatures, bookmarks, payload pins, and Sit export still include them.
