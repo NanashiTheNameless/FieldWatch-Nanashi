@@ -6,6 +6,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
+        classpath("com.google.guava:guava:33.7.2-jre")
         classpath("org.apache.commons:commons-lang3:3.21.0")
         classpath("org.apache.httpcomponents:httpclient:4.5.14")
         classpath("org.bitbucket.b_c:jose4j:0.9.7")

@@ -123,6 +123,7 @@ dependencies {
     // Lint resolves its tools separately from the root buildscript classpath.
     // Constrain these transitives here as well; none are APK runtime dependencies.
     constraints {
+        add("androidLintTool", "com.google.guava:guava:33.7.2-jre")
         add("androidLintTool", "org.apache.commons:commons-lang3:3.21.0")
         add("androidLintTool", "org.apache.httpcomponents:httpclient:4.5.14")
         add("androidLintTool", "org.bouncycastle:bcpkix-jdk18on:1.86")
