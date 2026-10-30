@@ -8,15 +8,73 @@ I have been using it and iterating on it for a while now, and it has been useful
 
 This is a hobby — something I do for fun in my spare time. There is no Fieldwatch backend. There are no ads. Everything lives on the phone. Source and sideload files are in this repository (`dist/` for the APK, instruction card, and manual).
 
-It was Spectre through 1.2.14. I later learned that name was already in use by another app, so I renamed this one Fieldwatch to keep the two from being mixed up. Same field tool, new application id (`app.fieldwatch`), MIT License. Installing Fieldwatch does not replace Spectre on a phone; it is a separate app.
-
 If you spot an error, something stupid, or have a feature idea — in the app or the documentation — please [open an issue on this repository](https://github.com/OffGridPete/Fieldwatch/issues). This is how we make it better. I hope you find it as useful as I have. I look forward to hearing how it goes.
 
 **Just want to install it?** Download [Fieldwatch.apk](https://github.com/OffGridPete/Fieldwatch/raw/main/dist/Fieldwatch.apk). Instruction card and manual: [instruction.txt](https://github.com/OffGridPete/Fieldwatch/raw/main/dist/instruction.txt), [Fieldwatch_User_Manual.pdf](https://github.com/OffGridPete/Fieldwatch/raw/main/dist/Fieldwatch_User_Manual.pdf). [What’s new](CHANGELOG.md) is the changelog for each build. Leave the APK named `Fieldwatch.apk`. GitHub may say the file is too big to preview — that is their viewer; use Download.
 
+There is a lot of functionality in Fieldwatch. I wrote a comprehensive user guide, and I encourage you to [download it](https://github.com/OffGridPete/Fieldwatch/raw/main/dist/Fieldwatch_User_Manual.pdf) so you can get the most out of the app.
+
 **Stay updated.** Fieldwatch isn't on the Play Store. Install [Obtainium](https://github.com/ImranR98/Obtainium) and add https://github.com/OffGridPete/Fieldwatch. It can download and install a new release for you.
 
 **Official builds.** The only official Fieldwatch builds are the releases in this repo. Other builds and translations are not made or reviewed by Off Grid Pete LLC.
+
+## On the phone
+
+<table>
+  <tr>
+    <td align="center" valign="top" width="33%">
+      <img src="docs/readme/signatures.png" width="200" alt="Signature library grouped by class">
+      <br><strong>Signatures</strong>
+      <br>More than 250 signatures, in classes. Bookmark one to alert, or add your own.
+    </td>
+    <td align="center" valign="top" width="33%">
+      <img src="docs/readme/floods.png" width="200" alt="Pairing flood warning">
+      <br><strong>Bluetooth floods</strong>
+      <br>A burst of new pairing addresses at the same loudness. The advertisement does not name the tool.
+    </td>
+    <td align="center" valign="top" width="33%">
+      <img src="docs/readme/gnss.png" width="200" alt="Possible GNSS interference on the live list">
+      <br><strong>GPS</strong>
+      <br>A line when this phone's GPS changes in a way that can mean interference. It does not say where that came from.
+    </td>
+  </tr>
+  <tr>
+    <td align="center" valign="top">
+      <img src="docs/readme/trusted.png" width="200" alt="Trusted networks warning switches">
+      <br><strong>Trusted networks</strong>
+      <br>A Wi-Fi name you marked can warn if it comes back weaker, from a new maker, or far from its usual places.
+    </td>
+    <td align="center" valign="top">
+      <img src="docs/readme/cameras.png" width="200" alt="Known camera lists">
+      <br><strong>Known cameras</strong>
+      <br>Saved lists of plate readers and other sensors. Those marks sit on the map with the radios the phone hears.
+    </td>
+    <td align="center" valign="top">
+      <img src="docs/readme/map.png" width="200" alt="Live path with radios on the map">
+      <br><strong>Live map</strong>
+      <br>What the phone hears, on the path you walked.
+    </td>
+  </tr>
+  <tr>
+    <td align="center" valign="top">
+      <img src="docs/readme/hunt.png" width="200" alt="Hunt screen with loudness and a heat cloud">
+      <br><strong>Hunt</strong>
+      <br>Walk a Bluetooth radio down by loudness. Warmer color is where this phone heard it stronger.
+    </td>
+    <td align="center" valign="top">
+      <img src="docs/readme/filters.png" width="200" alt="Filter presets">
+      <br><strong>Filters</strong>
+      <br>Cut the list to Wi-Fi or Bluetooth, a strong signal, what moves with you, or what is new.
+    </td>
+    <td align="center" valign="top">
+      <img src="docs/readme/reports.png" width="200" alt="Reports for a sit">
+      <br><strong>Reports</strong>
+      <br>A sit keeps a debrief, a path, an export, and a compare against another sit.
+    </td>
+  </tr>
+</table>
+
+One phone. Wi-Fi, Bluetooth LE, and this phone's GPS. The map and the sit stay on the device.
 
 ## Safety & disclaimer
 
@@ -69,6 +127,10 @@ Uninstall wipes what is on the phone. If you added signatures, changed Settings,
 - Not Bluetooth Classic inquiry (HC-05 / HC-06 will not appear)
 - Not cellular
 - Not direction finding
+
+---
+
+It was Spectre through 1.2.14. I later learned that name was already in use by another app, so I renamed this one Fieldwatch to keep the two from being mixed up. Same field tool, new application id (`app.fieldwatch`), MIT License. Installing Fieldwatch does not replace Spectre on a phone; it is a separate app.
 
 ## Copyright and license
 
