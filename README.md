@@ -9,6 +9,64 @@ Wi-Fi access-point and Bluetooth LE watcher for Android, with optional active Bl
 
 Application id `dev.namelessnanashi.fieldwatch`. It installs alongside upstream `app.fieldwatch` and does not update or replace it.
 
+## On the phone
+
+<table>
+  <tr>
+    <td align="center" valign="top" width="33%">
+      <img src="docs/readme/signatures.png" width="200" alt="Signature library grouped by class">
+      <br><strong>Signatures</strong>
+      <br>More than 250 signatures, in classes. Bookmark one to alert, or add your own.
+    </td>
+    <td align="center" valign="top" width="33%">
+      <img src="docs/readme/floods.png" width="200" alt="Pairing flood warning">
+      <br><strong>Bluetooth floods</strong>
+      <br>A burst of new pairing addresses at the same loudness. The advertisement does not name the tool.
+    </td>
+    <td align="center" valign="top" width="33%">
+      <img src="docs/readme/gnss-warning.png" width="200" alt="Possible GPS interference warning">
+      <br><strong>GPS</strong>
+      <br>A warning when this phone's GPS changes in a way that can mean interference. It does not say where that came from.
+    </td>
+  </tr>
+  <tr>
+    <td align="center" valign="top">
+      <img src="docs/readme/trusted.png" width="200" alt="Trusted networks warning switches">
+      <br><strong>Trusted networks</strong>
+      <br>A Wi-Fi name you marked can warn if it comes back weaker, from a new maker, or far from its usual places.
+    </td>
+    <td align="center" valign="top">
+      <img src="docs/readme/cameras.png" width="200" alt="Known camera lists">
+      <br><strong>Known cameras</strong>
+      <br>Saved lists of plate readers and other sensors. Those marks sit on the map with the radios the phone hears.
+    </td>
+    <td align="center" valign="top">
+      <img src="docs/readme/map.png" width="200" alt="Live path with radios on the map">
+      <br><strong>Live map</strong>
+      <br>What the phone hears, on the path you walked.
+    </td>
+  </tr>
+  <tr>
+    <td align="center" valign="top">
+      <img src="docs/readme/hunt.png" width="200" alt="Hunt screen with loudness and a heat cloud">
+      <br><strong>Hunt</strong>
+      <br>Walk a Bluetooth radio down by loudness. Warmer color is where this phone heard it stronger.
+    </td>
+    <td align="center" valign="top">
+      <img src="docs/readme/filters.png" width="200" alt="Filter presets">
+      <br><strong>Filters</strong>
+      <br>Cut the list to Wi-Fi or Bluetooth, a strong signal, what moves with you, or what is new.
+    </td>
+    <td align="center" valign="top">
+      <img src="docs/readme/reports.png" width="200" alt="Reports for a sit">
+      <br><strong>Reports</strong>
+      <br>A sit keeps a debrief, a path, an export, and a compare against another sit.
+    </td>
+  </tr>
+</table>
+
+One phone. Wi-Fi, Bluetooth LE, and this phone's GPS. The map and the sit stay on the device.
+
 ## Safety & disclaimer
 
 Provided as-is under the MIT License.
