@@ -44,6 +44,7 @@ internal object ChromeLines {
         en("ui.observer.notes.saved", "Observer notes saved", LanguageSlot.CONTROL),
         en("ui.mine.label", "Mine", LanguageSlot.CONTROL),
         en("ui.while.radio.stays.listed", "While on, this radio stays listed and does not beep.", LanguageSlot.BODY),
+        en("ui.mine.rotating.address", "This radio uses a changing address. Mine follows this address only; mark it again after it changes.", LanguageSlot.BODY),
         en("ui.marked.yours.no.beep", "Marked as yours. No beep while this is on. Still listed.", LanguageSlot.BODY),
         en("ui.identity.label", "Identity", LanguageSlot.CONTROL),
         en("ui.radio.label", "Radio", LanguageSlot.CONTROL),

@@ -275,7 +275,7 @@ fun DeviceDetailScreen(
                     saved = notesIsSaved && lastSavedNotes.isNotBlank(),
                 )
             }
-            if (canName) {
+            run {
                 var mineOn by remember(device.key) { mutableStateOf(vm.isMine(device.key)) }
                 Surface(
                     shape = RoundedCornerShape(12.dp),
@@ -290,7 +290,12 @@ fun DeviceDetailScreen(
                         Column(Modifier.weight(1f)) {
                             Text(LanguageText.text("ui.mine.label"), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                             Text(
-                                LanguageText.text("ui.while.radio.stays.listed"),
+                                if (canName) {
+                                    LanguageText.text("ui.while.radio.stays.listed")
+                                } else {
+                                    LanguageText.text("ui.while.radio.stays.listed") + " " +
+                                        LanguageText.text("ui.mine.rotating.address")
+                                },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
