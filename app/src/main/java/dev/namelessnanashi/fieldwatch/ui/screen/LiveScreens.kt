@@ -1,5 +1,7 @@
 package dev.namelessnanashi.fieldwatch.ui.screen
 
+import dev.namelessnanashi.fieldwatch.domain.rowFillsWindow
+
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.animation.animateColorAsState
@@ -9,6 +11,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -200,6 +203,7 @@ fun LivePane(
                 },
             )
         }
+        TrustedAlertDialog(vm)
         if (floodNotice != null && !floodNotice.showDialog) {
             Text(
                 floodNotice.line(),
@@ -302,7 +306,7 @@ fun LivePane(
             val dur = Sit.fmtDuration(openSit.durationMs(now))
             val cap = when {
                 state.sit.memoryTight -> (" " + LanguageText.text("ui.memory.cap"))
-                state.sit.atCap -> " · ${Sit.RADIO_CAP} cap"
+                state.sit.atCap -> " · " + LanguageText.text("live.radio.cap", mapOf("n" to Sit.RADIO_CAP.toString()))
                 else -> ""
             }
             Row(
@@ -312,7 +316,14 @@ fun LivePane(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    "Sit · ${openSit.name} · $dur · ${state.sit.radioCount} radios$cap",
+                    LanguageText.text(
+                        "live.sit.line",
+                        mapOf(
+                            "name" to openSit.name,
+                            "duration" to dur,
+                            "n" to state.sit.radioCount.toString(),
+                        ),
+                    ) + cap,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                     maxLines = 1,
@@ -458,7 +469,11 @@ private fun LivePathSplit(
     val basemap = state.settings.mapBasemap
     val overlays = state.settings.mapOverlays
     val mapKeyRev by vm.mapKeyRevision.collectAsStateWithLifecycle()
-    val mapFrame = MapFrame.resolved(state.settings.mapFrame, state.settings.mapRotate)
+    val pendingFrame by vm.shownMapFrame.collectAsStateWithLifecycle()
+    val mapFrame = MapFrame.onScreen(
+        pendingFrame,
+        MapFrame.resolved(state.settings.mapFrame, state.settings.mapRotate),
+    )
     val tileKey = remember(state.operatorPath, online, basemap, overlays, mapKeyRev) {
         livePathTileKey(state.operatorPath, online, basemap, overlays, mapKeyRev)
     }
@@ -470,6 +485,12 @@ private fun LivePathSplit(
     val courseKey = if (course.isFinite()) (course / MapLookAhead.TURN_DEG).toInt() else Int.MIN_VALUE
     val heldMap = viewport != null
     val screenTip = if (!heldMap && tileWindow == null) tipBucket else ""
+    // The list and the rest of this page draw first. The path lays out on the next frame.
+    var showMap by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        withFrameNanos { }
+        showMap = true
+    }
     LaunchedEffect(tileKey, mapFrame, tileWindowKey, heldMap, screenTip) {
         val held = viewport
         val window = tileWindow
@@ -537,7 +558,9 @@ private fun LivePathSplit(
                 .fillMaxWidth()
                 .clipToBounds(),
         ) {
-            if (state.operatorPath.isEmpty() && model.dots.isEmpty()) {
+            if (!showMap && (state.operatorPath.isNotEmpty() || model.dots.isNotEmpty())) {
+                // Waiting one frame keeps a long path from holding up the list.
+            } else if (state.operatorPath.isEmpty() && model.dots.isEmpty()) {
                 Text(
                     if (state.settings.tagLocation) {
                         LanguageText.text("ui.waiting.gps.fix")
@@ -1038,27 +1061,52 @@ private fun ClassSlice.accent(vm: FieldwatchViewModel): Color {
     return if (id != null) Color(Palette.color(vm.fleetColor(id))) else rssiColor(-80)
 }
 
-private fun LazyListState.indexVisible(index: Int): Boolean {
-    val vis = layoutInfo.visibleItemsInfo
-    if (vis.isEmpty()) return false
-    return index in vis.first().index..vis.last().index
+/** The whole row is inside the list window. A sliver at the bottom does not count. */
+private fun LazyListState.rowInView(index: Int): Boolean {
+    val info = layoutInfo
+    val item = info.visibleItemsInfo.firstOrNull { it.index == index } ?: return false
+    return rowFillsWindow(item.offset, item.size, info.viewportStartOffset, info.viewportEndOffset)
 }
 
 /**
- * Pin the class header (then the signature header) if the radio still
- * fits on screen. Far-down radios fall back to the row itself.
+ * Pin the class header, then the signature header, when the radio still
+ * fits in the list window. The strip under the live map is that window.
+ * Far-down radios fall back to the row itself.
  */
 private suspend fun LazyListState.scrollOutlineToRadio(snap: OutlineSnap) {
     scrollToItem(snap.classIndex)
     withFrameNanos { }
-    if (indexVisible(snap.radioIndex)) return
+    if (rowInView(snap.radioIndex)) return
     val sig = snap.signatureIndex
     if (sig != null) {
         scrollToItem(sig)
         withFrameNanos { }
-        if (indexVisible(snap.radioIndex)) return
+        if (rowInView(snap.radioIndex)) return
     }
-    scrollToItem(snap.radioIndex)
+    scrollRowIntoView(snap.radioIndex)
+}
+
+/**
+ * Bring [index] into the list window. A row that fits is shown whole.
+ * A row taller than the window stays pinned to the top of that window.
+ */
+private suspend fun LazyListState.scrollRowIntoView(index: Int) {
+    if (index < 0) return
+    scrollToItem(index)
+    withFrameNanos { }
+    val info = layoutInfo
+    val item = info.visibleItemsInfo.firstOrNull { it.index == index } ?: return
+    val start = info.viewportStartOffset
+    val end = info.viewportEndOffset
+    val room = end - start
+    if (room <= 0 || item.size >= room || rowInView(index)) return
+    val overflow = item.offset + item.size - end
+    if (overflow > 0) {
+        scroll { scrollBy(overflow.toFloat()) }
+        return
+    }
+    val above = start - item.offset
+    if (above > 0) scroll { scrollBy(-above.toFloat()) }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -1129,7 +1177,7 @@ private fun RankedList(
         if (idx < 0) return@LaunchedEffect
         stickToTop.value = false
         stickToEnd.value = false
-        listState.scrollToItem(idx)
+        listState.scrollRowIntoView(idx)
     }
     LaunchedEffect(listState, pinEnd) {
         snapshotFlow {
@@ -1321,13 +1369,17 @@ fun DeviceRow(
                     if (showNewAge) {
                         val ageSec = ((now - device.firstSeen) / 1000L).coerceAtLeast(0L)
                         Text(
-                            if (ageSec < 60L) "new ${ageSec}s" else "new ${ageSec / 60L}m",
+                            if (ageSec < 60L) {
+                                LanguageText.text("live.age.s", mapOf("n" to "$ageSec"))
+                            } else {
+                                LanguageText.text("live.age.m", mapOf("n" to "${ageSec / 60L}"))
+                            },
                             style = compactLine(10.sp, 11.sp).copy(fontFamily = OxProto),
                             color = MaterialTheme.colorScheme.primary,
                         )
                     } else if (sort == StrengthSort.AVERAGE) {
                         Text(
-                            "avg $rankRssi",
+                            LanguageText.text("live.avg", mapOf("rssi" to "$rankRssi")),
                             style = compactLine(10.sp, 11.sp).copy(fontFamily = OxProto),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -1574,7 +1626,7 @@ private fun TimelineView(
         if (beepSnap.seq <= 0 || beepSnap.key.isBlank()) return@LaunchedEffect
         val idx = devices.indexOfFirst { it.key == beepSnap.key }
         if (idx < 0) return@LaunchedEffect
-        listState.scrollToItem(idx + 1)
+        listState.scrollRowIntoView(idx + 1)
     }
     LazyColumn(
         state = listState,

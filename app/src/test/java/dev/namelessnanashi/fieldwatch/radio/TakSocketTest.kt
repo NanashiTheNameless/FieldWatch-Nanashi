@@ -1,11 +1,11 @@
 package dev.namelessnanashi.fieldwatch.radio
 
 import dev.namelessnanashi.fieldwatch.domain.TakBirth
+import dev.namelessnanashi.fieldwatch.domain.samePhoneReachesAtak
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.lang.reflect.InvocationTargetException
 
 class TakSocketTest {
     @Test
@@ -44,9 +44,10 @@ class TakSocketTest {
     }
 
     @Test
-    fun bindErrorIsTheExceptionName() {
-        val wrapped = InvocationTargetException(NoSuchMethodException("setsockoptIfreq"))
-        assertEquals("NoSuchMethodException", takBindError(wrapped))
-        assertEquals("refused", takBindError(object : Throwable() {}))
+    fun samePhoneReachesAtakOnlyOnWifiOrEthernet() {
+        assertFalse(samePhoneReachesAtak(TakBirth.NONE))
+        assertFalse(samePhoneReachesAtak(TakBirth.CELLULAR))
+        assertTrue(samePhoneReachesAtak(TakBirth.WIFI))
+        assertTrue(samePhoneReachesAtak(TakBirth.ETHERNET))
     }
 }

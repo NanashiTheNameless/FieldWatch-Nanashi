@@ -1195,6 +1195,35 @@ object MapFrame {
         return if (liveCourseDeg.isFinite()) liveCourseDeg else Double.NaN
     }
 
+    /**
+     * Signed degrees from [from] to [to], in (-180, 180]. A turn past north
+     * stays the short way. A missing angle is no turn.
+     */
+    fun shortestTurn(from: Double, to: Double): Double {
+        if (!from.isFinite() || !to.isFinite()) return 0.0
+        var delta = (to - from) % 360.0
+        if (delta > 180.0) delta -= 360.0
+        if (delta <= -180.0) delta += 360.0
+        return delta
+    }
+
+    /**
+     * How long the drawn map spends turning toward the course that just arrived.
+     * A GPS course shows up about once a second. Spreading the turn across that
+     * gap keeps a curve moving. A late course still finishes within a second.
+     */
+    fun courseTurnMs(gapMs: Long): Int {
+        val gap = if (gapMs <= 0L) COURSE_TURN_MIN_MS else gapMs
+        return gap.coerceIn(COURSE_TURN_MIN_MS, COURSE_TURN_MAX_MS).toInt()
+    }
+
+    const val COURSE_TURN_MIN_MS = 200L
+    const val COURSE_TURN_MAX_MS = 1_000L
+
+    /** [pending] is the frame a tap already showed. The saved frame replaces it once the file catches up. */
+    fun onScreen(pending: Int?, saved: Int): Int =
+        if (pending != null && pending != saved) pending else saved
+
     /** Tap. North-up and direction of travel trade places. Zoom stays. */
     fun bearingToggled(current: Int): Int = when (current) {
         NORTH -> TRAVEL
@@ -1425,6 +1454,34 @@ data class AppSettings(
     val gnssInvertAgc: Boolean = false,
     /** Raw GNSS file around a hit. Off until chosen. Privacy mode does not record. */
     val gnssRawLog: Boolean = false,
+    /** Watch trusted Wi-Fi names. Off until chosen. The learned list is a separate file. */
+    val trustedWatch: Boolean = false,
+    /** Alert when a trusted name is seen with a weaker profile. */
+    val trustedDowngrade: Boolean = true,
+    /** Alert when a trusted name is seen from a factory maker that was not learned. */
+    val trustedVendor: Boolean = true,
+    /** Alert when a trusted name is heard far from its usual places. */
+    val trustedAway: Boolean = true,
+    /** Meters. Missing JSON is 1 km. */
+    val trustedAwayMeters: Int = 1_000,
+    /** A quieter hear does not alert. Missing JSON is -85 dBm. */
+    val trustedFloorDbm: Int = -85,
+    /** Learn new access points during the window. Missing JSON is on. */
+    val trustedLearn: Boolean = true,
+    /** Days after the name was trusted. Missing JSON is 3. */
+    val trustedLearnDays: Int = 3,
+    /** Beep for this feature. Not the watchlist beep. */
+    val trustedBeep: Boolean = true,
+    /** Speak a trusted-network alert. Not the watchlist voice. */
+    val trustedVoice: Boolean = true,
+    /** System notification for this feature. Off until chosen. */
+    val trustedShade: Boolean = false,
+    /** Popup, beep, voice, and the sit block start at this confidence. */
+    val trustedAlertFloor: GnssAlertFloor = GnssAlertFloor.MEDIUM,
+    /** TAK pin for a trusted-network alert. Off until chosen. */
+    val trustedTak: Boolean = false,
+    /** How long that pin stays. Missing JSON is 1 hour. */
+    val trustedTakHold: TakGnssHold = TakGnssHold.HOUR,
 )
 
 const val DISCLAIMER_REV = 4
@@ -1598,6 +1655,11 @@ data class Sighting(
     /** Where this phone was at [payloadOpAt]. */
     val payloadOpPhoneLat: Double? = null,
     val payloadOpPhoneLon: Double? = null,
+    /**
+     * Samsung SmartTag privacy ID while the latest FD5A frame is separated.
+     * Not a device key. Null for with owner, unlabeled, and rejected frames.
+     */
+    val smartTagId: String? = null,
 ) {
     val displayName: String
         get() = name.ifBlank { if (hiddenSsid) "<hidden>" else mac }

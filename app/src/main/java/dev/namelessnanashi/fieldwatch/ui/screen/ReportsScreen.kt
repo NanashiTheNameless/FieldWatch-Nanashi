@@ -191,7 +191,14 @@ fun ReportsScreen(
                 if (open != null) {
                     val dur = Sit.fmtDuration(open.durationMs())
                     Text(
-                        "This sit: ${open.name} · $dur · ${state.sit.radioCount} radios",
+                        LanguageText.text(
+                            "reports.this.sit",
+                            mapOf(
+                                "name" to open.name,
+                                "duration" to dur,
+                                "n" to state.sit.radioCount.toString(),
+                            ),
+                        ),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     FieldwatchActionButton(
@@ -234,7 +241,13 @@ fun ReportsScreen(
                         state.sit.closed.forEach { row ->
                             val dur = Sit.fmtDuration(row.durationMs())
                             val extra = if (row.extraAttentionCount > 0) {
-                                " · Extra attention ${row.extraAttentionCount}"
+                                " · " + LanguageText.text(
+                                    "reports.extra",
+                                    mapOf(
+                                        "what" to LanguageText.text("chrome.extra.attention"),
+                                        "n" to row.extraAttentionCount.toString(),
+                                    ),
+                                )
                             } else {
                                 ""
                             }
@@ -242,7 +255,14 @@ fun ReportsScreen(
                                 selected = state.sit.selectedId == row.id,
                                 enabled = pickEnabled,
                                 title = row.name,
-                                subtitle = "${Sit.defaultName(row.startAt)} · $dur · ${row.radioCount} radios$extra",
+                                subtitle = LanguageText.text(
+                                    "reports.sit.row",
+                                    mapOf(
+                                        "when" to Sit.defaultName(row.startAt, LanguageText.dateLocale()),
+                                        "duration" to dur,
+                                        "n" to row.radioCount.toString(),
+                                    ),
+                                ) + extra,
                                 onSelect = { vm.selectSit(row.id) },
                             )
                         }
@@ -672,8 +692,13 @@ fun ReportsScreen(
             if (topic == ReportTopic.LOG) {
             SectionCard(LanguageText.text("ui.log.label"), showTitle = false) {
             Text(
-                "${state.logLines} lines this session  ·  ${vm.logBytes() / 1024} KB on disk" +
-                    if (settings.loggingEnabled) "" else ("  " + LanguageText.text("ui.logging.off")),
+                LanguageText.text(
+                    "reports.log",
+                    mapOf(
+                        "n" to state.logLines.toString(),
+                        "kb" to (vm.logBytes() / 1024).toString(),
+                    ),
+                ) + if (settings.loggingEnabled) "" else ("  " + LanguageText.text("ui.logging.off")),
                 style = MaterialTheme.typography.bodySmall,
             )
             val logRadios by vm.logExportRadios.collectAsStateWithLifecycle()
@@ -725,7 +750,7 @@ fun ReportsScreen(
                 candidates.report?.let { report ->
                     val n = report.families.size
                     Text(
-                        if (n == 1) LanguageText.text("ui.last.search.found.1") else "Last search found $n families.",
+                        LanguageText.text("reports.found", mapOf("n" to n.toString())),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -1131,9 +1156,9 @@ private fun PathRadioRow(
 
 private fun compareThisCaption(state: FieldwatchUi): String {
     val open = state.sit.open
-    if (open != null) return "This sit: ${open.name}."
+    if (open != null) return LanguageText.text("reports.this.name", mapOf("name" to open.name))
     val selected = state.sit.closed.firstOrNull { it.id == state.sit.selectedId }
-    if (selected != null) return "This sit: ${selected.name}."
+    if (selected != null) return LanguageText.text("reports.this.name", mapOf("name" to selected.name))
     return LanguageText.text("ui.sit.last.15.minutes")
 }
 
@@ -1162,7 +1187,7 @@ private fun ReportTopicList(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            "Using $using",
+            LanguageText.text("reports.using", mapOf("name" to using)),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
         )
@@ -1308,8 +1333,8 @@ private fun sitReportCaption(state: FieldwatchUi): String {
     val open = state.sit.open
     val selected = state.sit.closed.firstOrNull { it.id == state.sit.selectedId }
     val window = when {
-        open != null -> "This sit (${open.name})"
-        selected != null -> "Sit: ${selected.name}"
+        open != null -> LanguageText.text("reports.this.window", mapOf("name" to open.name))
+        selected != null -> LanguageText.text("reports.sit.name", mapOf("name" to selected.name))
         else -> LanguageText.text("ui.last.15.minutes.still")
     }
     return "$window."

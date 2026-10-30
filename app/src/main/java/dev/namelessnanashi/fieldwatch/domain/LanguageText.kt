@@ -1,11 +1,16 @@
 package dev.namelessnanashi.fieldwatch.domain
 
+import java.util.Locale
+
 /**
  * The one lookup. Compose and the domain layer both call this.
  * English only: every key resolves to its compiled sentence.
  */
 object LanguageText {
     private val token = Regex("\\{([A-Za-z][A-Za-z0-9_]*)\\}")
+
+    /** Sit names and share timestamps. English only, so always Locale.US. */
+    fun dateLocale(): Locale = Locale.US
 
     fun text(key: String): String = EnglishCopy.byKey[key]?.text ?: key
 

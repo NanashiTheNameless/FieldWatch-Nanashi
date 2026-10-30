@@ -38,6 +38,7 @@ import dev.namelessnanashi.fieldwatch.domain.GnssCopy
 import dev.namelessnanashi.fieldwatch.domain.GnssCue
 import dev.namelessnanashi.fieldwatch.domain.GnssDetector
 import dev.namelessnanashi.fieldwatch.domain.GnssEpoch
+import dev.namelessnanashi.fieldwatch.domain.LanguageText
 import dev.namelessnanashi.fieldwatch.domain.GnssLive
 import dev.namelessnanashi.fieldwatch.domain.GnssMark
 import dev.namelessnanashi.fieldwatch.domain.GnssNotice
@@ -455,7 +456,7 @@ class GnssMonitor(private val app: FieldwatchApp) {
         if (!calibrating) return
         calToken++
         handler?.post {
-            endCalibration(GnssCalUi(rejection = "Calibration stopped. The last result is unchanged."))
+            endCalibration(GnssCalUi(rejection = LanguageText.text("gnss.cal.stopped")))
         }
     }
 
@@ -501,12 +502,12 @@ class GnssMonitor(private val app: FieldwatchApp) {
         calFixes.clear()
         calStart = SystemClock.elapsedRealtime()
         if (!fine()) {
-            endCalibration(GnssCalUi(rejection = "Location permission is missing. Grant it, then try again."))
+            endCalibration(GnssCalUi(rejection = LanguageText.text("gnss.cal.permission")))
             return
         }
         val lm = manager()
         if (lm == null || !lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-            endCalibration(GnssCalUi(rejection = "Turn Location on, stand outside, and try again."))
+            endCalibration(GnssCalUi(rejection = LanguageText.text("gnss.cal.location")))
             return
         }
         probeHardware(lm)

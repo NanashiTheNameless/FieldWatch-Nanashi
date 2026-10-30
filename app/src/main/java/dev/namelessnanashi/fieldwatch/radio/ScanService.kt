@@ -19,15 +19,20 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
-import dev.namelessnanashi.fieldwatch.FieldwatchApp
 import dev.namelessnanashi.fieldwatch.MainActivity
 import dev.namelessnanashi.fieldwatch.R
+import dev.namelessnanashi.fieldwatch.FieldwatchApp
 import dev.namelessnanashi.fieldwatch.domain.LanguageText
+import dev.namelessnanashi.fieldwatch.domain.MacUtil
 import dev.namelessnanashi.fieldwatch.domain.Observation
-import dev.namelessnanashi.fieldwatch.domain.RadioKind
-import dev.namelessnanashi.fieldwatch.domain.ScanIntensity
+import dev.namelessnanashi.fieldwatch.domain.RadioDb
 import dev.namelessnanashi.fieldwatch.domain.TakFlood
 import dev.namelessnanashi.fieldwatch.domain.TakGnss
+import dev.namelessnanashi.fieldwatch.domain.TrustedNets
+import dev.namelessnanashi.fieldwatch.domain.TwinHear
+import dev.namelessnanashi.fieldwatch.domain.RadioKind
+import dev.namelessnanashi.fieldwatch.domain.trustedOpt
+import dev.namelessnanashi.fieldwatch.domain.ScanIntensity
 import dev.namelessnanashi.fieldwatch.domain.detectionPolicy
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -390,6 +395,7 @@ class ScanService : LifecycleService() {
                 }
                 app.sits.noteFloods(app.pairingFlood.bursts())
                 app.sits.ingest(seen, fleets, app.config.watchlist)
+                considerTrusted(app, tagged)
                 if (settings.placeWatch && settings.tagLocation) {
                     app.places.hear(
                         seen,
@@ -419,6 +425,60 @@ class ScanService : LifecycleService() {
         }
         } catch (_: kotlinx.coroutines.channels.ClosedReceiveChannelException) {
             return
+        }
+    }
+
+    /**
+     * Trusted names only. Location comes from the GPS fix, not a network fix on the row.
+     * A quiet or cached hear still goes in so a dismissed episode can keep its clock.
+     */
+    private fun considerTrusted(app: FieldwatchApp, batch: List<Observation>) {
+        if (app.trusted.snapshot().nets.isEmpty()) return
+        val settings = app.config.settings
+        val opt = settings.trustedOpt()
+        val now = System.currentTimeMillis()
+        val fix = app.trustFix(now)
+        val demo = settings.demoMode
+        for (obs in batch) {
+            if (obs.kind != RadioKind.WIFI || obs.hiddenSsid || obs.name.isBlank()) continue
+            val alert = app.trusted.hear(
+                TwinHear(
+                    ssid = obs.name,
+                    bssid = obs.mac,
+                    rssi = obs.rssi,
+                    fresh = obs.fresh,
+                    securityText = obs.facts.security,
+                    channel = obs.channel,
+                    frequencyMhz = obs.frequencyMhz,
+                    vendor = RadioDb.vendorForMac(obs.mac),
+                    lat = fix.lat,
+                    lon = fix.lon,
+                    accuracyM = fix.accuracyM,
+                    locationPaused = fix.paused,
+                ),
+                opt,
+                now,
+            ) ?: continue
+            val sentence = TrustedNets.sentence(alert.ssid, alert.reasons)
+            val note = if (alert.ouiNote) {
+                LanguageText.text("trusted.oui.note", mapOf("oui" to "00:13:37"))
+            } else {
+                null
+            }
+            val body = buildString {
+                append(MacUtil.screenMac(alert.bssid, demo))
+                if (note != null) {
+                    append('\n')
+                    append(note)
+                }
+            }
+            app.alerter.trustedAlert(
+                title = sentence,
+                body = body,
+                phrase = if (alert.voice) sentence else null,
+                beep = alert.beep,
+                shade = alert.shade,
+            )
         }
     }
 
@@ -495,6 +555,11 @@ class ScanService : LifecycleService() {
                 app.config.update { cur ->
                     if (cur.takLegacySelfRetired) cur else cur.copy(takLegacySelfRetired = true)
                 }
+            }
+            val takOn = settings.takEnabled && !settings.demoMode
+            val plan = app.trusted.planCot(settings.trustedOpt(), takOn, System.currentTimeMillis())
+            if (plan.xml.isNotEmpty() && app.tak.sendNow(settings, plan.xml)) {
+                app.trusted.commitCot(plan)
             }
         } catch (e: CancellationException) {
             throw e

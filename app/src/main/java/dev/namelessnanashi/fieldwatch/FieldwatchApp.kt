@@ -28,6 +28,7 @@ import dev.namelessnanashi.fieldwatch.data.LogStore
 import dev.namelessnanashi.fieldwatch.data.MapKeyStore
 import dev.namelessnanashi.fieldwatch.data.PlaceStore
 import dev.namelessnanashi.fieldwatch.data.SitStore
+import dev.namelessnanashi.fieldwatch.data.TrustedNetworkStore
 import dev.namelessnanashi.fieldwatch.domain.CoTravel
 import dev.namelessnanashi.fieldwatch.domain.FilterEngine
 import dev.namelessnanashi.fieldwatch.domain.FlockApproach
@@ -60,6 +61,7 @@ import dev.namelessnanashi.fieldwatch.elevated.ElevatedStatus
 import dev.namelessnanashi.fieldwatch.elevated.ShizukuShell
 import dev.namelessnanashi.fieldwatch.elevated.VectorBridge
 import dev.namelessnanashi.fieldwatch.radio.ScanSession
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -72,6 +74,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import android.util.Log
 import java.io.File
+
+data class TrustFix(
+    val lat: Double?,
+    val lon: Double?,
+    val accuracyM: Float?,
+    val paused: Boolean,
+)
 
 class FieldwatchApp : Application() {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -86,6 +95,8 @@ class FieldwatchApp : Application() {
     lateinit var sits: SitStore
         private set
     lateinit var places: PlaceStore
+        private set
+    lateinit var trusted: TrustedNetworkStore
         private set
     lateinit var alerter: Alerter
         private set
@@ -138,6 +149,20 @@ class FieldwatchApp : Application() {
     /** Meters. NaN when that fix did not say how wide it was. */
     @Volatile
     private var lastGpsAcc = Float.NaN
+
+    /** A fresh GPS fix for trusted-network places. Coarse and paused fixes stay out. */
+    fun trustFix(now: Long = System.currentTimeMillis()): TrustFix {
+        if (!::config.isInitialized || !config.settings.tagLocation) {
+            return TrustFix(null, null, null, paused = true)
+        }
+        val fix = lastGpsFix
+        val acc = lastGpsAcc
+        val at = lastGpsFixAt
+        if (fix == null || !acc.isFinite() || at <= 0L || now - at > 30_000L) {
+            return TrustFix(null, null, null, paused = false)
+        }
+        return TrustFix(fix.first, fix.second, acc, paused = false)
+    }
     /** Course for the map button. NaN until GPS has shown a direction. */
     @Volatile
     var travelDeg: Double = Double.NaN
@@ -604,6 +629,7 @@ class FieldwatchApp : Application() {
             logs = LogStore(this@FieldwatchApp)
             sits = SitStore(this@FieldwatchApp, scope)
             places = PlaceStore(File(filesDir, "place-memory.json"))
+            trusted = TrustedNetworkStore(File(filesDir, "trusted-networks.json"), scope)
             tak = TakPublisher(this@FieldwatchApp)
             gnssRaw = GnssRawFiles(File(filesDir, "gnss-raw"))
             logs.configure(
@@ -613,6 +639,7 @@ class FieldwatchApp : Application() {
             )
             sits.load()
             places.load()
+            trusted.load()
             val sitOpen = sits.ui.value.open != null
             pairingFlood.setSitOpen(sitOpen)
             wifiFlood.setSitOpen(sitOpen)
@@ -621,6 +648,7 @@ class FieldwatchApp : Application() {
         gnss = GnssMonitor(this)
         sits.startFlusher()
         places.startFlusher(scope)
+        trusted.startFlusher()
         syncLocationUpdates()
         alerter.setTtsEngine(config.settings.ttsEngine)
         alerter.setAlertSound(config.settings.alertSoundUri)
@@ -629,7 +657,7 @@ class FieldwatchApp : Application() {
         alerter.setOtherAudio(config.settings.alertOtherAudio)
         applyTheme(config.settings.appTheme)
         syncFlock()
-        if (config.settings.alertVoice || config.settings.gnssVoice || config.settings.anySensorAlert()) {
+        if (config.settings.alertVoice || config.settings.gnssVoice || config.settings.trustedVoice || config.settings.anySensorAlert()) {
             alerter.prepareVoice()
         }
         if (config.filter.arrivalsOnly) {
@@ -969,14 +997,22 @@ class FieldwatchApp : Application() {
         if (!force && flockIndex.loaded) return
         val gen = ++flockLoadGen
         scope.launch(Dispatchers.IO) {
-            val cameras = ArrayList<FlockCamera>()
-            if (showPlates) FlockFiles.read(filesDir, SensorList.PLATES)?.cameras?.let { cameras.addAll(it) }
-            if (showOther) FlockFiles.read(filesDir, SensorList.OTHER)?.cameras?.let { cameras.addAll(it) }
-            if (gen != flockLoadGen) return@launch
-            val now = config.settings
-            if (now.flockLayer != showPlates || now.sensorLayer != showOther) return@launch
-            if (cameras.isEmpty()) flockIndex.markMissing() else flockIndex.replace(cameras)
-            _flockRevision.value = flockIndex.revision
+            try {
+                val cameras = ArrayList<FlockCamera>()
+                if (showPlates) FlockFiles.read(filesDir, SensorList.PLATES)?.cameras?.let { cameras.addAll(it) }
+                if (showOther) FlockFiles.read(filesDir, SensorList.OTHER)?.cameras?.let { cameras.addAll(it) }
+                if (gen != flockLoadGen) return@launch
+                val now = config.settings
+                if (now.flockLayer != showPlates || now.sensorLayer != showOther) return@launch
+                if (cameras.isEmpty()) flockIndex.markMissing() else flockIndex.replace(cameras)
+                _flockRevision.value = flockIndex.revision
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                if (gen != flockLoadGen) return@launch
+                if (!flockIndex.loaded) flockIndex.markMissing()
+                _flockRevision.value = flockIndex.revision
+            }
         }
     }
 
