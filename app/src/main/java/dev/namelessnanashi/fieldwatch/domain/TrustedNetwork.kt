@@ -702,7 +702,7 @@ object TrustedNets {
             open = true,
             dismissed = false,
             confidence = maxOf(existing?.confidence ?: confidence, confidence),
-            notified = if (notify) confidence else existing?.notified ?: confidence,
+            notified = if (notify) confidence else existing.notified,
             rssi = maxOf(existing?.rssi ?: hear.rssi, hear.rssi),
             lat = if (goodFix(hear) && (existing?.lat == null || hear.rssi >= (existing.rssi))) hear.lat else existing?.lat,
             lon = if (goodFix(hear) && (existing?.lat == null || hear.rssi >= (existing.rssi))) hear.lon else existing?.lon,

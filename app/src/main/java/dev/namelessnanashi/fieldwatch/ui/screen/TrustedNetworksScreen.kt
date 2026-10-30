@@ -36,6 +36,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,6 +61,7 @@ import dev.namelessnanashi.fieldwatch.ui.component.SectionCard
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 @Composable
 fun TrustedNetworksPage(vm: FieldwatchViewModel, settings: AppSettings) {
@@ -257,12 +259,8 @@ private fun TrustedList(
 
 @Composable
 private fun TrustedRow(net: TrustedNet, demo: Boolean, onOpen: () -> Unit, onForget: () -> Unit) {
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.EndToStart) onForget()
-            false
-        },
-    )
+    val dismissState = rememberSwipeToDismissBoxState()
+    val scope = rememberCoroutineScope()
     val seen = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US) }
     val last = net.aps.maxOfOrNull { it.lastSeen } ?: 0L
     val count = if (net.aps.size == 1) {
@@ -274,6 +272,11 @@ private fun TrustedRow(net: TrustedNet, demo: Boolean, onOpen: () -> Unit, onFor
     SwipeToDismissBox(
         state = dismissState,
         enableDismissFromStartToEnd = false,
+        // Forget asks first, so the row slides back either way.
+        onDismiss = { value ->
+            if (value == SwipeToDismissBoxValue.EndToStart) onForget()
+            scope.launch { dismissState.reset() }
+        },
         backgroundContent = {
             Box(
                 Modifier

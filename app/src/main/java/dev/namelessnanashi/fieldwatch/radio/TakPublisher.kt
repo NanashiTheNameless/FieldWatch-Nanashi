@@ -625,6 +625,9 @@ class TakPublisher(context: Context? = null) {
         var wifi = false
         var ethernet = false
         var cellular = false
+        // A one-shot look at every link, including a Wi-Fi with no internet that is not the default.
+        // The callback replacement would need a registered listener for a single read.
+        @Suppress("DEPRECATION")
         for (network in cm.allNetworks) {
             val caps = cm.getNetworkCapabilities(network) ?: continue
             if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) wifi = true
