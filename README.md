@@ -33,9 +33,9 @@ There is a lot of functionality in Fieldwatch. I wrote a comprehensive user guid
       <br>A burst of new pairing addresses at the same loudness. The advertisement does not name the tool.
     </td>
     <td align="center" valign="top" width="33%">
-      <img src="docs/readme/gnss.png" width="200" alt="Possible GNSS interference on the live list">
+      <img src="docs/readme/gnss.png" width="200" alt="Possible GPS interference warning">
       <br><strong>GPS</strong>
-      <br>A line when this phone's GPS changes in a way that can mean interference. It does not say where that came from.
+      <br>A warning when this phone's GPS changes in a way that can mean interference. It does not say where that came from.
     </td>
   </tr>
   <tr>
