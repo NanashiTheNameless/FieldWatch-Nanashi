@@ -1848,11 +1848,12 @@ object MacUtil {
         return hex.takeLast(4).toIntOrNull(16) ?: 0
     }
 
-    /** Last three octets as **:**:**. OUI stays. Empty / short strings unchanged. */
+    /** Universal addresses retain their OUI; locally assigned addresses are fully masked. */
     fun screenMac(mac: String, demo: Boolean): String {
         if (!demo || mac.isBlank()) return mac
         val parts = normalize(mac).split(":").filter { it.isNotEmpty() }
         if (parts.size < 4) return mac
+        if (isLocallyAdministered(mac)) return parts.joinToString(":") { "**" }
         val keep = parts.size - 3
         return parts.take(keep).joinToString(":") + ":**:**:**"
     }
@@ -1902,7 +1903,7 @@ object MacUtil {
         return out
     }
 
-    /** Privacy-mode report text. MAC tails, known UAS ids, then coordinates. */
+    /** Privacy-mode report text. Private MACs, known UAS ids, then coordinates. */
     fun redactPrivateText(
         text: String,
         macs: Collection<String>,

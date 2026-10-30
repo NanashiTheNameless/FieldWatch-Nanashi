@@ -140,6 +140,14 @@ fun SettingsScreen(
     val importSettings = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri -> uri?.let(vm::importSettingsFromUri) }
+    val saveWatchlist = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) {
+        uri -> uri?.let(vm::saveWatchlistToUri)
+    }
+    val importWatchlist = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) {
+        uri -> uri?.let(vm::importWatchlistFromUri)
+    }
+    val pendingWatchlist by vm.pendingWatchlistImport.collectAsStateWithLifecycle()
+    var replaceWatchlistConflicts by remember(pendingWatchlist) { mutableStateOf(false) }
     var confirmRestore by remember { mutableStateOf(false) }
     val pendingSettingsImport by vm.pendingSettingsImport.collectAsStateWithLifecycle()
     val gnssProfile by vm.gnssProfile.collectAsStateWithLifecycle()
@@ -1251,6 +1259,16 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Text(LanguageText.text("watchlist.about"), style = MaterialTheme.typography.bodySmall)
+            FieldwatchActionButton(onClick = vm::startWatchlistShare, modifier = Modifier.fillMaxWidth()) {
+                Text(LanguageText.text("watchlist.export"))
+            }
+            FieldwatchActionButton(onClick = { saveWatchlist.launch(vm.suggestedWatchlistName()) }, modifier = Modifier.fillMaxWidth()) {
+                Text(LanguageText.text("watchlist.save"))
+            }
+            FieldwatchActionButton(onClick = { importWatchlist.launch(arrayOf("application/json", "text/plain", "*/*")) }, modifier = Modifier.fillMaxWidth()) {
+                Text(LanguageText.text("watchlist.import"))
+            }
             FieldwatchActionButton(
                 onClick = vm::startSettingsShare,
                 modifier = Modifier.fillMaxWidth(),
@@ -1316,6 +1334,26 @@ fun SettingsScreen(
             CreditFooter()
             }
         }
+    }
+    if (pendingWatchlist != null) {
+        AlertDialog(
+            onDismissRequest = vm::dismissWatchlistImport,
+            title = { Text(LanguageText.text("watchlist.import")) },
+            text = {
+                Column {
+                    Text(vm.watchlistImportPreview(replaceWatchlistConflicts))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(LanguageText.text("watchlist.replace"), modifier = Modifier.weight(1f))
+                        FieldwatchSwitch(replaceWatchlistConflicts, { replaceWatchlistConflicts = it })
+                    }
+                    Text(LanguageText.text("watchlist.about"))
+                }
+            },
+            confirmButton = { TextButton(onClick = { vm.confirmWatchlistImport(replaceWatchlistConflicts) }) {
+                Text(LanguageText.text("language.import.action"))
+            } },
+            dismissButton = { TextButton(onClick = vm::dismissWatchlistImport) { Text(LanguageText.text("language.cancel")) } },
+        )
     }
     pendingSettingsImport?.let { pending ->
         AlertDialog(

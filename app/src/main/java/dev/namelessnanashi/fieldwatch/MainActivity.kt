@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import dev.namelessnanashi.fieldwatch.ui.StartupLogo
 import dev.namelessnanashi.fieldwatch.ui.screen.StartupFailureScreen
 import dev.namelessnanashi.fieldwatch.alert.Alerter
+import dev.namelessnanashi.fieldwatch.domain.AlertRadioSnapshot
 import dev.namelessnanashi.fieldwatch.radio.RadioPermissions
 import dev.namelessnanashi.fieldwatch.ui.FieldwatchRoot
 import dev.namelessnanashi.fieldwatch.ui.FieldwatchViewModel
@@ -75,8 +76,10 @@ class MainActivity : ComponentActivity() {
     /** Opens the radio an alert was about. The key is dropped so a rotation does not open it again. */
     private fun openAlerted(intent: android.content.Intent?) {
         val key = intent?.getStringExtra(Alerter.EXTRA_DEVICE_KEY) ?: return
+        val snapshot = AlertRadioSnapshot.decode(intent.getStringExtra(Alerter.EXTRA_DEVICE_SNAPSHOT), key)
         intent.removeExtra(Alerter.EXTRA_DEVICE_KEY)
-        vm.openFromAlert(key)
+        intent.removeExtra(Alerter.EXTRA_DEVICE_SNAPSHOT)
+        vm.openFromAlert(key, snapshot)
     }
 
     private fun showCrashNote(app: FieldwatchApp) {

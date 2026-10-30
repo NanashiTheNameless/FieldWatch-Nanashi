@@ -492,7 +492,7 @@ class TrustedNetworkTest {
             window = window,
             trusted = listOf(line),
         ).sections.single { it.title == "Trusted networks" }
-        assertTrue(masked.body.contains("AA:BB:CC:**:**:**"))
+        assertTrue(masked.body.contains("**:**:**:**:**:**"))
         assertFalse(masked.body.contains("DD:EE:01"))
         val prompt = DebriefPrompt.build(
             devices = emptyList(),

@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -304,32 +305,34 @@ fun HuntScreen(
             }
             Box(Modifier.fillMaxWidth().weight(1f)) {
                 if (showMap) {
-                    HuntHeatMap(
-                        trail = hunt.trail,
-                        hereLat = hunt.hereLat,
-                        hereLon = hunt.hereLon,
-                        uncertaintyM = hunt.uncertaintyM,
-                        holdFlat = hunt.holdFlat,
-                        tiles = mapTiles,
-                        position = footer,
-                        hint = hint,
-                        viewport = viewport,
-                        onViewport = { viewport = it },
-                        courseDeg = ui.travelDeg,
-                        mapFrame = MapFrame.onScreen(
-                            pendingFrame,
-                            MapFrame.resolved(ui.settings.mapFrame, ui.settings.mapRotate),
-                        ),
-                        onRotate = { vm.cycleMapFrame() },
-                        onToggleClose = { vm.toggleMapClose() },
-                        flock = showFlock,
-                        flockIndex = vm.flockIndex,
-                        flockRevision = flockRevision,
-                        onTileWindow = { next ->
-                            if (!hunt.onGlobe) return@HuntHeatMap
-                            if (SitPathPlot.tileWindowKey(next) != tileWindowKey) tileWindow = next
-                        },
-                    )
+                    key(hunt.session, hunt.attachGen) {
+                        HuntHeatMap(
+                            trail = hunt.trail,
+                            hereLat = hunt.hereLat,
+                            hereLon = hunt.hereLon,
+                            uncertaintyM = hunt.uncertaintyM,
+                            holdFlat = hunt.holdFlat,
+                            tiles = mapTiles,
+                            position = footer,
+                            hint = hint,
+                            viewport = viewport,
+                            onViewport = { viewport = it },
+                            courseDeg = ui.travelDeg,
+                            mapFrame = MapFrame.onScreen(
+                                pendingFrame,
+                                MapFrame.resolved(ui.settings.mapFrame, ui.settings.mapRotate),
+                            ),
+                            onRotate = { vm.cycleMapFrame() },
+                            onToggleClose = { vm.toggleMapClose() },
+                            flock = showFlock,
+                            flockIndex = vm.flockIndex,
+                            flockRevision = flockRevision,
+                            onTileWindow = { next ->
+                                if (!hunt.onGlobe) return@HuntHeatMap
+                                if (SitPathPlot.tileWindowKey(next) != tileWindowKey) tileWindow = next
+                            },
+                        )
+                    }
                 } else {
                     Text(
                         hint.orEmpty(),

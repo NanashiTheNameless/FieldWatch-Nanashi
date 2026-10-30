@@ -14,6 +14,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.namelessnanashi.fieldwatch.BuildConfig
 import dev.namelessnanashi.fieldwatch.FieldwatchApp
+import dev.namelessnanashi.fieldwatch.domain.WatchlistExchange
+import dev.namelessnanashi.fieldwatch.domain.WatchlistPack
 import dev.namelessnanashi.fieldwatch.domain.AircraftTrail
 import dev.namelessnanashi.fieldwatch.domain.AppSettings
 import dev.namelessnanashi.fieldwatch.domain.MapBasemap
@@ -282,6 +284,9 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
 
     private val _elevated = MutableStateFlow(ElevatedUi())
     val elevated: StateFlow<ElevatedUi> = _elevated
+    private val _pendingWatchlistImport = MutableStateFlow<WatchlistPack?>(null)
+    val pendingWatchlistImport = _pendingWatchlistImport.asStateFlow()
+
     private val _pendingSettingsImport = MutableStateFlow<PendingSettingsImport?>(null)
     val pendingSettingsImport: StateFlow<PendingSettingsImport?> = _pendingSettingsImport
     private val _candidates = MutableStateFlow(CandidatesUi())
@@ -766,6 +771,8 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
             hereLat = fix?.first,
             hereLon = fix?.second,
             onGlobe = pose?.onGlobe == true,
+            session = pose?.session ?: 0,
+            attachGen = pose?.attachGen ?: 0,
             uncertaintyM = pose?.uncertaintyM ?: 0.0,
             holdFlat = pose?.holdFlat == true,
         )
@@ -976,7 +983,8 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     /** An alert was tapped. Selects the radio and asks the screen to open its page. */
-    fun openFromAlert(key: String) {
+    fun openFromAlert(key: String, snapshot: Sighting? = null) {
+        snapshot?.takeIf { it.key == key }?.let { heldSelected.value = it }
         select(key)
         openRequest.value = key
     }
@@ -2917,6 +2925,87 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
+    fun suggestedWatchlistName() = "fieldwatch-watchlist-${java.time.LocalDate.now()}.json"
+
+    fun startWatchlistShare() {
+        viewModelScope.launch {
+            try {
+                val text = withContext(Dispatchers.Default) {
+                    WatchlistExchange.encode(app.config.watchlist)
+                }
+                val file = withContext(Dispatchers.IO) {
+                    File(app.cacheDir, "settings").apply { mkdirs() }
+                        .let { File(it, suggestedWatchlistName()) }.apply { writeText(text) }
+                }
+                val uri = FileProvider.getUriForFile(app, "${app.packageName}.files", file)
+                _export.value = ExportUi(share = Intent(Intent.ACTION_SEND).apply {
+                    type = "application/json"
+                    clipData = ClipData.newRawUri("watchlist", uri)
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }, shareTitle = LanguageText.text("settings.topic.watchlist"))
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { watchlistProblem(e) }
+        }
+    }
+
+    fun saveWatchlistToUri(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                val text = withContext(Dispatchers.Default) {
+                    WatchlistExchange.encode(app.config.watchlist)
+                }
+                withContext(Dispatchers.IO) {
+                    app.contentResolver.openOutputStream(uri)?.use { it.write(text.toByteArray(Charsets.UTF_8)) }
+                        ?: error(LanguageText.text("ui.could.not.write.location"))
+                }
+                _export.value = ExportUi(noticeTitle = LanguageText.text("watchlist.saved"),
+                    noticeMessage = LanguageText.text("watchlist.about"))
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { watchlistProblem(e) }
+        }
+    }
+
+    fun importWatchlistFromUri(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                val text = withContext(Dispatchers.IO) { readImportText(uri, ImportFiles.SETTINGS_MAX) }
+                _pendingWatchlistImport.value = withContext(Dispatchers.Default) {
+                    WatchlistExchange.parse(text)
+                }
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { watchlistProblem(e) }
+        }
+    }
+
+    fun watchlistImportPreview(replace: Boolean): String = _pendingWatchlistImport.value?.let {
+        WatchlistExchange.merge(app.config.config.value, it, replace).summary()
+    }.orEmpty()
+
+    fun dismissWatchlistImport() { _pendingWatchlistImport.value = null }
+
+    fun confirmWatchlistImport(replace: Boolean) {
+        val pack = _pendingWatchlistImport.value ?: return
+        _pendingWatchlistImport.value = null
+        viewModelScope.launch {
+            try {
+                var summary = ""
+                app.config.update { local ->
+                    val merged = WatchlistExchange.merge(local, pack, replace)
+                    summary = merged.summary()
+                    local.copy(watchlist = merged.watchlist)
+                }
+                _export.value = ExportUi(noticeTitle = LanguageText.text("watchlist.imported"), noticeMessage = summary)
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { watchlistProblem(e) }
+        }
+    }
+
+    private fun watchlistProblem(e: Exception) {
+        _export.value = ExportUi(errorTitle = LanguageText.text("watchlist.problem"),
+            error = if (e is ImportFileException) LanguageText.text(e.key) else e.message ?: LanguageText.text("watchlist.problem"))
+    }
+
     fun suggestedSettingsName(): String {
         val stamp = java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US)
             .format(java.util.Date())
@@ -4395,6 +4484,9 @@ data class HuntUi(
     val hereLon: Double? = null,
     /** False while the dot is still a local picture. Streets, tiles, and the place corner stay off. */
     val onGlobe: Boolean = false,
+    /** Reset/placement boundaries discard an old heat field and its pending work. */
+    val session: Int = 0,
+    val attachGen: Int = 0,
     /** Meters. The circle on the dot. Zero hides it. */
     val uncertaintyM: Double = 0.0,
     /** The phone has been tilted. Steps are paused. */

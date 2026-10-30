@@ -154,7 +154,7 @@ class SitDiffTest {
         val second = SitDiff.Side(name = "week", ram = false, radios = emptyList())
         val text = SitDiff.report(thisSit, second, demoMode = true, showAllRadios = true)
         assertTrue(text.contains("Privacy"))
-        assertTrue(text.contains("AA:BB:CC:**:**:**"))
+        assertTrue(text.contains("**:**:**:**:**:**"))
         assertFalse(text.contains("11:22:33"))
         assertTrue(text.contains("FIELDWATCH SIT COMPARE"))
     }
@@ -328,7 +328,7 @@ class SitDiffTest {
         val second = SitDiff.Side(name = "week", ram = false, radios = emptyList())
         val text = SitDiffPrompt.build(thisSit, second, demoMode = true)
         assertTrue(text.contains("Privacy mode"))
-        assertTrue(text.contains("AA:BB:CC:**:**:**"))
+        assertTrue(text.contains("**:**:**:**:**:**"))
         assertFalse(text.contains("11:22:33"))
     }
 

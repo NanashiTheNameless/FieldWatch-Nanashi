@@ -445,6 +445,94 @@ class HuntTest {
     }
 
     @Test
+    fun aQuietStepSensorFollowsATightFixAndLeavesHeardSpotsInPlace() {
+        val track = HuntTrack()
+        val lat = 36.2361322
+        val lon = -115.0820944
+        track.lock(lat, lon)
+        track.note(-70, 6_000L)
+        val marks = track.marks()
+        val generation = track.hearGen()
+        val target = lat + 30.0 / 110_540.0
+
+        track.gps(target, lon, 5f, 7_000L)
+
+        assertEquals(target, track.position()!!.first, 1e-9)
+        assertEquals(lon, track.position()!!.second, 1e-9)
+        assertEquals(marks, track.marks())
+        assertEquals(generation, track.hearGen())
+        track.note(-60, 7_000L)
+        assertEquals(2, track.marks().size)
+        assertEquals(target, track.marks().last().lat, 1e-9)
+    }
+
+    @Test
+    fun aNearbyFixOnlyNudgesTheDotWhenThereAreNoSteps() {
+        val track = HuntTrack()
+        val lat = 36.2361322
+        val lon = -115.0820944
+        track.lock(lat, lon)
+
+        track.gps(lat + 3.0 / 110_540.0, lon, 5f, 7_000L)
+
+        assertEquals(lat + 1.5 / 110_540.0, track.position()!!.first, 1e-9)
+        assertEquals(lon, track.position()!!.second, 1e-9)
+    }
+
+    @Test
+    fun twoMovingFixesPlaceAHuntWithoutSteps() {
+        val track = HuntTrack()
+        val lat = 36.2361322
+        val lon = -115.0820944
+        val target = lat + 30.0 / 110_540.0
+        track.gps(lat, lon, 5f, 1_000L)
+        assertNull(track.position())
+
+        track.gps(target, lon, 5f, 2_000L)
+
+        assertTrue(track.onGlobe())
+        assertEquals(target, track.position()!!.first, 1e-9)
+        assertEquals(lon, track.position()!!.second, 1e-9)
+    }
+
+    @Test
+    fun aRecentStepBlocksFollowingUntilFiveSecondsOfSilence() {
+        val track = HuntTrack()
+        val lat = 36.2361322
+        val lon = -115.0820944
+        // A committed hunt has already snapped, so the early-walk correction cannot
+        // hide whether the GPS-follow gate is working.
+        track.gps(lat, lon, 5f, 1_000L, commit = true)
+        track.heading(0.0, 2_000L)
+        assertTrue(track.step(2_000L))
+        val before = track.position()!!
+        val target = lat + 30.0 / 110_540.0
+
+        track.gps(target, lon, 5f, 2_000L + HuntTrack.FOLLOW_SILENT_MS - 1L)
+        assertEquals(before, track.position())
+        track.gps(target, lon, 5f, 2_000L + HuntTrack.FOLLOW_SILENT_MS)
+        assertEquals(target, track.position()!!.first, 1e-9)
+        assertEquals(lon, track.position()!!.second, 1e-9)
+    }
+
+    @Test
+    fun followingRequiresAFreshTightFix() {
+        val track = HuntTrack()
+        val lat = 36.2361322
+        val lon = -115.0820944
+        track.gps(lat, lon, 5f, 1_000L, commit = true)
+        val before = track.position()
+        val target = lat + 30.0 / 110_540.0
+
+        track.gps(target, lon, 5f, 7_000L, fresh = false)
+        assertEquals(before, track.position())
+        track.gps(target, lon, 13f, 8_000L)
+        assertEquals(before, track.position())
+        track.gps(target, lon, 12f, 9_000L)
+        assertEquals(target, track.position()!!.first, 1e-9)
+    }
+
+    @Test
     fun aShortWalkBeforeTheFixIsKeptAndALaterNudgeLeavesTheMarks() {
         val track = HuntTrack()
         val lat = 36.2361322

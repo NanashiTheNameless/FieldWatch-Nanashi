@@ -3,6 +3,8 @@ package dev.namelessnanashi.fieldwatch.radio
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.net.Network
+import android.net.NetworkRequest
 import android.util.Log
 import dev.namelessnanashi.fieldwatch.domain.AppSettings
 import dev.namelessnanashi.fieldwatch.domain.CotEvent
@@ -53,6 +55,8 @@ class TakPublisher(context: Context? = null) {
     private val retiredTags = ConcurrentHashMap.newKeySet<String>()
     private val legacySelfSent = AtomicBoolean(false)
     private val gate = Any()
+    private val networkState = TakNetworkState<Network>()
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
     @Volatile private var multicast: MulticastSocket? = null
     @Volatile private var unicast: DatagramSocket? = null
     @Volatile private var loopback: DatagramSocket? = null
@@ -83,6 +87,7 @@ class TakPublisher(context: Context? = null) {
         if (!settings.takEnabled || settings.demoMode) {
             retractRadios(settings, now)
             if (last.isEmpty() && parked.isEmpty()) gnssMarks.clear()
+            stopNetworkTracking()
             _status.value = if (!settings.takEnabled) {
                 TakFeedStatus(detail = "Off")
             } else {
@@ -465,6 +470,7 @@ class TakPublisher(context: Context? = null) {
 
     fun close() {
         synchronized(gate) {
+            stopNetworkTracking()
             runCatching { multicast?.close() }
             runCatching { unicast?.close() }
             runCatching { loopback?.close() }
@@ -615,42 +621,66 @@ class TakPublisher(context: Context? = null) {
         sock
     }
 
-    private data class NetFacts(val lan: Boolean, val birth: TakBirth)
-
-    /** Every connected network. A Wi-Fi link with no internet still counts. */
-    private fun networks(): NetFacts {
-        val context = appContext ?: return NetFacts(lan = false, birth = TakBirth.NONE)
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-            ?: return NetFacts(lan = false, birth = TakBirth.NONE)
-        var wifi = false
-        var ethernet = false
-        var cellular = false
-        // A one-shot look at every link, including a Wi-Fi with no internet that is not the default.
-        // The callback replacement would need a registered listener for a single read.
-        @Suppress("DEPRECATION")
-        for (network in cm.allNetworks) {
-            val caps = cm.getNetworkCapabilities(network) ?: continue
-            if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) wifi = true
-            if (caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) ethernet = true
-            if (caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) cellular = true
+    /** Register lazily while the feed sends; include local-only LANs and VPNs. */
+    private fun ensureNetworkTracking() = synchronized(gate) {
+        if (networkCallback != null) return@synchronized
+        val cm = appContext?.getSystemService(ConnectivityManager::class.java) ?: return@synchronized
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
+                synchronized(gate) {
+                    if (networkCallback !== this) return
+                    if (networkState.update(network, TakNetworkState.Link(
+                            caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI),
+                            caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET),
+                            caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR),
+                            caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN),
+                        ))) refreshNetworkSockets()
+                }
+            }
+            override fun onLost(network: Network) {
+                synchronized(gate) {
+                    if (networkCallback !== this) return
+                    if (networkState.lost(network)) refreshNetworkSockets()
+                }
+            }
         }
-        return NetFacts(
-            lan = takLanUp(wifi, ethernet),
-            birth = takBirth(wifi, ethernet, cellular),
-        )
+        networkCallback = callback
+        try {
+            cm.registerNetworkCallback(NetworkRequest.Builder().clearCapabilities().build(), callback)
+        } catch (err: RuntimeException) {
+            networkCallback = null
+            Log.w(TAG, "Cannot observe TAK networks", err)
+        }
     }
 
-    private fun networkUp(): Boolean {
-        val context = appContext ?: return false
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-            ?: return false
-        val network = cm.activeNetwork ?: return false
-        val caps = cm.getNetworkCapabilities(network) ?: return false
-        return caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) ||
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ||
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
+    /** Called under gate. Outbound routes reconnect; same-phone LAN sockets survive LAN loss. */
+    private fun refreshNetworkSockets() {
+        multicast?.close()
+        unicast?.close()
+        multicast = null
+        unicast = null
+        if (replaceLoopbackSocket(loopbackOnLan, networkState.facts().lan)) {
+            loopback?.close()
+            loopback = null
+            loopbackBirth = TakBirth.NONE
+        }
     }
+
+    private fun stopNetworkTracking() = synchronized(gate) {
+        val callback = networkCallback
+        networkCallback = null // Ignore callbacks already queued before unregistration.
+        networkState.clear()
+        if (callback != null) runCatching {
+            appContext?.getSystemService(ConnectivityManager::class.java)?.unregisterNetworkCallback(callback)
+        }
+    }
+
+    private fun networks(): TakNetworkState.Facts = synchronized(gate) {
+        ensureNetworkTracking()
+        networkState.facts()
+    }
+
+    private fun networkUp(): Boolean = networks().online
 
     companion object {
         private const val TAG = "FieldwatchTak"

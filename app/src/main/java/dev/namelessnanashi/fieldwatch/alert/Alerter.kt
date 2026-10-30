@@ -5,6 +5,7 @@ import dev.namelessnanashi.fieldwatch.domain.LanguageText
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import dev.namelessnanashi.fieldwatch.domain.AlertRadioSnapshot
 import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
@@ -387,6 +388,7 @@ class Alerter(private val context: Context) {
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(EXTRA_DEVICE_KEY, device.key)
+            putExtra(EXTRA_DEVICE_SNAPSHOT, AlertRadioSnapshot.encode(device))
         }
         val pending = PendingIntent.getActivity(
             context,
@@ -982,6 +984,7 @@ class Alerter(private val context: Context) {
         private const val TRUSTED_NOTE_ID = 71_002
         private const val FLOCK_NOTE_ID = 72_010
         const val EXTRA_DEVICE_KEY = "device_key"
+        const val EXTRA_DEVICE_SNAPSHOT = "device_snapshot"
         private const val FREQ_HZ = 1050.0
         private const val PIP_MS = 85
         private const val GAP_MS = 55
