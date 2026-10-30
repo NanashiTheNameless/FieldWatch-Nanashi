@@ -69,7 +69,14 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         if (!(application as FieldwatchApp).isReady) return
-        intent.getStringExtra(Alerter.EXTRA_DEVICE_KEY)?.let { vm.select(it) }
+        openAlerted(intent)
+    }
+
+    /** Opens the radio an alert was about. The key is dropped so a rotation does not open it again. */
+    private fun openAlerted(intent: android.content.Intent?) {
+        val key = intent?.getStringExtra(Alerter.EXTRA_DEVICE_KEY) ?: return
+        intent.removeExtra(Alerter.EXTRA_DEVICE_KEY)
+        vm.openFromAlert(key)
     }
 
     private fun showCrashNote(app: FieldwatchApp) {
@@ -103,7 +110,7 @@ class MainActivity : ComponentActivity() {
                     LaunchedEffect(Unit) {
                         vm.refreshPermissions()
                         if (RadioPermissions.granted(this@MainActivity)) vm.resumeScan()
-                        intent?.getStringExtra(Alerter.EXTRA_DEVICE_KEY)?.let { vm.select(it) }
+                        openAlerted(intent)
                     }
                     FieldwatchRoot(vm) {
                         permissionLauncher.launch(RadioPermissions.required())

@@ -27,6 +27,8 @@ data class HuntPose(
  * onto a fix that arrives late. In the first 20 m after placement, one tight fix
  * that disagrees moves the dot onto that fix. After that, a fix only nudges the
  * dot when it already sits inside the circle.
+ * With no steps for a few seconds (a car, a cart, a phone without a step sensor),
+ * a tight fix past the circle moves the dot onto it. Hears stay where they were heard.
  */
 class HuntTrack {
     private var anchorLat = 0.0
@@ -71,6 +73,7 @@ class HuntTrack {
     private var learnLon = 0.0
     private var hearGen = 0
     private val hears = ArrayList<Hear>()
+    private var lastStepAt = Long.MIN_VALUE
 
     fun clear() {
         session += 1
@@ -100,6 +103,7 @@ class HuntTrack {
         learnSteps = 0
         learnWalked = 0.0
         hears.clear()
+        lastStepAt = Long.MIN_VALUE
     }
 
     fun session(): Int = session
@@ -161,7 +165,13 @@ class HuntTrack {
             if (fresh && atMs > 0L) {
                 if (haveCandidate && atMs > candidateAt && atMs - candidateAt in AGREE_MIN_MS..AGREE_MAX_MS) {
                     val (_, _, dist) = offset(candidateLat, candidateLon, lat, lon)
-                    if (dist <= AGREE_M) {
+                    // Without steps the phone may be riding, so the two fixes may be a drive apart.
+                    val reach = if (stepsQuiet(atMs)) {
+                        AGREE_M + FOLLOW_MAX_MPS * (atMs - candidateAt) / 1000.0
+                    } else {
+                        AGREE_M
+                    }
+                    if (dist <= reach) {
                         placeShortWalk(lat, lon)
                         haveCandidate = false
                         return null
@@ -175,6 +185,14 @@ class HuntTrack {
             return null
         }
         val here = position()
+        if (here != null && fresh && atMs > 0L && acc <= FOLLOW_ACC_M && stepsQuiet(atMs)) {
+            val (_, _, dist) = offset(here.first, here.second, lat, lon)
+            if (dist > max(uncertaintyM(), acc)) {
+                followOnto(lat, lon, here)
+                learnOpen = false
+                return null
+            }
+        }
         if (here != null && acc <= NUDGE_ACC_M) {
             val (_, _, dist) = offset(here.first, here.second, lat, lon)
             val room = uncertaintyM()
@@ -251,6 +269,7 @@ class HuntTrack {
         north += stride * cos(rad)
         east += stride * sin(rad)
         walkedM += stride
+        lastStepAt = atMs
         if (learnOpen) {
             learnSteps += 1
             learnWalked += stride
@@ -450,6 +469,16 @@ class HuntTrack {
         snapped = true
     }
 
+    /** No step for [FOLLOW_SILENT_MS], or none yet this hunt. */
+    private fun stepsQuiet(atMs: Long): Boolean =
+        lastStepAt == Long.MIN_VALUE || atMs - lastStepAt >= FOLLOW_SILENT_MS
+
+    /** Moves the dot onto [lat], [lon]. Unlike [snapOnto], hears stay where they were heard. */
+    private fun followOnto(lat: Double, lon: Double, here: Pair<Double, Double>) {
+        anchorLat += lat - here.first
+        anchorLon += lon - here.second
+    }
+
     private fun openLearn(lat: Double, lon: Double) {
         learnOpen = true
         learnSteps = 0
@@ -533,6 +562,12 @@ class HuntTrack {
         const val RECENTER_M = 20.0
         /** A later fix this tight may nudge the live dot. */
         const val NUDGE_ACC_M = 8.0
+        /** Steps quiet this long, the dot follows GPS instead. */
+        const val FOLLOW_SILENT_MS = 5_000L
+        /** A fix this tight may move a dot that is not stepping. */
+        const val FOLLOW_ACC_M = 12.0
+        /** Fastest ride two placing fixes are allowed to show, about 160 km/h. */
+        const val FOLLOW_MAX_MPS = 45.0
         /** The step sensor has gone quiet. The walking motion may count steps. */
         const val STEP_SILENT_MS = 2_000L
         /** Game yaw under this, with a jumped compass, is the phone sitting still. */

@@ -31,3 +31,10 @@ scripts/.lookup-cache/
 
 # Python helper caches
 __pycache__/
+
+*nogit*
+*githide*
+*.nogit.*
+*.githide.*
+*.gitignore.*
+githide/

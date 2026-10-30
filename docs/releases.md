@@ -28,14 +28,16 @@ Install and update with Obtainium: add `https://github.com/NanashiTheNameless/Fi
 
 One key for every official build, forever. Android refuses an update signed by a different key, so losing or replacing it means uninstalling (and losing app data) on every phone. Keep at least two offline backups of the keystore and its password. Never commit it.
 
+The steps below set up a key for a repository you maintain, such as your own fork. Replace `<owner>/<repo>`, `<alias>`, and `<name>` with your own values.
+
 ### 1. Generate it (once)
 
 ```bash
 mkdir -p ~/.android-keys && chmod 700 ~/.android-keys
 keytool -genkeypair -v -storetype PKCS12 \
-  -keystore ~/.android-keys/fieldwatch-nanashi-release.jks \
-  -alias fieldwatch-nanashi -keyalg RSA -keysize 4096 -validity 36500 \
-  -dname "CN=NamelessNanashi"
+  -keystore ~/.android-keys/release.jks \
+  -alias <alias> -keyalg RSA -keysize 4096 -validity 36500 \
+  -dname "CN=<name>"
 ```
 
 With PKCS12 the key password is the keystore password.
@@ -43,22 +45,22 @@ With PKCS12 the key password is the keystore password.
 ### 2. Read the certificate fingerprint
 
 ```bash
-keytool -list -v -keystore ~/.android-keys/fieldwatch-nanashi-release.jks \
-  -alias fieldwatch-nanashi | grep 'SHA256:'
+keytool -list -v -keystore ~/.android-keys/release.jks \
+  -alias <alias> | grep 'SHA256:'
 ```
 
 The fingerprint is public. Colons and case do not matter to the workflow.
 
 ### 3. Store it in GitHub
 
-Run these yourself in a terminal. `gh secret set` without `--body` prompts for the value without echoing it.
+Run these in a terminal. `gh secret set` without `--body` prompts for the value without echoing it.
 
 ```bash
-REPO=NanashiTheNameless/FieldWatch-Nanashi
-base64 -w 0 ~/.android-keys/fieldwatch-nanashi-release.jks | gh secret set RELEASE_KEYSTORE -R "$REPO"
+REPO=<owner>/<repo>
+base64 -w 0 ~/.android-keys/release.jks | gh secret set RELEASE_KEYSTORE -R "$REPO"
 gh secret set RELEASE_KEYSTORE_PASSWORD -R "$REPO"
 gh secret set RELEASE_KEY_PASSWORD -R "$REPO"
-gh secret set RELEASE_KEY_ALIAS -R "$REPO" --body fieldwatch-nanashi
+gh secret set RELEASE_KEY_ALIAS -R "$REPO" --body <alias>
 gh variable set RELEASE_CERT_SHA256 -R "$REPO" --body '<SHA256 fingerprint from step 2>'
 ```
 
@@ -66,12 +68,12 @@ If `RELEASE_CERT_SHA256` is missing, the workflow fails and prints the fingerpri
 
 ### 4. Local signed builds (optional)
 
-Create `../fieldwatch-nanashi-keystore.properties` next to the repository (outside it):
+Create `../fieldwatch-nanashi-keystore.properties` next to the repository (outside it). The build reads that exact filename:
 
 ```properties
-storeFile=/home/<you>/.android-keys/fieldwatch-nanashi-release.jks
+storeFile=/home/<user>/.android-keys/release.jks
 storePassword=...
-keyAlias=fieldwatch-nanashi
+keyAlias=<alias>
 keyPassword=...
 ```
 

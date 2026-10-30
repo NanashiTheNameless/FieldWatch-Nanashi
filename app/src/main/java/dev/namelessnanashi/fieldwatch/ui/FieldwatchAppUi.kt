@@ -312,6 +312,12 @@ private fun PermissionGate(onRequest: () -> Unit) {
 private fun FieldwatchShell(state: FieldwatchUi, vm: FieldwatchViewModel) {
     val nav = rememberNavController()
     val route = nav.currentBackStackEntryAsState().value?.destination?.route ?: "live"
+    val openRequested by vm.openRequested.collectAsStateWithLifecycle()
+    LaunchedEffect(openRequested) {
+        if (openRequested == null) return@LaunchedEffect
+        vm.openHandled()
+        nav.navigate("detail") { launchSingleTop = true }
+    }
     val context = LocalContext.current
     val export by vm.export.collectAsStateWithLifecycle()
     val candidates by vm.candidates.collectAsStateWithLifecycle()

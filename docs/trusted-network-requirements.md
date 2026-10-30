@@ -1,6 +1,6 @@
 # Trusted networks
 
-Requirements for a later implementation. This document does not authorize that work by itself. Do not start it until asked. When asked, implement this document and stop there. Do not ship, tag, sideload, or open a GitHub Release unless that request says so.
+Requirements for the trusted-networks feature.
 
 Fieldwatch watches Wi-Fi networks the user has marked trusted and alerts when a sighting looks like someone else using that name. Nothing else is flagged. The phone stays receive-only. This work uses scan results the app already collects. It does not connect, probe, or transmit on its own.
 
@@ -9,7 +9,7 @@ Fieldwatch watches Wi-Fi networks the user has marked trusted and alerts when a 
 - No change to GNSS detection, the GNSS dialog, the red line, or the TAK line on the Fieldwatch marker. A GNSS pin is a separate decision and is not part of this work.
 - Floods stay a note on the Fieldwatch marker. They do not get a pin.
 - No catalog change. Trusted networks are not signatures.
-- No user-manual rewrite unless a later request asks for one.
+- No user-manual rewrite.
 
 ## Outcome
 

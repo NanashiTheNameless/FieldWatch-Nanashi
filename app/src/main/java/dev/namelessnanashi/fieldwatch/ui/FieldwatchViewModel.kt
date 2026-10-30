@@ -269,6 +269,10 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
     private val filters = FilterEngine()
     private val signatures = SignatureEngine()
     private val selectedKey = MutableStateFlow<String?>(null)
+    private val openRequest = MutableStateFlow<String?>(null)
+
+    /** A radio an alert asked to show. The screen opens it, then calls [openHandled]. */
+    val openRequested: StateFlow<String?> = openRequest.asStateFlow()
     private val draft = MutableStateFlow<Fleet?>(null)
     private var draftFromCandidates = false
     private val _export = MutableStateFlow(ExportUi())
@@ -969,6 +973,16 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
     fun select(key: String?) {
         selectedKey.value = key
         if (key == null) heldSelected.value = null
+    }
+
+    /** An alert was tapped. Selects the radio and asks the screen to open its page. */
+    fun openFromAlert(key: String) {
+        select(key)
+        openRequest.value = key
+    }
+
+    fun openHandled() {
+        openRequest.value = null
     }
 
     fun select(device: Sighting) {
