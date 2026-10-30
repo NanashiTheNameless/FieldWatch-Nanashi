@@ -223,7 +223,7 @@ class HuntTest {
     }
 
     @Test
-    fun huntOpensCloseAndPinchStopsAtAFewMeters() {
+    fun huntOpensCloseAndPinchStopsAtTheFloor() {
         val lat = 36.2361322
         val lon = -115.0820944
         val model = SitPathPlot.Model(
@@ -240,7 +240,7 @@ class HuntTest {
         assertTrue(half > 10f)
         assertTrue(half < 22f)
         val tight = SitPathPlot.Viewport(lat, lon, 12f, 12f)
-            .zoomAbout(4f, lat, lon, minHalfM = HuntHeat.PINCH_HALF_M)
+            .zoomAbout(1000f, lat, lon, minHalfM = HuntHeat.PINCH_HALF_M)
         assertEquals(HuntHeat.PINCH_HALF_M, tight.halfEastM, 0.05f)
         assertEquals(HuntHeat.PINCH_HALF_M, tight.halfNorthM, 0.05f)
     }

@@ -264,11 +264,7 @@ fun HuntHeatMap(
                 }
             }
             val barW = (size.width - 32f) * lay.scaleBarFrac
-            val barLabel = if (lay.scaleBarM >= 1000) {
-                "${(lay.scaleBarM / 1000).toInt()} km"
-            } else {
-                "${lay.scaleBarM.toInt()} m"
-            }
+            val barLabel = SitPathPlot.scaleLabel(lay.scaleBarM)
             val measured = measurer.measure(barLabel, labelStyle)
             val north = measurer.measure("N", labelStyle)
             val groupW = barW + 8f + measured.size.width

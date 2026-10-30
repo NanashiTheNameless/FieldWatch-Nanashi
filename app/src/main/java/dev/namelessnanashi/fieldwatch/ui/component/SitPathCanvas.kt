@@ -556,7 +556,7 @@ fun SitPathCanvas(
                 drawLine(outline, leader, Offset(ex, ey), strokeWidth = 2f)
             }
             val barW = (size.width - 32f) * lay.scaleBarFrac
-            val barLabel = scaleLabel(lay.scaleBarM)
+            val barLabel = SitPathPlot.scaleLabel(lay.scaleBarM)
             val measured = measurer.measure(barLabel, labelStyle)
             val groupW = barW + 8f + measured.size.width
             val barX = ((size.width - groupW) / 2f).coerceAtLeast(8f)
@@ -1040,8 +1040,5 @@ private fun DrawScope.drawPilotMark(center: Offset, painter: Painter) {
         }
     }
 }
-
-private fun scaleLabel(m: Double): String =
-    if (m >= 1000) "${(m / 1000).toInt()} km" else "${m.toInt()} m"
 
 private val TIME_FMT = SimpleDateFormat("HH:mm", Locale.getDefault())

@@ -232,8 +232,11 @@ object SitPathPlot {
         }
 
         companion object {
-            const val MIN_HALF_M = 25f
-            const val MAX_HALF_M = 80_000f
+            /** About a meter across the short side. Past the map's deepest tiles the last ones are enlarged. */
+            const val MIN_HALF_M = 0.5f
+
+            /** Half of the equator. Wider than that only repeats the world. */
+            const val MAX_HALF_M = 20_037_508f
         }
     }
 
@@ -573,8 +576,8 @@ object SitPathPlot {
             minY = midY - hy
             maxY = midY + hy
         }
-        val spanX = (maxX - minX).coerceAtLeast(8f)
-        val spanY = (maxY - minY).coerceAtLeast(8f)
+        val spanX = (maxX - minX).coerceAtLeast(Viewport.MIN_HALF_M * 2f)
+        val spanY = (maxY - minY).coerceAtLeast(Viewport.MIN_HALF_M * 2f)
         val scale = min(innerW / spanX, innerH / spanY)
         val usedW = spanX * scale
         val usedH = spanY * scale
@@ -586,7 +589,7 @@ object SitPathPlot {
         )
         val path = phone.map { map(mx(it.lat, it.lon), my(it.lat, it.lon)) }
         val dots = model.dots.map { it to map(mx(it.lat, it.lon), my(it.lat, it.lon)) }
-        val barM = niceMeters(spanX / scale * 0.28)
+        val barM = niceMeters(spanX * 0.28)
         val barFrac = ((barM.toFloat() * scale) / innerW).coerceIn(0.08f, 0.45f)
         return Layout(
             path = path,
@@ -716,8 +719,15 @@ object SitPathPlot {
     private const val CLIP_BOTTOM = 4
     private const val CLIP_TOP = 8
 
+    /** Scale bar words. Under a meter reads in centimeters. */
+    fun scaleLabel(m: Double): String = when {
+        m >= 1000 -> "${(m / 1000).toInt()} km"
+        m >= 1 -> "${m.toInt()} m"
+        else -> "${Math.round(m * 100)} cm"
+    }
+
     fun niceMeters(raw: Double): Double {
-        val v = raw.coerceAtLeast(5.0)
+        val v = raw.coerceAtLeast(0.1)
         val mag = 10.0.pow(floor(ln(v) / ln(10.0)))
         val n = v / mag
         val nice = when {

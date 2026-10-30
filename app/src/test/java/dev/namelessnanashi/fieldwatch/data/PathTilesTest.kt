@@ -190,7 +190,8 @@ class PathTilesTest {
             ),
         )
         assertEquals("zoom", PathTiles.coverageKey(wideSouth, wideNorth, wideWest, wideEast, MapBasemap.FAA_VFR_SECTIONAL))
-        assertTrue(PathTiles.plannedZoom(wideSouth, wideNorth, wideWest, wideEast) >= 8)
+        // OSM goes down to its own lowest zoom; a whole-country view is no longer held at 8.
+        assertTrue(PathTiles.plannedZoom(wideSouth, wideNorth, wideWest, wideEast) in 0 until 8)
         assertTrue(PathTiles.idealZoom(5_000_000.0, 38.0) < 8)
         assertEquals(8, PathTiles.zoomFor(5_000_000.0, 38.0))
 

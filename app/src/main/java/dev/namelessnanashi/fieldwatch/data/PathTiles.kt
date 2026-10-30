@@ -404,12 +404,12 @@ object PathTiles {
         if (!south.isFinite() || !north.isFinite() || !west.isFinite() || !east.isFinite()) return Plan.None
         if (north <= south || east <= west) return Plan.None
         val midLat = (south + north) / 2.0
-        val spanM = dev.namelessnanashi.fieldwatch.domain.Geo.meters(south, west, north, east).coerceAtLeast(40.0)
+        val spanM = dev.namelessnanashi.fieldwatch.domain.Geo.meters(south, west, north, east).coerceAtLeast(1.0)
         val cap = if (forPrint) PRINT_TILE_CAP else SCREEN_TILE_CAP
         val maxZ = minOf(if (forPrint) PRINT_MAX_Z else SCREEN_MAX_Z, basemap.maxZoom)
         val ideal = idealZoom(spanM, midLat) + if (forPrint) 2 else 0
         if (ideal < basemap.minZoom) return Plan.ZoomIn
-        val floor = maxOf(8, basemap.minZoom)
+        val floor = basemap.minZoom
         if (maxZ < floor) return Plan.ZoomIn
         var z = ideal.coerceIn(floor, maxZ)
         var tiles = tileBox(south, north, west, east, z)
@@ -453,13 +453,13 @@ object PathTiles {
 
     private const val SCREEN_TILE_CAP = 20
     private const val PRINT_TILE_CAP = 96
-    private const val SCREEN_MAX_Z = 17
-    private const val PRINT_MAX_Z = 19
+    private const val SCREEN_MAX_Z = 22
+    private const val PRINT_MAX_Z = 22
 
     /** Zoom the span wants, including coarser than the tile floor of 8. */
     internal fun idealZoom(spanM: Double, lat: Double): Int {
         val earth = 40_075_016.686 * cos(Math.toRadians(lat)).absoluteValue.coerceAtLeast(0.2)
-        for (z in 17 downTo 0) {
+        for (z in SCREEN_MAX_Z downTo 0) {
             val tileM = earth / (1 shl z)
             if (tileM * 2.2 >= spanM) return z
         }

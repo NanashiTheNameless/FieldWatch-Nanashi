@@ -107,8 +107,8 @@ object HuntHeat {
     const val BRIDGE_M = 22.0
     /** Opening view: meters from the middle of the map to the edge. */
     const val OPEN_HALF_M = 12f
-    /** Closest pinch. The live-path map stays wider than this. */
-    const val PINCH_HALF_M = 6f
+    /** Closest pinch. Same floor as the live-path map. */
+    const val PINCH_HALF_M = SitPathPlot.Viewport.MIN_HALF_M
     /** Barely there. This end of the ramp stays blue. */
     const val QUIET_DBM = -100
     /** Red by here, before the phone is standing on the radio. */
