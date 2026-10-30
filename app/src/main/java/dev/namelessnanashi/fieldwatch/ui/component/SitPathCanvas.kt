@@ -27,7 +27,6 @@ import dev.namelessnanashi.fieldwatch.ui.icons.Icons
 import dev.namelessnanashi.fieldwatch.ui.icons.outlined.Person
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -777,14 +776,12 @@ fun SitPathCanvas(
             }
         }
         if (showRecenter) {
-            TextButton(
+            MapRecenterButton(
                 onClick = { onViewport(null) },
                 modifier = Modifier
                     .align(if (compass) Alignment.TopStart else Alignment.TopEnd)
                     .padding(8.dp),
-            ) {
-                Text(LanguageText.text("display.recenter"))
-            }
+            )
         }
         if (onRotate != null) {
             MapCompassButton(

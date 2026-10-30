@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -305,12 +304,10 @@ fun HuntHeatMap(
             }
         }
         if (viewport != null) {
-            TextButton(
+            MapRecenterButton(
                 onClick = { onViewport(null) },
                 modifier = Modifier.align(Alignment.TopEnd).padding(4.dp),
-            ) {
-                Text(LanguageText.text("display.recenter"))
-            }
+            )
         }
         if (!hint.isNullOrBlank()) {
             Text(
