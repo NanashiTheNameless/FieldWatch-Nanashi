@@ -413,12 +413,12 @@ fun FiltersScreen(state: FieldwatchUi, vm: FieldwatchViewModel) {
                 valueRange = -100f..-30f,
             )
 
-            FieldwatchOutlinedField(
+            StoredTextField(
                 filter.nameQuery,
                 { value -> vm.updateFilter { it.copy(nameQuery = value) } },
                 LanguageText.text("ui.name.mac.contains"),
             )
-            FieldwatchOutlinedField(
+            StoredTextField(
                 filter.ouiQuery,
                 { value -> vm.updateFilter { it.copy(ouiQuery = value) } },
                 LanguageText.text("ui.vendor.contains"),
@@ -793,4 +793,35 @@ private fun PresetChip(
             overflow = TextOverflow.Ellipsis,
         )
     }
+}
+
+/**
+ * Text field over a value held in [dev.namelessnanashi.fieldwatch.data.ConfigStore]. Each store
+ * write finishes on disk before the new value comes back, so binding the field to the stored value
+ * drops keys typed in the meantime. Keys show at once here; echoes of our own edits are skipped,
+ * and only an outside change (preset, reset, import) replaces the text.
+ */
+@Composable
+private fun StoredTextField(stored: String, onCommit: (String) -> Unit, label: String) {
+    var text by remember { mutableStateOf(stored) }
+    val inFlight = remember { ArrayDeque<String>() }
+    LaunchedEffect(stored) {
+        // The store conflates, so an echo may skip earlier edits; drop everything up to it.
+        val echo = inFlight.indexOf(stored)
+        if (echo >= 0) {
+            repeat(echo + 1) { inFlight.removeFirst() }
+        } else {
+            inFlight.clear()
+            text = stored
+        }
+    }
+    FieldwatchOutlinedField(
+        text,
+        { value ->
+            text = value
+            inFlight.addLast(value)
+            onCommit(value)
+        },
+        label,
+    )
 }
