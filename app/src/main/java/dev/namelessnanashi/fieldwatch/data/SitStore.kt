@@ -19,8 +19,13 @@ import dev.namelessnanashi.fieldwatch.domain.SitSummary
 import dev.namelessnanashi.fieldwatch.domain.SitUi
 import dev.namelessnanashi.fieldwatch.domain.Sighting
 import dev.namelessnanashi.fieldwatch.domain.WatchTarget
+import dev.namelessnanashi.fieldwatch.domain.CellMark
+import dev.namelessnanashi.fieldwatch.domain.FlockCamera
+import dev.namelessnanashi.fieldwatch.domain.PathCameras
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -47,13 +52,15 @@ class SitStore(
     private val mutex = Mutex()
     private val lock = Any()
     private var open: SitSession? = null
-    private var spanCacheCount = -1
-    private var spanCacheM = 0.0
     private var closed: List<SitSummary> = emptyList()
     private var selectedId: String? = null
     private var compareId: String? = null
     private val _ui = MutableStateFlow(SitUi())
     val ui: StateFlow<SitUi> = _ui.asStateFlow()
+    /** Null until the camera files have been read. A miss does not move the saved step. */
+    private var cameraLookup: (() -> ((Double, Double, Double) -> List<FlockCamera>)?)? = null
+    private var cameraJob: Job? = null
+    private var cameraPending = false
 
     fun startFlusher() {
         scope.launch {
@@ -82,13 +89,22 @@ class SitStore(
                 runCatching { File(dir, "${extra.summary.id}.json").delete() }
             }
             open = keepOpen?.let {
-                SitSession(it.summary, it.radios, it.operatorPath, it.floods, it.gnss)
+                SitSession(
+                    it.summary, it.radios, it.operatorPath, it.floods, it.gnss, it.cells,
+                    it.pathCameras, it.cameraKept,
+                )
             }
             closed = closedAcc.sortedByDescending { it.startAt }
             pruneClosedLocked()
             compareId = SitDiff.defaultSecondSitId(closed, SitDiff.thisSavedId(open?.summary, selectedId))
             publishLocked()
+            catchUpCameras()
         }
+    }
+
+    /** Both camera files, the same ones the sit report reads. Called off the sit lock. */
+    fun watchPathCameras(lookup: () -> ((Double, Double, Double) -> List<FlockCamera>)?) {
+        cameraLookup = lookup
     }
 
     fun ingest(seen: List<Sighting>, fleets: List<Fleet>, watchlist: List<WatchTarget>) {
@@ -121,10 +137,16 @@ class SitStore(
         }
     }
 
-    fun recordPath(lat: Double, lon: Double, at: Long) {
+    fun noteCell(incoming: List<CellMark>) {
+        if (incoming.isEmpty()) return
         synchronized(lock) {
-            open?.recordPath(lat, lon, at)
+            open?.noteCell(incoming)
         }
+    }
+
+    fun recordPath(lat: Double, lon: Double, at: Long) {
+        val accepted = synchronized(lock) { open?.recordPath(lat, lon, at) == true }
+        if (accepted) catchUpCameras()
     }
 
     suspend fun start(
@@ -258,18 +280,14 @@ class SitStore(
 
     fun openSitId(): String? = synchronized(lock) { open?.summary?.id }
 
+    /** A radio still held by the open sit. Closed sits stay on disk. */
+    fun sighting(deviceKey: String): Sighting? = synchronized(lock) {
+        open?.radio(deviceKey)?.toSighting()
+    }
+
     /** Sit name while that sit's path is still one place. A drive leaves the name off. */
-    fun clusterLabel(): String? {
-        synchronized(lock) {
-            val session = open ?: return null
-            val count = session.pathCount
-            if (count != spanCacheCount) {
-                spanCacheM = if (count >= 2) Geo.spanM(session.operatorPath) else 0.0
-                spanCacheCount = count
-            }
-            if (count >= 2 && spanCacheM >= PlaceMemory.SEPARATION_M) return null
-            return session.summary.name.trim().ifBlank { null }
-        }
+    fun clusterLabel(): String? = synchronized(lock) {
+        open?.onePlaceLabel(PlaceMemory.SEPARATION_M)
     }
 
     /** The open sit only. A selected closed sit stays on Reports and does not drive the live map. */
@@ -284,6 +302,7 @@ class SitStore(
             startAt = since,
             samples = session.operatorPath,
             radios = session.alertsSince(since, alertKeys, watchedFleetIds, hiddenKeys),
+            cameras = session.camerasAlongPath(),
         )
     }
 
@@ -300,6 +319,8 @@ class SitStore(
                     operatorPath = snap.operatorPath,
                     floods = snap.floods,
                     gnss = snap.gnss,
+                    cells = snap.cells,
+                    pathCameras = snap.cameraKept?.let { snap.pathCameras },
                 )
             }
         }
@@ -314,7 +335,63 @@ class SitStore(
             operatorPath = file.operatorPath,
             floods = file.floods,
             gnss = file.gnss,
+            cells = file.cells,
+            pathCameras = file.cameraKept?.let { file.pathCameras },
         )
+    }
+
+    private fun catchUpCameras() {
+        val lookup = cameraLookup ?: return
+        synchronized(lock) { startCatchUpLocked(lookup) }
+    }
+
+    private fun startCatchUpLocked(
+        lookup: () -> ((Double, Double, Double) -> List<FlockCamera>)?,
+    ) {
+        if (open == null) return
+        if (cameraJob?.isActive == true) {
+            cameraPending = true
+            return
+        }
+        cameraPending = false
+        cameraJob = scope.launch(Dispatchers.Default) {
+            catchUpLoop(lookup)
+        }
+    }
+
+    private fun catchUpLoop(
+        lookup: () -> ((Double, Double, Double) -> List<FlockCamera>)?,
+    ) {
+        try {
+            while (true) {
+                val near = lookup()
+                if (near == null) {
+                    synchronized(lock) { cameraJob = null }
+                    return
+                }
+                val slice = synchronized(lock) { open?.cameraSlice() }
+                if (slice == null) {
+                    synchronized(lock) { cameraJob = null }
+                    return
+                }
+                val fold = PathCameras.extend(slice.anchor, slice.points, slice.committed, near)
+                val again = synchronized(lock) {
+                    open?.applyCameraFold(fold)
+                    if (cameraPending) {
+                        cameraPending = false
+                        true
+                    } else {
+                        cameraJob = null
+                        false
+                    }
+                }
+                if (!again) return
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            synchronized(lock) { cameraJob = null }
+        }
     }
 
     suspend fun flushOpen() {

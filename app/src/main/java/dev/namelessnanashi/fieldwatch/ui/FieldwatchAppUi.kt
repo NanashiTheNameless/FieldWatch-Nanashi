@@ -144,6 +144,7 @@ import dev.namelessnanashi.fieldwatch.ui.screen.SettingsScreen
 import dev.namelessnanashi.fieldwatch.ui.theme.FieldwatchTheme
 import dev.namelessnanashi.fieldwatch.ui.theme.LocalStatusColors
 import dev.namelessnanashi.fieldwatch.ui.theme.OxProto
+import dev.namelessnanashi.fieldwatch.ui.screen.SpokenNamesScreen
 
 @Composable
 fun FieldwatchRoot(vm: FieldwatchViewModel, onRequestPermissions: () -> Unit) {
@@ -725,7 +726,7 @@ private fun FieldwatchShell(state: FieldwatchUi, vm: FieldwatchViewModel) {
                         )
                         FieldwatchNavTab(
                             weight = 1.05f,
-                            selected = route == "settings" || route == "radio-bookmarks" || route == "scan-status",
+                            selected = route == "settings" || route == "radio-bookmarks" || route == "scan-status" || route == "spoken-names",
                             onClick = { nav.navigate("settings") { launchSingleTop = true } },
                             icon = { Icon(Icons.Outlined.Settings, null) },
                             label = LanguageText.text("tab.settings"),
@@ -832,6 +833,9 @@ private fun FieldwatchShell(state: FieldwatchUi, vm: FieldwatchViewModel) {
                     onOpenPathRadio = { key ->
                         if (vm.openPathRadio(key)) nav.navigate("detail")
                     },
+                    onOpenPlaceRadio = { key ->
+                        if (vm.openPlaceRadio(key)) nav.navigate("detail")
+                    },
                 )
             }
             composable("candidates") {
@@ -850,6 +854,7 @@ private fun FieldwatchShell(state: FieldwatchUi, vm: FieldwatchViewModel) {
                     state = state,
                     vm = vm,
                     onRadioBookmarks = { nav.navigate("radio-bookmarks") },
+                    onSpokenNames = { nav.navigate("spoken-names") },
                     onScanStatus = { nav.navigate("scan-status") },
                     onShowLiveTour = {
                         vm.showLiveTour {
@@ -860,6 +865,13 @@ private fun FieldwatchShell(state: FieldwatchUi, vm: FieldwatchViewModel) {
             }
             composable("scan-status") {
                 ScanStatusScreen(state = state, onBack = { nav.popBackStack() })
+            }
+            composable("spoken-names") {
+                SpokenNamesScreen(
+                    state = state,
+                    vm = vm,
+                    onBack = { nav.popBackStack() },
+                )
             }
             composable("radio-bookmarks") {
                 RadioBookmarksScreen(
@@ -905,6 +917,9 @@ private fun FieldwatchShell(state: FieldwatchUi, vm: FieldwatchViewModel) {
                             nav.navigate("hunt")
                         },
                         demoMode = state.settings.demoMode,
+                        spokenNames = state.settings.spokenNames,
+                        voiceWhat = state.settings.alertVoiceWhat,
+                        watchlist = state.watchlist,
                     )
                 }
             }

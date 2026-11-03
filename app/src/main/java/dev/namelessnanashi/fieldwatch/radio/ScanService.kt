@@ -212,6 +212,7 @@ class ScanService : LifecycleService() {
                 if (gnssReady && !locationHeld && !resumeLocation && !resumeRadios) {
                     app.syncGnss()
                 }
+                app.tickCell(locationHeld)
                 publishNow()
                 delay(2_000L)
             }
@@ -526,6 +527,7 @@ class ScanService : LifecycleService() {
                     beepOn = settings.alertBeep,
                     voiceOn = settings.alertVoice,
                     voiceWhat = settings.alertVoiceWhat,
+                    spokenNames = settings.spokenNames,
                     shadeOn = settings.alertShade,
                     visibleOnLive = app::wouldShowOnLive,
                     arrivalsOnly = app.config.filter.arrivalsOnly,

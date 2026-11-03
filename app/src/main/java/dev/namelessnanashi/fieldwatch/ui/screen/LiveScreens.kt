@@ -1,6 +1,8 @@
 package dev.namelessnanashi.fieldwatch.ui.screen
 
 import dev.namelessnanashi.fieldwatch.domain.rowFillsWindow
+import dev.namelessnanashi.fieldwatch.domain.LanguageText
+import dev.namelessnanashi.fieldwatch.domain.MapCameraMarks
 
 import android.content.Intent
 import android.provider.Settings
@@ -100,7 +102,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.namelessnanashi.fieldwatch.domain.GnssCopy
-import dev.namelessnanashi.fieldwatch.domain.LanguageText
 import dev.namelessnanashi.fieldwatch.domain.Sit
 import dev.namelessnanashi.fieldwatch.ui.component.DecodeGlyph
 import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchFilterChip
@@ -204,6 +205,7 @@ fun LivePane(
             )
         }
         TrustedAlertDialog(vm)
+        CellAlertDialog(vm)
         if (floodNotice != null && !floodNotice.showDialog) {
             Text(
                 floodNotice.line(),
@@ -443,6 +445,9 @@ private fun LivePathSplit(
     val tiles by vm.livePathTiles.collectAsStateWithLifecycle()
     val zoomIn by vm.livePathZoomIn.collectAsStateWithLifecycle()
     val flockRevision by vm.flockRevision.collectAsStateWithLifecycle()
+    val pendingCameras by vm.shownMapCameras.collectAsStateWithLifecycle()
+    val cameraMode = MapCameraMarks.onScreen(pendingCameras, state.settings.mapCameras)
+    val tip = state.operatorPath.lastOrNull()
     val names = remember(state.watchlist) { RadioBookmarks.labels(state.watchlist) }
     val model = remember(
         state.operatorPath,
@@ -477,7 +482,6 @@ private fun LivePathSplit(
     val tileKey = remember(state.operatorPath, online, basemap, overlays, mapKeyRev) {
         livePathTileKey(state.operatorPath, online, basemap, overlays, mapKeyRev)
     }
-    val tip = state.operatorPath.lastOrNull()
     val tipBucket = if (tip == null) "" else {
         "${(tip.lat * 2500.0).toInt()}:${(tip.lon * 2500.0).toInt()}"
     }
@@ -601,6 +605,10 @@ private fun LivePathSplit(
                     flock = state.settings.flockLayer || state.settings.sensorLayer,
                     flockIndex = vm.flockIndex,
                     flockRevision = flockRevision,
+                    cameraMode = cameraMode,
+                    onCycleCameras = vm::cycleMapCameras,
+                    camerasReady = (state.settings.flockLayer || state.settings.sensorLayer) &&
+                        vm.flockIndex.hasCameras(),
                     onTileWindow = { next ->
                         if (SitPathPlot.tileWindowKey(next) != tileWindowKey) tileWindow = next
                     },
