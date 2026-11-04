@@ -18,6 +18,7 @@ import androidx.core.content.ContextCompat
 import dev.namelessnanashi.fieldwatch.alert.Alerter
 import dev.namelessnanashi.fieldwatch.crash.CrashNotes
 import dev.namelessnanashi.fieldwatch.radio.GnssMonitor
+import dev.namelessnanashi.fieldwatch.data.AppUpdateAuto
 import dev.namelessnanashi.fieldwatch.data.ConfigStore
 import dev.namelessnanashi.fieldwatch.data.FlockFiles
 import dev.namelessnanashi.fieldwatch.data.SensorList
@@ -77,6 +78,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -692,6 +695,12 @@ class FieldwatchApp : Application() {
         }
         if (config.filter.arrivalsOnly) {
             beginArrivals(keepRemembered = true)
+        }
+        // Background update checks follow Settings → Updates.
+        scope.launch {
+            config.config.map { it.settings.updateCheckEvery }.distinctUntilChanged().collect { every ->
+                withContext(Dispatchers.IO) { AppUpdateAuto.sync(this@FieldwatchApp, every) }
+            }
         }
         // Only listens for Vector's service binder; changes nothing by itself.
         VectorBridge.start()

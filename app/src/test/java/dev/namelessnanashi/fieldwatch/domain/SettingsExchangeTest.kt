@@ -19,6 +19,22 @@ class SettingsExchangeTest {
     }
 
     @Test
+    fun updateChoicesStayOnThisPhone() {
+        val local = AppSettings(
+            updateAutoInstall = false,
+            updateCheckOnLaunch = false,
+            updateElevatedInstall = false,
+            updateCheckEvery = UpdateCheckEvery.OFF,
+        )
+        val pack = SettingsPack(format = SettingsPack.FORMAT, settings = AppSettings())
+        val (next, _) = SettingsExchange.apply(localConfig(settings = local), pack)
+        assertFalse(next.settings.updateAutoInstall)
+        assertFalse(next.settings.updateCheckOnLaunch)
+        assertFalse(next.settings.updateElevatedInstall)
+        assertEquals(UpdateCheckEvery.OFF, next.settings.updateCheckEvery)
+    }
+
+    @Test
     fun unattendedScanningAndRootAccessNeedLocalOptIn() {
         val defaults = AppSettings()
         assertFalse(defaults.classicDiscovery)

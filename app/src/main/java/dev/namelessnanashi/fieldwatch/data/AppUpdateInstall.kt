@@ -49,6 +49,14 @@ object AppUpdateInstall {
         return archiveCerts == installedCerts
     }
 
+    /** versionCode and versionName inside [apk], or null when Android cannot read it. */
+    fun archiveVersion(context: Context, apk: File): Pair<Int, String>? {
+        val info = archiveInfo(context.packageManager, apk.absolutePath) ?: return null
+        val name = info.versionName ?: return null
+        val code = info.longVersionCode.takeIf { it in 1..Int.MAX_VALUE.toLong() } ?: return null
+        return code.toInt() to name
+    }
+
     fun viewIntent(context: Context, apk: File): Intent {
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", apk)
         val intent = Intent(Intent.ACTION_VIEW).apply {

@@ -100,6 +100,7 @@ import dev.namelessnanashi.fieldwatch.alert.VoiceOption
 import dev.namelessnanashi.fieldwatch.domain.AlertOtherAudio
 import dev.namelessnanashi.fieldwatch.domain.AppTheme
 import dev.namelessnanashi.fieldwatch.domain.CatalogSource
+import dev.namelessnanashi.fieldwatch.domain.UpdateCheckEvery
 import dev.namelessnanashi.fieldwatch.radio.ScanService
 import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchActionButton
 import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchDropdownField
@@ -1344,6 +1345,79 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (vm.appUpdateAvailable) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(LanguageText.text("update.auto"), Modifier.weight(1f))
+                    FieldwatchSwitch(settings.updateAutoInstall, { on ->
+                        vm.updateSettings { it.copy(updateAutoInstall = on) }
+                    })
+                }
+                Text(
+                    LanguageText.text("update.auto.note"),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(LanguageText.text("update.elevated"), Modifier.weight(1f))
+                    FieldwatchSwitch(settings.updateElevatedInstall, { on ->
+                        vm.updateSettings { it.copy(updateElevatedInstall = on) }
+                    })
+                }
+                Text(
+                    LanguageText.text("update.elevated.note"),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(LanguageText.text("update.launch"), Modifier.weight(1f))
+                    FieldwatchSwitch(settings.updateCheckOnLaunch, { on ->
+                        vm.updateSettings { it.copy(updateCheckOnLaunch = on) }
+                    })
+                }
+                var everyMenu by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
+                    expanded = everyMenu,
+                    onExpandedChange = { everyMenu = it },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    FieldwatchDropdownField(
+                        label = LanguageText.text("update.every"),
+                        value = LanguageText.text(settings.updateCheckEvery.labelKey),
+                        expanded = everyMenu,
+                    )
+                    ExposedDropdownMenu(everyMenu, { everyMenu = false }) {
+                        UpdateCheckEvery.entries.forEach { choice ->
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 32.dp)
+                                    .clickable {
+                                        everyMenu = false
+                                        if (choice != settings.updateCheckEvery) {
+                                            vm.updateSettings { it.copy(updateCheckEvery = choice) }
+                                        }
+                                    }
+                                    .padding(horizontal = 12.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    LanguageText.text(choice.labelKey),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                if (choice == settings.updateCheckEvery) {
+                                    Icon(Icons.Outlined.Check, contentDescription = null)
+                                }
+                            }
+                        }
+                    }
+                }
+                Text(
+                    LanguageText.text("update.every.note"),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             FieldwatchActionButton(
                 onClick = vm::checkForAppUpdate,
                 modifier = Modifier.fillMaxWidth(),

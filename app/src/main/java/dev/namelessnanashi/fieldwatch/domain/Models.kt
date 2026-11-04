@@ -1365,6 +1365,20 @@ data class AppSettings(
     val hciSnoopReader: Boolean = false,
     val backgroundScanning: Boolean = false,
     val scanOnBoot: Boolean = false,
+    /**
+     * Download a newer nightly and install it once the app has gone untouched for a few minutes.
+     * Per phone: a settings pack does not change it. Missing JSON is on.
+     */
+    val updateAutoInstall: Boolean = true,
+    /**
+     * When Android wants a tap to confirm an automatic update, or installs from this app are not
+     * allowed, install through Shizuku or root instead if either is set up. Per phone. Missing JSON is on.
+     */
+    val updateElevatedInstall: Boolean = true,
+    /** Look for a newer nightly each time the app opens. Per phone. Missing JSON is on. */
+    val updateCheckOnLaunch: Boolean = true,
+    /** How often to look for a newer nightly in the background. Per phone. Missing JSON is hourly. */
+    val updateCheckEvery: UpdateCheckEvery = UpdateCheckEvery.HOURLY,
     /** Speech engine package for spoken alerts. Blank, and missing JSON, use the system default. */
     val ttsEngine: String = "",
     /** Voice name within [ttsEngine]. Blank, and missing JSON, use the engine's voice for the phone language. */

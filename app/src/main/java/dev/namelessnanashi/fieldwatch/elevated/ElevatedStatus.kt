@@ -57,6 +57,7 @@ data class ElevatedStatus(
                 ) == PackageManager.PERMISSION_GRANTED),
                 ElevatedItems.KEEP_PERMISSIONS to check { app.packageManager.isAutoRevokeWhitelisted },
                 ElevatedItems.GRANT_PERMISSIONS to RadioPermissions.missing(app).isEmpty(),
+                ElevatedItems.INSTALL_UPDATES to check { app.packageManager.canRequestPackageInstalls() },
                 ElevatedItems.WIFI_ON to wifi?.let { w -> check { w.isWifiEnabled } },
                 ElevatedItems.BLUETOOTH_ON to bluetooth?.let { b -> check { b.adapter?.isEnabled == true } },
                 ElevatedItems.LOCATION_ON to location?.let { l -> check { l.isLocationEnabled } },

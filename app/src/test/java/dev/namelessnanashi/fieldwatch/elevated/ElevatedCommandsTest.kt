@@ -33,6 +33,7 @@ class ElevatedCommandsTest {
             ElevatedItems.BACKGROUND_LOCATION,
             ElevatedItems.KEEP_PERMISSIONS,
             ElevatedItems.HCI_SNOOP,
+            ElevatedItems.INSTALL_UPDATES,
         ).forEach { id -> assertTrue(id, !item(id).undo.isNullOrBlank()) }
         assertNull(item(ElevatedItems.WIFI_ON).undo)
     }
@@ -54,6 +55,14 @@ class ElevatedCommandsTest {
         assertFalse(permission.rootOnly)
         assertEquals("pm grant $pkg android.permission.ACCESS_BACKGROUND_LOCATION", permission.apply)
         assertEquals("pm revoke $pkg android.permission.ACCESS_BACKGROUND_LOCATION", permission.undo)
+    }
+
+    @Test
+    fun updateInstallsWorkThroughShizukuOrRootAndCanBeReset() {
+        val install = item(ElevatedItems.INSTALL_UPDATES)
+        assertFalse(install.rootOnly)
+        assertEquals("cmd appops set $pkg REQUEST_INSTALL_PACKAGES allow", install.apply)
+        assertEquals("cmd appops set $pkg REQUEST_INSTALL_PACKAGES default", install.undo)
     }
 
     @Test

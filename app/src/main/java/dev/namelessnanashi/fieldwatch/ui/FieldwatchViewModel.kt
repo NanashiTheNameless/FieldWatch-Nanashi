@@ -22,6 +22,7 @@ import dev.namelessnanashi.fieldwatch.domain.AppUpdateNote
 import dev.namelessnanashi.fieldwatch.domain.AppUpdatePrompt
 import dev.namelessnanashi.fieldwatch.domain.AppUpdateSkip
 import dev.namelessnanashi.fieldwatch.domain.AircraftTrail
+import dev.namelessnanashi.fieldwatch.data.AppUpdateAuto
 import dev.namelessnanashi.fieldwatch.data.AppUpdateClient
 import dev.namelessnanashi.fieldwatch.data.AppUpdateInstall
 import dev.namelessnanashi.fieldwatch.domain.AppSettings
@@ -864,11 +865,19 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     /** Debug builds carry a .debug application ID, so the nightly APK is never an update for them. */
-    val appUpdateAvailable: Boolean = !BuildConfig.DEBUG
+    val appUpdateAvailable: Boolean = AppUpdateAuto.available
 
     init {
         if (appUpdateAvailable) viewModelScope.launch(Dispatchers.IO) {
             try {
+                if (!app.awaitConfiguration()) return@launch
+                val settings = app.config.settings
+                if (!settings.updateCheckOnLaunch) return@launch
+                // Automatic updates download now and install once the app sits untouched.
+                if (settings.updateAutoInstall) {
+                    AppUpdateAuto.run(app, announce = false)
+                    return@launch
+                }
                 val prompt = lookForAppUpdate(fromSettings = false)
                 if (prompt is AppUpdatePrompt.Offer && _appUpdate.value == null) {
                     offeredUpdate = prompt.note

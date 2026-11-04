@@ -36,6 +36,7 @@ object ElevatedItems {
     const val HCI_SNOOP = "hci_snoop"
     const val BACKGROUND_LOCATION = "background_location"
     const val RESTART_BLUETOOTH = "restart_bluetooth"
+    const val INSTALL_UPDATES = "install_updates"
 
     /** One-shot action shown on the Vector card rather than in the main list. */
     val VECTOR_CARD_ITEMS = setOf(RESTART_BLUETOOTH)
@@ -99,6 +100,13 @@ object ElevatedItems {
                 "Enable Start scanning after boot separately in Scan settings. Grant radio permissions first.",
             "pm grant $pkg android.permission.ACCESS_BACKGROUND_LOCATION",
             "pm revoke $pkg android.permission.ACCESS_BACKGROUND_LOCATION",
+        ),
+        ElevatedItem(
+            INSTALL_UPDATES,
+            "Allow app updates",
+            "Lets the app install its own nightly updates. Same as Android's Install unknown apps switch for this app.",
+            "cmd appops set $pkg REQUEST_INSTALL_PACKAGES allow",
+            "cmd appops set $pkg REQUEST_INSTALL_PACKAGES default",
         ),
         ElevatedItem(WIFI_ON, "Turn Wi-Fi on", "One-time.", "svc wifi enable", null),
         ElevatedItem(BLUETOOTH_ON, "Turn Bluetooth on", "One-time.", "svc bluetooth enable", null),

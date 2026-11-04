@@ -18,6 +18,8 @@ import kotlinx.coroutines.launch
 import dev.namelessnanashi.fieldwatch.ui.StartupLogo
 import dev.namelessnanashi.fieldwatch.ui.screen.StartupFailureScreen
 import dev.namelessnanashi.fieldwatch.alert.Alerter
+import dev.namelessnanashi.fieldwatch.data.AppUpdateAuto
+import dev.namelessnanashi.fieldwatch.data.AppUpdateInstall
 import dev.namelessnanashi.fieldwatch.domain.AlertRadioSnapshot
 import dev.namelessnanashi.fieldwatch.radio.RadioPermissions
 import dev.namelessnanashi.fieldwatch.ui.FieldwatchRoot
@@ -41,8 +43,27 @@ class MainActivity : ComponentActivity() {
                     app.refreshFix()
                     vm.resumeScan()
                 }
+                askInstallPermissionOnce(app)
             }
         }
+    }
+
+    /** Android's Install unknown apps page. Nothing comes back; the switch is read when needed. */
+    private val installPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { }
+
+    /**
+     * Automatic updates need Install unknown apps for this app. Asked once, after the radio
+     * permissions, and only while automatic updates are on. Settings → Elevated access can grant it too.
+     */
+    private fun askInstallPermissionOnce(app: FieldwatchApp) {
+        if (!AppUpdateAuto.available || !app.config.settings.updateAutoInstall) return
+        if (AppUpdateInstall.allowed(this)) return
+        val asked = java.io.File(filesDir, "install-permission-asked.txt")
+        if (asked.exists()) return
+        runCatching { asked.writeText("1") }
+        runCatching { installPermissionLauncher.launch(AppUpdateInstall.settingsIntent(this)) }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,6 +75,23 @@ class MainActivity : ComponentActivity() {
             return
         }
         showApp()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        AppUpdateAuto.visibleActivities++
+        AppUpdateAuto.touch()
+    }
+
+    override fun onStop() {
+        AppUpdateAuto.visibleActivities = (AppUpdateAuto.visibleActivities - 1).coerceAtLeast(0)
+        super.onStop()
+    }
+
+    /** Any touch or key pushes an automatic install back by the idle wait. */
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        AppUpdateAuto.touch()
     }
 
     override fun onResume() {
@@ -112,7 +150,11 @@ class MainActivity : ComponentActivity() {
                 StartupState.READY -> {
                     LaunchedEffect(Unit) {
                         vm.refreshPermissions()
-                        if (RadioPermissions.granted(this@MainActivity)) vm.resumeScan()
+                        if (RadioPermissions.granted(this@MainActivity)) {
+                            vm.resumeScan()
+                            // Already set up from an older version: the radio prompt will not show.
+                            askInstallPermissionOnce(app)
+                        }
                         openAlerted(intent)
                     }
                     FieldwatchRoot(vm) {

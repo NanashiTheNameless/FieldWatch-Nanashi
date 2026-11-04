@@ -24,6 +24,48 @@ class AppUpdateTest {
     }
 
     @Test
+    fun updatesAreOnHourlyAndAtLaunchByDefault() {
+        val defaults = AppSettings()
+        assertTrue(defaults.updateAutoInstall)
+        assertTrue(defaults.updateCheckOnLaunch)
+        assertTrue(defaults.updateElevatedInstall)
+        assertEquals(UpdateCheckEvery.HOURLY, defaults.updateCheckEvery)
+        assertEquals(3_600_000L, UpdateCheckEvery.HOURLY.periodMs)
+        assertEquals(0L, UpdateCheckEvery.OFF.periodMs)
+        for (every in UpdateCheckEvery.entries) {
+            assertTrue(EnglishCopy.byKey.containsKey(every.labelKey))
+        }
+    }
+
+    @Test
+    fun anInstallWaitsForFiveQuietMinutes() {
+        val idle = AppUpdateIdle.IDLE_MS
+        assertEquals(0L, AppUpdateIdle.waitMs(lastTouchMs = 0L, nowMs = 1_000L))
+        assertEquals(idle, AppUpdateIdle.waitMs(lastTouchMs = 10_000L, nowMs = 10_000L))
+        assertEquals(idle - 60_000L, AppUpdateIdle.waitMs(lastTouchMs = 10_000L, nowMs = 70_000L))
+        assertEquals(0L, AppUpdateIdle.waitMs(lastTouchMs = 10_000L, nowMs = 10_000L + idle))
+        assertEquals(idle, AppUpdateIdle.waitMs(lastTouchMs = 10_000L, nowMs = 5_000L))
+    }
+
+    @Test
+    fun theResumeMarkerIsReadOnceAndOnlyWhileFresh() {
+        val marker = AppUpdateResume.Marker(scanning = true, fromVersion = "1.2.0-abc1234", atMs = 1_000_000L)
+        val text = AppUpdateResume.encode(marker)
+        assertEquals(marker, AppUpdateResume.decode(text, nowMs = 1_000_000L + 60_000L))
+        assertNull(AppUpdateResume.decode(text, nowMs = 1_000_000L + AppUpdateResume.MAX_AGE_MS + 1))
+        assertNull(AppUpdateResume.decode(text, nowMs = 999_999L))
+        assertNull(AppUpdateResume.decode("scanning=maybe\nat=1", nowMs = 2L))
+        val dir = kotlin.io.path.createTempDirectory("resume").toFile()
+        try {
+            AppUpdateResume.write(dir, marker)
+            assertEquals(marker, AppUpdateResume.take(dir, nowMs = 1_000_500L))
+            assertNull(AppUpdateResume.take(dir, nowMs = 1_000_500L))
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
+    @Test
     fun aNightlyNameWithACommitSuffixIsRead() {
         val text = """{"versionCode":26784512,"versionName":"1.2.0-abc1234","notes":"- A commit."}"""
         assertEquals(AppUpdateNote(26784512, "1.2.0-abc1234", "- A commit."), AppUpdate.parse(text))
@@ -83,14 +125,35 @@ class AppUpdateTest {
         val keys = listOf(
             "update.allow.body",
             "update.allow.title",
+            "update.auto",
+            "update.auto.note",
+            "update.available.body",
+            "update.available.title",
+            "update.channel",
             "update.checking",
+            "update.confirm.body",
             "update.current.body",
             "update.current.title",
             "update.debug.note",
+            "update.done.body",
+            "update.done.resumed",
+            "update.done.title",
             "update.downloading",
+            "update.elevated",
+            "update.elevated.note",
+            "update.every",
+            "update.every.daily",
+            "update.every.hourly",
+            "update.every.note",
+            "update.every.off",
+            "update.every.six.hours",
+            "update.every.twelve.hours",
+            "update.every.weekly",
             "update.failed.body",
             "update.failed.title",
             "update.later",
+            "update.launch",
+            "update.needs.allow.body",
             "update.now",
             "update.settings",
             "update.settings.note",

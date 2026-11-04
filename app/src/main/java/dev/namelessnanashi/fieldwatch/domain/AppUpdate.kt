@@ -1,6 +1,7 @@
 package dev.namelessnanashi.fieldwatch.domain
 
 import java.io.File
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -84,6 +85,94 @@ object AppUpdate {
     }
 }
 
+/**
+ * How often this phone looks for a newer nightly in the background. [OFF] leaves only the launch
+ * check, when that is on, and the Settings button. Missing JSON is hourly.
+ */
+@Serializable
+enum class UpdateCheckEvery(val hours: Int) {
+    OFF(0),
+    HOURLY(1),
+    SIX_HOURS(6),
+    TWELVE_HOURS(12),
+    DAILY(24),
+    WEEKLY(168),
+    ;
+
+    val periodMs: Long get() = hours * 3_600_000L
+
+    val labelKey: String
+        get() = when (this) {
+            OFF -> "update.every.off"
+            HOURLY -> "update.every.hourly"
+            SIX_HOURS -> "update.every.six.hours"
+            TWELVE_HOURS -> "update.every.twelve.hours"
+            DAILY -> "update.every.daily"
+            WEEKLY -> "update.every.weekly"
+        }
+}
+
+/** An automatic install waits until nobody has touched the app for [IDLE_MS]. */
+object AppUpdateIdle {
+    const val IDLE_MS = 5 * 60_000L
+
+    /**
+     * Milliseconds left before an install may start. [lastTouchMs] of 0 means no touch in this
+     * process, which counts as idle. Clocks are elapsed-realtime, so a clock change does not matter.
+     */
+    fun waitMs(lastTouchMs: Long, nowMs: Long): Long {
+        if (lastTouchMs <= 0L) return 0L
+        val since = nowMs - lastTouchMs
+        if (since < 0L) return IDLE_MS
+        return (IDLE_MS - since).coerceAtLeast(0L)
+    }
+}
+
+/**
+ * Written just before an automatic install. After Android replaces the app, the new copy reads it
+ * once to resume the scan that was running. A marker older than [MAX_AGE_MS] is ignored.
+ */
+object AppUpdateResume {
+    const val NAME = "app-update-resume.txt"
+    const val MAX_AGE_MS = 60 * 60_000L
+
+    data class Marker(val scanning: Boolean, val fromVersion: String, val atMs: Long)
+
+    fun encode(marker: Marker): String =
+        "scanning=${if (marker.scanning) 1 else 0}\nfrom=${marker.fromVersion.replace('\n', ' ')}\nat=${marker.atMs}\n"
+
+    /** Null when the text is not a marker, or it is too old to trust. */
+    fun decode(text: String, nowMs: Long): Marker? {
+        val fields = text.lineSequence()
+            .mapNotNull { line -> line.split('=', limit = 2).takeIf { it.size == 2 } }
+            .associate { (k, v) -> k.trim() to v.trim() }
+        val scanning = when (fields["scanning"]) {
+            "1" -> true
+            "0" -> false
+            else -> return null
+        }
+        val at = fields["at"]?.toLongOrNull() ?: return null
+        if (at > nowMs || nowMs - at > MAX_AGE_MS) return null
+        return Marker(scanning, fields["from"].orEmpty(), at)
+    }
+
+    fun write(filesDir: File, marker: Marker) {
+        runCatching { File(filesDir, NAME).writeText(encode(marker)) }
+    }
+
+    fun clear(filesDir: File) {
+        runCatching { File(filesDir, NAME).delete() }
+    }
+
+    /** Reads and removes the marker, so a later restart does not resume again. */
+    fun take(filesDir: File, nowMs: Long): Marker? {
+        val file = File(filesDir, NAME)
+        val text = runCatching { file.readText() }.getOrNull() ?: return null
+        file.delete()
+        return decode(text, nowMs)
+    }
+}
+
 /** Version the person chose Later for. Not part of exported settings. */
 object AppUpdateSkip {
     private const val NAME = "app-update-skip.txt"
@@ -101,6 +190,27 @@ object AppUpdateSkip {
 
 internal object AppUpdateLines {
     val all: List<EnglishLine> = listOf(
+        en("update.auto", "Automatic updates", LanguageSlot.CONTROL),
+        en("update.auto.note", "Downloads a newer nightly and installs it after 5 minutes without a touch. A running scan starts again after the update.", LanguageSlot.BODY),
+        en("update.available.body", "Fieldwatch {version} is ready. Open the app to read the notes and update.", LanguageSlot.BODY),
+        en("update.available.title", "Update available", LanguageSlot.CONTROL),
+        en("update.channel", "Updates", LanguageSlot.CONTROL),
+        en("update.confirm.body", "Android needs you to confirm this update. Tap to finish.", LanguageSlot.BODY),
+        en("update.done.body", "Now on {version}.", LanguageSlot.BODY),
+        en("update.done.resumed", "Now on {version}. Scanning started again.", LanguageSlot.BODY),
+        en("update.done.title", "Fieldwatch updated", LanguageSlot.CONTROL),
+        en("update.elevated", "Use Shizuku or root when Android asks", LanguageSlot.CONTROL),
+        en("update.elevated.note", "If Android wants a tap to confirm, or installs from this app are off, the update installs through Shizuku or root when either is set up. It also makes this app the installer, so later updates need no help.", LanguageSlot.BODY),
+        en("update.every", "Check for updates", LanguageSlot.CONTROL),
+        en("update.every.daily", "Every day", LanguageSlot.CONTROL),
+        en("update.every.hourly", "Every hour", LanguageSlot.CONTROL),
+        en("update.every.off", "Off", LanguageSlot.CONTROL),
+        en("update.every.note", "Looks for a newer nightly in the background while this phone is online.", LanguageSlot.BODY),
+        en("update.launch", "Check when the app opens", LanguageSlot.CONTROL),
+        en("update.every.six.hours", "Every 6 hours", LanguageSlot.CONTROL),
+        en("update.every.twelve.hours", "Every 12 hours", LanguageSlot.CONTROL),
+        en("update.every.weekly", "Every week", LanguageSlot.CONTROL),
+        en("update.needs.allow.body", "Allow installs from Fieldwatch so updates can install on their own. Tap to open Android settings.", LanguageSlot.BODY),
         en("update.allow.body", "Android asks once. Then come back and tap Update now again.", LanguageSlot.BODY),
         en("update.allow.title", "Allow installs from Fieldwatch", LanguageSlot.CONTROL),
         en("update.checking", "Checking for an update", LanguageSlot.CONTROL),
