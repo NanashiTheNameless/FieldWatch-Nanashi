@@ -1344,6 +1344,16 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            FieldwatchActionButton(
+                onClick = vm::checkForAppUpdate,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = vm.appUpdateAvailable,
+            ) { Text(LanguageText.text("update.settings")) }
+            Text(
+                LanguageText.text(if (vm.appUpdateAvailable) "update.settings.note" else "update.debug.note"),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
 
             Text(
                 "Fieldwatch ${dev.namelessnanashi.fieldwatch.BuildConfig.VERSION_NAME}  ·  Catalog ${state.catalogVersion}",
