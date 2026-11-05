@@ -28,6 +28,10 @@ import dev.namelessnanashi.fieldwatch.ui.screen.CrashNoteScreen
 import dev.namelessnanashi.fieldwatch.ui.theme.FieldwatchTheme
 
 class MainActivity : ComponentActivity() {
+    companion object {
+        const val EXTRA_OPEN_INSTALL_SETTINGS = "dev.namelessnanashi.fieldwatch.extra.OPEN_INSTALL_SETTINGS"
+    }
+
     private val vm: FieldwatchViewModel by viewModels()
 
     private val permissionLauncher = registerForActivityResult(
@@ -75,6 +79,7 @@ class MainActivity : ComponentActivity() {
             return
         }
         showApp()
+        if (savedInstanceState == null) openInstallSettingsIfAsked(intent)
     }
 
     override fun onStart() {
@@ -107,8 +112,16 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        openInstallSettingsIfAsked(intent)
         if (!(application as FieldwatchApp).isReady) return
         openAlerted(intent)
+    }
+
+    /** The "allow installs" notification lands here; the settings page opens from inside the app. */
+    private fun openInstallSettingsIfAsked(intent: android.content.Intent?) {
+        if (intent?.getBooleanExtra(EXTRA_OPEN_INSTALL_SETTINGS, false) != true) return
+        intent.removeExtra(EXTRA_OPEN_INSTALL_SETTINGS)
+        runCatching { startActivity(AppUpdateInstall.settingsIntent(this)) }
     }
 
     /** Opens the radio an alert was about. The key is dropped so a rotation does not open it again. */

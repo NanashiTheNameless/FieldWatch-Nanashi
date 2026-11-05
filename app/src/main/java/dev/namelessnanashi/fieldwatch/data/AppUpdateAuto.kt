@@ -244,7 +244,8 @@ object AppUpdateAuto {
             NOTIF_ACTION,
             LanguageText.text("update.allow.title"),
             LanguageText.text("update.needs.allow.body"),
-            AppUpdateInstall.settingsIntent(context),
+            // Explicit: MainActivity opens the settings page itself, so no implicit Intent sits in the PendingIntent.
+            Intent(context, MainActivity::class.java).putExtra(MainActivity.EXTRA_OPEN_INSTALL_SETTINGS, true),
         )
     }
 
