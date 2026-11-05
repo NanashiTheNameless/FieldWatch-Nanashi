@@ -3096,18 +3096,10 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
             }
             _appUpdate.value = AppUpdatePrompt.Downloading
             val file = try {
+                // Through the updater's lock: an automatic download already running finishes first,
+                // and this one reuses its file instead of writing over it.
                 withContext(Dispatchers.IO) {
-                    val got = AppUpdateClient.downloadApk(
-                        app.cacheDir,
-                        userAgent = updateUserAgent(),
-                    ) { token == appUpdateToken }
-                    if (token != appUpdateToken) return@withContext null
-                    if (got == null || !AppUpdateInstall.trusted(app, got, note.versionCode, note.versionName)) {
-                        got?.delete()
-                        null
-                    } else {
-                        got
-                    }
+                    AppUpdateAuto.fetchApk(app, note) { token == appUpdateToken }
                 }
             } catch (e: CancellationException) {
                 throw e

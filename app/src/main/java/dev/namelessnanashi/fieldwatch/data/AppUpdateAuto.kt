@@ -285,8 +285,19 @@ object AppUpdateAuto {
             }
     }
 
-    private fun download(context: Context, note: AppUpdateNote): File? {
-        val got = AppUpdateClient.downloadApk(context.cacheDir, userAgent = userAgent()) ?: return null
+    /**
+     * The verified APK for [note]: the cached one, else a fresh download. Shares the updater's lock,
+     * so "Update now" and an automatic update never download over each other; whichever comes
+     * second waits and reuses the file. [running] false stops the download.
+     */
+    suspend fun fetchApk(context: Context, note: AppUpdateNote, running: () -> Boolean = { true }): File? =
+        lock.withLock {
+            cachedApk(context, note) ?: if (running()) download(context, note, running) else null
+        }
+
+    private fun download(context: Context, note: AppUpdateNote, running: () -> Boolean = { true }): File? {
+        val got = AppUpdateClient.downloadApk(context.cacheDir, userAgent = userAgent(), running = running)
+            ?: return null
         if (!AppUpdateInstall.trusted(context, got, note.versionCode, note.versionName)) {
             got.delete()
             return null

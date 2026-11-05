@@ -62,9 +62,9 @@ object AppUpdateClient {
         running: () -> Boolean = { true },
     ): File? {
         val dir = File(cacheDir, "update").apply { mkdirs() }
-        val part = File(dir, "Fieldwatch.apk.part")
         val dest = File(dir, "Fieldwatch.apk")
-        if (part.exists() && !part.delete()) return null
+        // A temp file of its own, so two downloads at once can never swap halves.
+        val part = runCatching { File.createTempFile("Fieldwatch", ".apk.part", dir) }.getOrNull() ?: return null
         var connection: HttpURLConnection? = null
         try {
             if (!running()) return null
