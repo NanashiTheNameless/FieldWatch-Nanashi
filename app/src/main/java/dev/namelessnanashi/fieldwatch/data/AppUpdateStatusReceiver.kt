@@ -19,6 +19,10 @@ class AppUpdateStatusReceiver : BroadcastReceiver() {
         when (val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
             PackageInstaller.STATUS_SUCCESS -> Unit
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
+                if (intent.getBooleanExtra(AppUpdateAuto.EXTRA_AUTOMATIC, false)) {
+                    retryAutomatic(context, intent)
+                    return
+                }
                 val confirm = if (Build.VERSION.SDK_INT >= 33) {
                     intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java)
                 } else {
@@ -41,11 +45,31 @@ class AppUpdateStatusReceiver : BroadcastReceiver() {
                 }
             }
             else -> {
-                AppUpdateResume.clear(context.filesDir)
                 val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
                 Log.w("FieldwatchUpdate", "Automatic install failed ($status): $message")
+                if (intent.getBooleanExtra(AppUpdateAuto.EXTRA_AUTOMATIC, false)) {
+                    // Abandoning a session that asked for confirmation sends ABORTED as well.
+                    // Its original callback owns the retry and scan-resume marker.
+                    if (status != PackageInstaller.STATUS_FAILURE_ABORTED) {
+                        retryAutomatic(context, intent)
+                    }
+                    return
+                }
+                AppUpdateResume.clear(context.filesDir)
                 // Aborted means the prompt was cancelled. That was a choice, not a failure to report.
                 if (status != PackageInstaller.STATUS_FAILURE_ABORTED) AppUpdateAuto.notifyFailed(context, message)
+            }
+        }
+    }
+
+    private fun retryAutomatic(context: Context, intent: Intent) {
+        val app = context.applicationContext as FieldwatchApp
+        val pending = goAsync()
+        app.scope.launch(Dispatchers.IO) {
+            try {
+                AppUpdateAuto.pendingAutomatic(app, intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID, -1))
+            } finally {
+                pending.finish()
             }
         }
     }

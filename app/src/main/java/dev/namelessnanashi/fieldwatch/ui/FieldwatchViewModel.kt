@@ -894,7 +894,7 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
                 if (!app.awaitConfiguration()) return@launch
                 val settings = app.config.settings
                 if (!settings.updateCheckOnLaunch) return@launch
-                // Automatic updates download now and install once the app sits untouched.
+                // Automatic updates download now and install after the watchlist has gone quiet.
                 if (settings.updateAutoInstall) {
                     AppUpdateAuto.run(app, announce = false)
                     return@launch

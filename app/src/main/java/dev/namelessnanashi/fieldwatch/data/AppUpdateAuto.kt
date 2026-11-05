@@ -25,11 +25,17 @@ import dev.namelessnanashi.fieldwatch.domain.AppUpdateNote
 import dev.namelessnanashi.fieldwatch.domain.AppUpdateResume
 import dev.namelessnanashi.fieldwatch.domain.AppUpdateSkip
 import dev.namelessnanashi.fieldwatch.domain.LanguageText
+import dev.namelessnanashi.fieldwatch.domain.Sighting
 import dev.namelessnanashi.fieldwatch.domain.UpdateCheckEvery
 import dev.namelessnanashi.fieldwatch.elevated.ElevatedMemory
 import dev.namelessnanashi.fieldwatch.elevated.RootShell
 import dev.namelessnanashi.fieldwatch.elevated.ShizukuShell
 import java.io.File
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -48,10 +54,11 @@ object AppUpdateAuto {
     private const val CHANNEL_PROGRESS = "fieldwatch_update_progress"
     private const val JOB_PERIODIC = 7301
     private const val JOB_RETRY = 7302
+    const val EXTRA_AUTOMATIC = "dev.namelessnanashi.fieldwatch.extra.AUTOMATIC_UPDATE"
 
-    /** Elapsed-realtime of the last touch on the app. 0 means none in this process. */
+    /** Begin with a full observation window, including when a background job starts the process. */
     @Volatile
-    var lastTouchMs: Long = 0L
+    var lastWatchedMs: Long = SystemClock.elapsedRealtime()
         private set
 
     /** Started activities. Above zero means the app is on screen. */
@@ -59,11 +66,19 @@ object AppUpdateAuto {
     var visibleActivities: Int = 0
 
     private val lock = Mutex()
+    private var retryWork: Job? = null
 
     val available: Boolean get() = !BuildConfig.DEBUG
 
-    fun touch() {
-        lastTouchMs = SystemClock.elapsedRealtime()
+    fun noteWatched(app: FieldwatchApp, devices: List<Sighting>) {
+        if (AppUpdateIdle.watched(devices, app.config.watchlist)) {
+            watching()
+        }
+    }
+
+    /** A fresh hear during Hunt also protects a radio that was not bookmarked. */
+    fun watching() {
+        lastWatchedMs = SystemClock.elapsedRealtime()
     }
 
     enum class Outcome { NONE, NOTIFIED, WAITING, INSTALLING, FAILED }
@@ -76,6 +91,14 @@ object AppUpdateAuto {
     suspend fun run(app: FieldwatchApp, announce: Boolean): Outcome = lock.withLock {
         if (!available) return@withLock Outcome.NONE
         val settings = app.config.settings
+        // A downloaded update can install while offline. Retries need neither GitHub nor Wi-Fi.
+        if (settings.updateAutoInstall) {
+            val cached = downloadedApk(app)
+            val version = cached?.let { AppUpdateInstall.archiveVersion(app, it) }
+            if (cached != null && version != null &&
+                AppUpdateInstall.trusted(app, cached, version.first, version.second)
+            ) return@withLock installWhenQuiet(app, cached)
+        }
         if (!PlaceLookup.online(app)) return@withLock Outcome.NONE
         val note = AppUpdateClient.fetchNote(userAgent = userAgent())?.let(AppUpdate::parse)
             ?: return@withLock Outcome.NONE
@@ -94,12 +117,20 @@ object AppUpdateAuto {
             return@withLock Outcome.WAITING
         }
         val apk = cached ?: download(app, note, announce = true) ?: return@withLock Outcome.FAILED
-        val wait = AppUpdateIdle.waitMs(lastTouchMs, SystemClock.elapsedRealtime())
+        installWhenQuiet(app, apk)
+    }
+
+    private fun quietWait(): Long = AppUpdateIdle.waitMs(lastWatchedMs, SystemClock.elapsedRealtime())
+
+    private suspend fun installWhenQuiet(app: FieldwatchApp, apk: File): Outcome {
+        // Settings and watch activity may have changed during the download or the retry delay.
+        if (!app.config.settings.updateAutoInstall) return Outcome.NONE
+        val wait = quietWait()
         if (wait > 0L) {
-            scheduleRetry(app, wait)
-            return@withLock Outcome.WAITING
+            retryInstall(app, wait)
+            return Outcome.WAITING
         }
-        install(app, apk, notifyAllow = true)
+        return install(app, apk, automatic = true)
     }
 
     /**
@@ -108,10 +139,12 @@ object AppUpdateAuto {
      */
     suspend fun installNow(app: FieldwatchApp, apk: File): Outcome = lock.withLock {
         if (!available) return@withLock Outcome.NONE
-        install(app, apk, notifyAllow = false)
+        install(app, apk, automatic = false)
     }
 
-    private suspend fun install(app: FieldwatchApp, apk: File, notifyAllow: Boolean): Outcome {
+    private suspend fun install(app: FieldwatchApp, apk: File, automatic: Boolean): Outcome {
+        // Another callback/check must not submit a second session while Android is installing.
+        if (app.packageManager.packageInstaller.mySessions.any { it.isCommitted }) return Outcome.INSTALLING
         val settings = app.config.settings
         val scanning = app.isReady && app.devices.stats.value.scanning
         AppUpdateResume.write(
@@ -122,16 +155,25 @@ object AppUpdateAuto {
         // Android asks every time while another app owns updates. Shizuku or root goes around it.
         val ownedElsewhere = otherUpdateOwner(app) != null
         if (!allowed || ownedElsewhere) {
-            if (settings.updateElevatedInstall && elevatedInstall(app, apk)) return Outcome.INSTALLING
-            if (!allowed) {
+            if (settings.updateElevatedInstall && elevatedInstall(app, apk, automatic)) return Outcome.INSTALLING
+            if (automatic || !allowed) {
                 // Without the install switch the session would fail.
                 AppUpdateResume.clear(app.filesDir)
-                if (notifyAllow) notifyNeedsAllow(app)
+                if (automatic) {
+                    retryInstall(app, AppUpdateIdle.IDLE_MS)
+                    return Outcome.WAITING
+                }
                 return Outcome.FAILED
             }
         }
-        if (!commit(app, apk)) {
+        if (automatic && (!app.config.settings.updateAutoInstall || quietWait() > 0L)) {
             AppUpdateResume.clear(app.filesDir)
+            retryInstall(app, quietWait())
+            return Outcome.WAITING
+        }
+        if (!commit(app, apk, automatic)) {
+            AppUpdateResume.clear(app.filesDir)
+            if (automatic) retryInstall(app, AppUpdateIdle.IDLE_MS)
             return Outcome.FAILED
         }
         return Outcome.INSTALLING
@@ -188,18 +230,18 @@ object AppUpdateAuto {
      * as the installer, so Android lets later self-updates through without a prompt.
      * The APK is checked again first: the same package, a newer version, the installed certificate.
      */
-    suspend fun elevatedInstall(app: FieldwatchApp, apk: File): Boolean {
+    suspend fun elevatedInstall(app: FieldwatchApp, apk: File, automatic: Boolean = false): Boolean {
         if (!available || !apk.isFile) return false
         val archive = AppUpdateInstall.archiveVersion(app, apk) ?: return false
         if (!AppUpdateInstall.trusted(app, apk, archive.first, archive.second)) return false
-        return shellInstall(app, apk)
+        return shellInstall(app, apk, automatic)
     }
 
     /**
      * `pm install -r -i <this app>` through Shizuku, else root, skipping root when the last
      * Check root said no. The caller has already checked [apk].
      */
-    private suspend fun shellInstall(app: FieldwatchApp, apk: File): Boolean {
+    private suspend fun shellInstall(app: FieldwatchApp, apk: File, automatic: Boolean = false): Boolean {
         val dir = app.getExternalFilesDir("update") ?: return false
         val staged = File(dir, "Fieldwatch.apk")
         val copied = runCatching {
@@ -220,10 +262,18 @@ object AppUpdateAuto {
         val shells = buildList {
             if (app.shizuku.state() == ShizukuShell.State.READY) add(app.shizuku)
             // Root that was checked and refused stays skipped until Check root says otherwise.
-            if (ElevatedMemory.root(app.filesDir) != false) add(RootShell)
+            val root = ElevatedMemory.root(app.filesDir)
+            if (root == true || (!automatic && root == null)) add(RootShell)
         }
         for (shell in shells) {
-            val result = runCatching { shell.run(command) }.getOrNull() ?: continue
+            if (automatic && (!app.config.settings.updateAutoInstall || quietWait() > 0L)) break
+            val result = try {
+                shell.run(command)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                continue
+            }
             if (result.ok && result.output.contains("Success")) return true
             Log.w(TAG, "${shell.label} install failed: ${result.output.take(200)}")
         }
@@ -325,9 +375,10 @@ object AppUpdateAuto {
     }
 
     /** Silent self-update. Android 12+ skips the prompt when the app updates itself. */
-    private fun commit(context: Context, apk: File): Boolean = commit(context, listOf(apk))
+    private fun commit(context: Context, apk: File, automatic: Boolean): Boolean =
+        commit(context, listOf(apk), automatic)
 
-    private fun commit(context: Context, apks: List<File>): Boolean {
+    private fun commit(context: Context, apks: List<File>, automatic: Boolean = false): Boolean {
         val installer = context.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
             setAppPackageName(context.packageName)
@@ -351,13 +402,22 @@ object AppUpdateAuto {
                         session.fsync(out)
                     }
                 }
-                val status = Intent(context, AppUpdateStatusReceiver::class.java).setPackage(context.packageName)
+                val status = Intent(context, AppUpdateStatusReceiver::class.java)
+                    .setPackage(context.packageName)
+                    .putExtra(EXTRA_AUTOMATIC, automatic)
                 val pending = PendingIntent.getBroadcast(
                     context,
                     sessionId,
                     status,
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
                 )
+                if (automatic) {
+                    val app = context.applicationContext as FieldwatchApp
+                    if (!app.config.settings.updateAutoInstall || quietWait() > 0L) {
+                        session.abandon()
+                        return false
+                    }
+                }
                 session.commit(pending.intentSender)
             }
             true
@@ -386,7 +446,7 @@ object AppUpdateAuto {
         runCatching { js.schedule(job) }.onFailure { Log.w(TAG, "Could not schedule update checks", it) }
     }
 
-    /** One more try after the idle wait. A later touch pushes it back again. */
+    /** One more try after the quiet period. A later watched hear pushes it back again. */
     private fun scheduleRetry(context: Context, waitMs: Long, network: Int = JobInfo.NETWORK_TYPE_ANY) {
         val js = context.getSystemService(JobScheduler::class.java) ?: return
         val job = JobInfo.Builder(JOB_RETRY, ComponentName(context, AppUpdateJobService::class.java))
@@ -396,6 +456,36 @@ object AppUpdateAuto {
         runCatching { js.schedule(job) }.onFailure { Log.w(TAG, "Could not schedule the install retry", it) }
     }
 
+    /** The live process installs on time; JobScheduler covers process death and background limits. */
+    private fun retryInstall(app: FieldwatchApp, waitMs: Long) {
+        scheduleRetry(app, waitMs, JobInfo.NETWORK_TYPE_NONE)
+        retryWork?.cancel()
+        retryWork = app.scope.launch(Dispatchers.IO) {
+            delay(waitMs.coerceAtLeast(1_000L))
+            retryWork = null
+            try {
+                run(app, announce = false)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not retry the automatic update", e)
+            }
+        }
+    }
+
+    /** An automatic session never opens Android's confirmation UI. Retry silently when eligible. */
+    suspend fun pendingAutomatic(app: FieldwatchApp, sessionId: Int) = lock.withLock {
+        runCatching { app.packageManager.packageInstaller.abandonSession(sessionId) }
+        if (app.awaitConfiguration() && app.config.settings.updateAutoInstall) {
+            val apk = downloadedApk(app)
+            if (quietWait() == 0L && app.config.settings.updateElevatedInstall && apk != null &&
+                elevatedInstall(app, apk, automatic = true)
+            ) return@withLock
+            retryInstall(app, quietWait().coerceAtLeast(AppUpdateIdle.IDLE_MS))
+        }
+        AppUpdateResume.clear(app.filesDir)
+    }
+
     private fun notifyAvailable(context: Context, note: AppUpdateNote) {
         post(
             context,
@@ -403,17 +493,6 @@ object AppUpdateAuto {
             LanguageText.text("update.available.title"),
             LanguageText.text("update.available.body", mapOf("version" to note.versionName)),
             Intent(context, MainActivity::class.java),
-        )
-    }
-
-    private fun notifyNeedsAllow(context: Context) {
-        post(
-            context,
-            NOTIF_ACTION,
-            LanguageText.text("update.allow.title"),
-            LanguageText.text("update.needs.allow.body"),
-            // Explicit: MainActivity opens the settings page itself, so no implicit Intent sits in the PendingIntent.
-            Intent(context, MainActivity::class.java).putExtra(MainActivity.EXTRA_OPEN_INSTALL_SETTINGS, true),
         )
     }
 

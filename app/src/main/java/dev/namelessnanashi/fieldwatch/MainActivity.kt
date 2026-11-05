@@ -47,27 +47,8 @@ class MainActivity : ComponentActivity() {
                     app.refreshFix()
                     vm.resumeScan()
                 }
-                askInstallPermissionOnce(app)
             }
         }
-    }
-
-    /** Android's Install unknown apps page. Nothing comes back; the switch is read when needed. */
-    private val installPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult(),
-    ) { }
-
-    /**
-     * Automatic updates need Install unknown apps for this app. Asked once, after the radio
-     * permissions, and only while automatic updates are on. Settings → Elevated access can grant it too.
-     */
-    private fun askInstallPermissionOnce(app: FieldwatchApp) {
-        if (!AppUpdateAuto.available || !app.config.settings.updateAutoInstall) return
-        if (AppUpdateInstall.allowed(this)) return
-        val asked = java.io.File(filesDir, "install-permission-asked.txt")
-        if (asked.exists()) return
-        runCatching { asked.writeText("1") }
-        runCatching { installPermissionLauncher.launch(AppUpdateInstall.settingsIntent(this)) }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -85,7 +66,6 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         AppUpdateAuto.visibleActivities++
-        AppUpdateAuto.touch()
         // Every return from the background looks for a newer nightly. Before startup is ready the
         // view model cannot be built yet; the READY branch in showApp covers that launch.
         val app = application as FieldwatchApp
@@ -95,12 +75,6 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         AppUpdateAuto.visibleActivities = (AppUpdateAuto.visibleActivities - 1).coerceAtLeast(0)
         super.onStop()
-    }
-
-    /** Any touch or key pushes an automatic install back by the idle wait. */
-    override fun onUserInteraction() {
-        super.onUserInteraction()
-        AppUpdateAuto.touch()
     }
 
     override fun onResume() {
@@ -170,8 +144,6 @@ class MainActivity : ComponentActivity() {
                         vm.refreshPermissions()
                         if (RadioPermissions.granted(this@MainActivity)) {
                             vm.resumeScan()
-                            // Already set up from an older version: the radio prompt will not show.
-                            askInstallPermissionOnce(app)
                         }
                         openAlerted(intent)
                     }

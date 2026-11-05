@@ -40,12 +40,44 @@ class AppUpdateTest {
     @Test
     fun anInstallWaitsForFiveQuietMinutes() {
         val idle = AppUpdateIdle.IDLE_MS
-        assertEquals(0L, AppUpdateIdle.waitMs(lastTouchMs = 0L, nowMs = 1_000L))
-        assertEquals(idle, AppUpdateIdle.waitMs(lastTouchMs = 10_000L, nowMs = 10_000L))
-        assertEquals(idle - 60_000L, AppUpdateIdle.waitMs(lastTouchMs = 10_000L, nowMs = 70_000L))
-        assertEquals(0L, AppUpdateIdle.waitMs(lastTouchMs = 10_000L, nowMs = 10_000L + idle))
-        assertEquals(idle, AppUpdateIdle.waitMs(lastTouchMs = 10_000L, nowMs = 5_000L))
+        assertEquals(idle - 1_000L, AppUpdateIdle.waitMs(lastWatchedMs = 0L, nowMs = 1_000L))
+        assertEquals(idle, AppUpdateIdle.waitMs(lastWatchedMs = 10_000L, nowMs = 10_000L))
+        assertEquals(idle - 60_000L, AppUpdateIdle.waitMs(lastWatchedMs = 10_000L, nowMs = 70_000L))
+        assertEquals(0L, AppUpdateIdle.waitMs(lastWatchedMs = 10_000L, nowMs = 10_000L + idle))
+        assertEquals(idle, AppUpdateIdle.waitMs(lastWatchedMs = 10_000L, nowMs = 5_000L))
+        // A new hear just before the install would start buys another full quiet period.
+        assertEquals(idle - 1L, AppUpdateIdle.waitMs(lastWatchedMs = 10_000L + idle - 1L, nowMs = 10_000L + idle))
     }
+
+    @Test
+    fun watchedRadiosAndSignaturesHoldAnAutomaticUpdateEvenWhenSilent() {
+        val device = updateRadio()
+        val radio = WatchTarget(id = "radio", deviceKey = device.key, label = "", notify = false, vibrate = false)
+        val fleet = WatchTarget(id = "signature", fleetId = "watched", label = "", notify = false)
+        assertTrue(AppUpdateIdle.watched(listOf(device), listOf(radio)))
+        assertTrue(AppUpdateIdle.watched(listOf(device.copy(fleetIds = setOf("watched"))), listOf(fleet)))
+        assertFalse(AppUpdateIdle.watched(listOf(device), listOf(fleet)))
+        assertFalse(AppUpdateIdle.watched(emptyList(), listOf(radio, fleet)))
+    }
+
+    @Test
+    fun namesAndMineDoNotKeepUpdatesWaiting() {
+        val device = updateRadio().copy(fleetIds = setOf("watched"))
+        val named = WatchTarget(id = "radio", deviceKey = device.key, label = "My radio", alert = false)
+        val fleet = WatchTarget(id = "signature", fleetId = "watched", label = "")
+        assertFalse(AppUpdateIdle.watched(listOf(device), listOf(named)))
+        assertFalse(AppUpdateIdle.watched(listOf(device), listOf(named.copy(mine = true), fleet)))
+        assertTrue(AppUpdateIdle.watched(listOf(device), listOf(named, fleet)))
+    }
+
+    private fun updateRadio() = Sighting(
+        key = "BLE:AA:BB:CC:DD:EE:FF", kind = RadioKind.BLE, mac = "AA:BB:CC:DD:EE:FF",
+        name = "", rssi = -50, rssiMin = -50, rssiMax = -50, channel = 0, frequencyMhz = 0,
+        vendor = null, randomized = true, hiddenSsid = false, serviceUuids = emptyList(),
+        manufacturerId = null, manufacturerDataHex = "", rawHex = "", extras = "",
+        firstSeen = 1L, lastSeen = 1L, hitCount = 1, fleetIds = emptySet(),
+        rssiHistory = emptyList(), presence = emptyList(),
+    )
 
     @Test
     fun theResumeMarkerIsReadOnceAndOnlyWhileFresh() {

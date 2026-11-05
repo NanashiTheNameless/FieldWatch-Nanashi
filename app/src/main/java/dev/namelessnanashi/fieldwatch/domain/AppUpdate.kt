@@ -112,19 +112,28 @@ enum class UpdateCheckEvery(val hours: Int) {
         }
 }
 
-/** An automatic install waits until nobody has touched the app for [IDLE_MS]. */
+/** An automatic install waits for [IDLE_MS] without hearing a watched radio or signature. */
 object AppUpdateIdle {
     const val IDLE_MS = 5 * 60_000L
 
     /**
-     * Milliseconds left before an install may start. [lastTouchMs] of 0 means no touch in this
-     * process, which counts as idle. Clocks are elapsed-realtime, so a clock change does not matter.
+     * Milliseconds left before an install may start. Initialize [lastWatchedMs] when the process
+     * starts so a restart also observes a full quiet period. Both clocks are elapsed-realtime.
      */
-    fun waitMs(lastTouchMs: Long, nowMs: Long): Long {
-        if (lastTouchMs <= 0L) return 0L
-        val since = nowMs - lastTouchMs
+    fun waitMs(lastWatchedMs: Long, nowMs: Long): Long {
+        val since = nowMs - lastWatchedMs
         if (since < 0L) return IDLE_MS
         return (IDLE_MS - since).coerceAtLeast(0L)
+    }
+
+    /** Names alone and radios marked Mine do not count as watches. Live filters and mute do not apply. */
+    fun watched(devices: List<Sighting>, watchlist: List<WatchTarget>): Boolean {
+        val radios = RadioBookmarks.alertDeviceKeys(watchlist)
+        val fleets = RadioBookmarks.watchedFleetIds(watchlist)
+        val mine = RadioBookmarks.mineKeys(watchlist)
+        return devices.any { device ->
+            device.key !in mine && (device.key in radios || device.fleetIds.any { it in fleets })
+        }
     }
 }
 
@@ -191,7 +200,7 @@ object AppUpdateSkip {
 internal object AppUpdateLines {
     val all: List<EnglishLine> = listOf(
         en("update.auto", "Automatic updates", LanguageSlot.CONTROL),
-        en("update.auto.note", "Downloads a newer nightly and installs it after 5 minutes without a touch. A running scan starts again after the update.", LanguageSlot.BODY),
+        en("update.auto.note", "Downloads a newer nightly and installs it after 5 minutes without hearing a watched radio or signature. Allow installs from this app or set up Shizuku or root first. If Android blocks a silent install, it waits and retries without opening a confirmation prompt. A running scan starts again after the update.", LanguageSlot.BODY),
         en("update.available.body", "Fieldwatch {version} is ready. Open the app to read the notes and update.", LanguageSlot.BODY),
         en("update.available.title", "Update available", LanguageSlot.CONTROL),
         en("update.channel", "Updates", LanguageSlot.CONTROL),

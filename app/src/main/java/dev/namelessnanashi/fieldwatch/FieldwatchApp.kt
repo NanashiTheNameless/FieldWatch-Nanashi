@@ -239,6 +239,7 @@ class FieldwatchApp : Application() {
         synchronized(motionLock) {
             if (!huntMotion) return
             if (HuntHeat.level(rssi) != null) {
+                AppUpdateAuto.watching()
                 val had = HuntHeat.level(lastHuntRssi) != null
                 if (!had || at >= lastHuntRssiAt) lastHuntRssiAt = at
                 lastHuntRssi = rssi
@@ -394,6 +395,7 @@ class FieldwatchApp : Application() {
         plain: HuntPlain? = null,
         plainSamples: List<GpsSample> = emptyList(),
     ) {
+        AppUpdateAuto.watching()
         synchronized(motionLock) {
             huntTrack.clear()
             val saved = readHuntStride()

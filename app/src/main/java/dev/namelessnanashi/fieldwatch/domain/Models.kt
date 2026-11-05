@@ -1374,7 +1374,7 @@ data class AppSettings(
     val backgroundScanning: Boolean = false,
     val scanOnBoot: Boolean = false,
     /**
-     * Download a newer nightly and install it once the app has gone untouched for a few minutes.
+     * Download a newer nightly and install it after a few minutes without a watched radio/signature.
      * Per phone: a settings pack does not change it. Missing JSON is on.
      */
     val updateAutoInstall: Boolean = true,

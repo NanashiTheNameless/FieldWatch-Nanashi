@@ -22,6 +22,7 @@ import androidx.lifecycle.lifecycleScope
 import dev.namelessnanashi.fieldwatch.MainActivity
 import dev.namelessnanashi.fieldwatch.R
 import dev.namelessnanashi.fieldwatch.FieldwatchApp
+import dev.namelessnanashi.fieldwatch.data.AppUpdateAuto
 import dev.namelessnanashi.fieldwatch.domain.LanguageText
 import dev.namelessnanashi.fieldwatch.domain.MacUtil
 import dev.namelessnanashi.fieldwatch.domain.Observation
@@ -389,6 +390,11 @@ class ScanService : LifecycleService() {
                 val fleets = app.config.fleets
                 val settings = app.config.settings
                 val seen = app.devices.ingestBatch(tagged, fleets, settings.staleSec)
+                // Cached Wi-Fi results are not a new hear. Muting alerts or hiding a row must not
+                // let an automatic update interrupt a watched radio that is still around.
+                AppUpdateAuto.noteWatched(
+                    app, seen.filterIndexed { i, _ -> tagged[i].fresh },
+                )
                 for (i in seen.indices) {
                     val row = seen[i]
                     if (row.kind != RadioKind.BLE || row.hitCount != 1) continue
