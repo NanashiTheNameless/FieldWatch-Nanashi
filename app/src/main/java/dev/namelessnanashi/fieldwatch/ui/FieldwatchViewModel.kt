@@ -3104,12 +3104,29 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    private fun presentDownloadedUpdate(file: File) {
+    private suspend fun presentDownloadedUpdate(file: File) {
         downloadedApk = file
+        val token = appUpdateToken
+        // Busy while the session starts, so a second tap does not start another.
+        _appUpdate.value = AppUpdatePrompt.Downloading
+        // The same quiet install as automatic updates. Android shows its own prompt only if it must.
+        val outcome = try {
+            withContext(Dispatchers.IO) { AppUpdateAuto.installNow(app, file) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            AppUpdateAuto.Outcome.FAILED
+        }
+        if (token != appUpdateToken) return
+        if (outcome == AppUpdateAuto.Outcome.INSTALLING) {
+            _appUpdate.value = null
+            return
+        }
         if (!AppUpdateInstall.allowed(app)) {
             _appUpdate.value = AppUpdatePrompt.Allow
             return
         }
+        // The session could not start. Android's installer screen still can.
         _appUpdateIntent.value = AppUpdateInstall.viewIntent(app, file)
         _appUpdate.value = null
     }

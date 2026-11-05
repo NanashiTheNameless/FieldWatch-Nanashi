@@ -88,23 +88,54 @@ object AppUpdateAuto {
             scheduleRetry(app, wait)
             return@withLock Outcome.WAITING
         }
+        install(app, apk, notifyAllow = true)
+    }
+
+    /**
+     * Installs a verified [apk] now, with no prompt wherever Android allows it. Used by
+     * "Update now" too, so a tapped update is as quiet as an automatic one. Call off the main thread.
+     */
+    suspend fun installNow(app: FieldwatchApp, apk: File): Outcome = lock.withLock {
+        if (!available) return@withLock Outcome.NONE
+        install(app, apk, notifyAllow = false)
+    }
+
+    private suspend fun install(app: FieldwatchApp, apk: File, notifyAllow: Boolean): Outcome {
+        val settings = app.config.settings
         val scanning = app.isReady && app.devices.stats.value.scanning
         AppUpdateResume.write(
             app.filesDir,
             AppUpdateResume.Marker(scanning, BuildConfig.VERSION_NAME, System.currentTimeMillis()),
         )
-        if (!AppUpdateInstall.allowed(app)) {
-            // Without the install switch the session would fail. Shizuku or root does not need it.
-            if (settings.updateElevatedInstall && elevatedInstall(app, apk)) return@withLock Outcome.INSTALLING
-            AppUpdateResume.clear(app.filesDir)
-            notifyNeedsAllow(app)
-            return@withLock Outcome.FAILED
+        val allowed = AppUpdateInstall.allowed(app)
+        // Android asks every time while another app owns updates. Shizuku or root goes around it.
+        val ownedElsewhere = otherUpdateOwner(app) != null
+        if (!allowed || ownedElsewhere) {
+            if (settings.updateElevatedInstall && elevatedInstall(app, apk)) return Outcome.INSTALLING
+            if (!allowed) {
+                // Without the install switch the session would fail.
+                AppUpdateResume.clear(app.filesDir)
+                if (notifyAllow) notifyNeedsAllow(app)
+                return Outcome.FAILED
+            }
         }
         if (!commit(app, apk)) {
             AppUpdateResume.clear(app.filesDir)
-            return@withLock Outcome.FAILED
+            return Outcome.FAILED
         }
-        Outcome.INSTALLING
+        return Outcome.INSTALLING
+    }
+
+    /**
+     * The package that owns this app's updates on Android 14+, when it is not this app.
+     * Android shows its prompt for every update while that holds.
+     */
+    fun otherUpdateOwner(context: Context): String? {
+        if (Build.VERSION.SDK_INT < 34) return null
+        val owner = runCatching {
+            context.packageManager.getInstallSourceInfo(context.packageName).updateOwnerPackageName
+        }.getOrNull() ?: return null
+        return owner.takeIf { it != context.packageName }
     }
 
     /** The verified APK left by the last download, for the Shizuku or root fallback. */
@@ -131,7 +162,13 @@ object AppUpdateAuto {
         if (!copied) return false
         val pkg = app.packageName
         val path = staged.absolutePath
-        val command = "pm install -r -i $pkg --user current '$path' || pm install -r --user current '$path'"
+        val plain = "pm install -r -i $pkg --user current '$path' || pm install -r --user current '$path'"
+        // Android 14+: claim update ownership too, so later self-updates skip the prompt.
+        val command = if (Build.VERSION.SDK_INT >= 34) {
+            "pm install -r -i $pkg --update-ownership --user current '$path' || $plain"
+        } else {
+            plain
+        }
         val shells = buildList {
             if (app.shizuku.state() == ShizukuShell.State.READY) add(app.shizuku)
             add(RootShell)
@@ -174,6 +211,9 @@ object AppUpdateAuto {
             if (Build.VERSION.SDK_INT >= 31) {
                 setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
             }
+            // Take over update ownership, so once this install lands the next ones need no prompt,
+            // even when a store or another installer put the app on the phone.
+            if (Build.VERSION.SDK_INT >= 34) setRequestUpdateOwnership(true)
         }
         var sessionId = -1
         return try {
