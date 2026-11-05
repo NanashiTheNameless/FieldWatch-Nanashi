@@ -104,6 +104,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.namelessnanashi.fieldwatch.domain.GnssCopy
 import dev.namelessnanashi.fieldwatch.domain.Sit
 import dev.namelessnanashi.fieldwatch.ui.component.DecodeGlyph
+import dev.namelessnanashi.fieldwatch.ui.component.NoticeBody
 import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchFilterChip
 import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchOutlinedField
 import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchSwitch
@@ -181,24 +182,7 @@ fun LivePane(
             AlertDialog(
                 onDismissRequest = { vm.dismissGnss() },
                 title = { Text(gnssNotice.title) },
-                text = {
-                    Column {
-                        Text(gnssNotice.body)
-                        if (gnssNotice.details.isNotBlank()) {
-                            Text(
-                                LanguageText.text("ui.details.label"),
-                                style = MaterialTheme.typography.labelMedium,
-                                modifier = Modifier.padding(top = 14.dp),
-                            )
-                            Text(
-                                gnssNotice.details,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 4.dp),
-                            )
-                        }
-                    }
-                },
+                text = { NoticeBody(gnssNotice.body, gnssNotice.details) },
                 confirmButton = {
                     TextButton(onClick = { vm.dismissGnss() }) { Text(LanguageText.text("ui.ok.label")) }
                 },
@@ -243,7 +227,7 @@ fun LivePane(
             AlertDialog(
                 onDismissRequest = { vm.dismissPairingFlood() },
                 title = { Text(floodNotice.title()) },
-                text = { Text(floodNotice.body()) },
+                text = { NoticeBody(floodNotice.body()) },
                 confirmButton = {
                     TextButton(onClick = { vm.dismissPairingFlood() }) { Text(LanguageText.text("ui.continue.label")) }
                 },

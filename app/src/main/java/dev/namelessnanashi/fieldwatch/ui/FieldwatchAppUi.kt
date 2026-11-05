@@ -131,6 +131,7 @@ import dev.namelessnanashi.fieldwatch.radio.ScanRunState
 import dev.namelessnanashi.fieldwatch.radio.RadioPermissions
 import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchActionButton
 import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchDropdownField
+import dev.namelessnanashi.fieldwatch.ui.component.ReleaseNotes
 import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchSwitch
 import dev.namelessnanashi.fieldwatch.ui.screen.CandidatesScreen
 import dev.namelessnanashi.fieldwatch.ui.screen.DeviceDetailScreen
@@ -326,15 +327,7 @@ private fun AppUpdateLayer(vm: FieldwatchViewModel) {
         is AppUpdatePrompt.Offer -> AlertDialog(
             onDismissRequest = vm::laterAppUpdate,
             title = { Text("Fieldwatch ${shown.note.versionName}") },
-            text = {
-                Column(
-                    Modifier
-                        .heightIn(max = 360.dp)
-                        .verticalScroll(rememberScrollState()),
-                ) {
-                    Text(shown.note.notes)
-                }
-            },
+            text = { ReleaseNotes(shown.note.notes) },
             confirmButton = {
                 TextButton(onClick = vm::installOfferedUpdate) { Text(LanguageText.text("update.now")) }
             },

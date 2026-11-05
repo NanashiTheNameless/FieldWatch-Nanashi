@@ -155,6 +155,7 @@ class AppUpdateTest {
             "update.launch",
             "update.needs.allow.body",
             "update.now",
+            "update.notes",
             "update.settings",
             "update.settings.note",
             "update.unreachable.body",
@@ -167,6 +168,7 @@ class AppUpdateTest {
             assertTrue(line.text.isNotBlank())
         }
         assertEquals("Update now", EnglishCopy.text("update.now"))
+        assertEquals("Release Notes", EnglishCopy.text("update.notes"))
         assertEquals("Later", EnglishCopy.text("update.later"))
         assertTrue(EnglishCopy.text("update.current.body").contains("{version}"))
     }
