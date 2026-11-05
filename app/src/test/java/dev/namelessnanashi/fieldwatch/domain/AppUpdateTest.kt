@@ -156,6 +156,8 @@ class AppUpdateTest {
             "update.cellular",
             "update.cellular.note",
             "update.failed.reason",
+            "update.downloading.body",
+            "update.channel.progress",
             "update.topic.auto",
             "update.topic.manual",
             "update.topic.debug",

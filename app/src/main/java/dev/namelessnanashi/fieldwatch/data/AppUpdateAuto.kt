@@ -44,6 +44,8 @@ object AppUpdateAuto {
     const val NOTIF_DONE = 4102
     const val NOTIF_ACTION = 4103
     const val NOTIF_FAILED = 4104
+    private const val NOTIF_PROGRESS = 4105
+    private const val CHANNEL_PROGRESS = "fieldwatch_update_progress"
     private const val JOB_PERIODIC = 7301
     private const val JOB_RETRY = 7302
 
@@ -91,7 +93,7 @@ object AppUpdateAuto {
             scheduleRetry(app, 0L, JobInfo.NETWORK_TYPE_UNMETERED)
             return@withLock Outcome.WAITING
         }
-        val apk = cached ?: download(app, note) ?: return@withLock Outcome.FAILED
+        val apk = cached ?: download(app, note, announce = true) ?: return@withLock Outcome.FAILED
         val wait = AppUpdateIdle.waitMs(lastTouchMs, SystemClock.elapsedRealtime())
         if (wait > 0L) {
             scheduleRetry(app, wait)
@@ -295,8 +297,25 @@ object AppUpdateAuto {
             cachedApk(context, note) ?: if (running()) download(context, note, running) else null
         }
 
-    private fun download(context: Context, note: AppUpdateNote, running: () -> Boolean = { true }): File? {
-        val got = AppUpdateClient.downloadApk(context.cacheDir, userAgent = userAgent(), running = running)
+    /** [announce] shows a quiet progress notification while it runs; automatic updates set it. */
+    private fun download(
+        context: Context,
+        note: AppUpdateNote,
+        running: () -> Boolean = { true },
+        announce: Boolean = false,
+    ): File? {
+        val progress = if (announce) DownloadNotice(context, note.versionName) else null
+        progress?.show(0L, 0L)
+        val got = try {
+            AppUpdateClient.downloadApk(
+                context.cacheDir,
+                userAgent = userAgent(),
+                running = running,
+                progress = { done, total -> progress?.show(done, total) },
+            )
+        } finally {
+            progress?.clear()
+        }
             ?: return null
         if (!AppUpdateInstall.trusted(context, got, note.versionCode, note.versionName)) {
             got.delete()
@@ -396,6 +415,62 @@ object AppUpdateAuto {
             // Explicit: MainActivity opens the settings page itself, so no implicit Intent sits in the PendingIntent.
             Intent(context, MainActivity::class.java).putExtra(MainActivity.EXTRA_OPEN_INSTALL_SETTINGS, true),
         )
+    }
+
+    /**
+     * "Downloading the update" with a progress bar, on its own low-importance channel so it makes no
+     * sound. Redrawn at most every whole percent or half second; removed when the download ends.
+     */
+    private class DownloadNotice(private val context: Context, versionName: String) {
+        private val nm = context.getSystemService(NotificationManager::class.java)
+        private var lastPercent = -1
+        private var lastMs = 0L
+        private val builder = NotificationCompat.Builder(context, CHANNEL_PROGRESS)
+            .setSmallIcon(R.drawable.ic_stat_fieldwatch)
+            .setContentTitle(LanguageText.text("update.downloading"))
+            .setContentText(LanguageText.text("update.downloading.body", mapOf("version" to versionName)))
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setSilent(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+            .setContentIntent(
+                PendingIntent.getActivity(
+                    context,
+                    NOTIF_PROGRESS,
+                    Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                ),
+            )
+
+        init {
+            if (nm?.getNotificationChannel(CHANNEL_PROGRESS) == null) {
+                runCatching {
+                    nm?.createNotificationChannel(
+                        NotificationChannel(
+                            CHANNEL_PROGRESS,
+                            LanguageText.text("update.channel.progress"),
+                            NotificationManager.IMPORTANCE_LOW,
+                        ),
+                    )
+                }
+            }
+        }
+
+        fun show(done: Long, total: Long) {
+            nm ?: return
+            val percent = if (total > 0L) ((done * 100L) / total).toInt().coerceIn(0, 100) else -1
+            val now = SystemClock.elapsedRealtime()
+            if (lastPercent != -1 && (percent == lastPercent || now - lastMs < 500L)) return
+            lastPercent = percent.coerceAtLeast(0)
+            lastMs = now
+            if (percent < 0) builder.setProgress(0, 0, true) else builder.setProgress(100, percent, false)
+            runCatching { nm.notify(NOTIF_PROGRESS, builder.build()) }
+        }
+
+        fun clear() {
+            runCatching { nm?.cancel(NOTIF_PROGRESS) }
+        }
     }
 
     fun post(context: Context, id: Int, title: String, body: String, tap: Intent) {

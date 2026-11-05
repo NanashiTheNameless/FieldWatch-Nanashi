@@ -223,6 +223,8 @@ internal object AppUpdateLines {
         en("update.own.confirm", "Confirm in Android's prompt to finish.", LanguageSlot.BODY),
         en("update.own.allow", "Allow installs from Fieldwatch, then come back and tap the button again.", LanguageSlot.BODY),
         en("update.own.failed", "Android did not start the install. Nothing changed.", LanguageSlot.BODY),
+        en("update.downloading.body", "Fieldwatch {version}", LanguageSlot.BODY),
+        en("update.channel.progress", "Update downloads", LanguageSlot.CONTROL),
         en("update.failed.reason", "Android did not install the update: {reason}. The app on this phone is unchanged.", LanguageSlot.BODY),
         en("update.every.six.hours", "Every 6 hours", LanguageSlot.CONTROL),
         en("update.every.twelve.hours", "Every 12 hours", LanguageSlot.CONTROL),

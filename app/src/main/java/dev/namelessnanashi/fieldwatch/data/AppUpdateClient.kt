@@ -60,6 +60,8 @@ object AppUpdateClient {
         connectTimeoutMs: Int = 15_000,
         readTimeoutMs: Int = 20_000,
         running: () -> Boolean = { true },
+        /** Bytes so far and the advertised size (0 when the server did not say). */
+        progress: (Long, Long) -> Unit = { _, _ -> },
     ): File? {
         val dir = File(cacheDir, "update").apply { mkdirs() }
         val dest = File(dir, "Fieldwatch.apk")
@@ -92,6 +94,7 @@ object AppUpdateClient {
                         total += n
                         if (total > AppUpdate.MAX_APK_BYTES) return null
                         out.write(buf, 0, n)
+                        progress(total, advertised.coerceAtLeast(0L))
                     }
                 }
             }
