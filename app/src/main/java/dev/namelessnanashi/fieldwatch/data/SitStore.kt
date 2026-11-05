@@ -63,7 +63,7 @@ class SitStore(
     private var cameraPending = false
 
     fun startFlusher() {
-        scope.launch {
+        scope.launch(Dispatchers.Default) {
             while (true) {
                 delay(Sit.FLUSH_MS)
                 runCatching { flushOpen() }

@@ -62,6 +62,7 @@ import dev.namelessnanashi.fieldwatch.ui.component.rssiColor
 import dev.namelessnanashi.fieldwatch.ui.theme.OxProto
 import kotlinx.coroutines.delay
 import dev.namelessnanashi.fieldwatch.domain.MapLookAhead
+import dev.namelessnanashi.fieldwatch.domain.HuntCue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -279,8 +280,9 @@ fun HuntScreen(
                 Modifier.fillMaxWidth().height(44.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                val lost = hunt.cue == HuntCue.QUIET || hunt.cue == HuntCue.GONE
                 Text(
-                    rssi?.toString() ?: "-",
+                    if (lost) "- -" else rssi?.toString() ?: "-",
                     fontFamily = OxProto,
                     fontWeight = FontWeight.Bold,
                     fontSize = 36.sp,
@@ -288,7 +290,12 @@ fun HuntScreen(
                 )
                 Column(Modifier.padding(start = 12.dp).weight(1f)) {
                     Text(
-                        rssi?.let { DeviceExplain.rssiExplain(it) } ?: LanguageText.text("ui.no.live.rssi"),
+                        if (lost) {
+                            "-- dBm · ${LanguageText.text("ui.signal.lost")}"
+                        } else {
+                            rssi?.let { DeviceExplain.rssiExplain(it) }
+                                ?: LanguageText.text("ui.no.live.rssi")
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
