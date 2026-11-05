@@ -86,8 +86,10 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         AppUpdateAuto.visibleActivities++
         AppUpdateAuto.touch()
-        // Launch and every return from the background look for a newer nightly.
-        if ((application as FieldwatchApp).pendingCrash == null) vm.checkForUpdateOnOpen()
+        // Every return from the background looks for a newer nightly. Before startup is ready the
+        // view model cannot be built yet; the READY branch in showApp covers that launch.
+        val app = application as FieldwatchApp
+        if (app.pendingCrash == null && app.isReady) vm.checkForUpdateOnOpen()
     }
 
     override fun onStop() {
@@ -164,6 +166,7 @@ class MainActivity : ComponentActivity() {
                 StartupState.FAILED -> FieldwatchTheme { StartupFailureScreen(app::retryStartup) }
                 StartupState.READY -> {
                     LaunchedEffect(Unit) {
+                        vm.checkForUpdateOnOpen()
                         vm.refreshPermissions()
                         if (RadioPermissions.granted(this@MainActivity)) {
                             vm.resumeScan()
