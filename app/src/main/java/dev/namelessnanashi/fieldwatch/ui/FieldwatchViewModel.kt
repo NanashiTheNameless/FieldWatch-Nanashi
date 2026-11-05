@@ -130,6 +130,7 @@ import dev.namelessnanashi.fieldwatch.elevated.DeviceAdmin
 import dev.namelessnanashi.fieldwatch.elevated.ElevatedItem
 import dev.namelessnanashi.fieldwatch.elevated.ElevatedItems
 import dev.namelessnanashi.fieldwatch.elevated.ElevatedShell
+import dev.namelessnanashi.fieldwatch.elevated.ElevatedMemory
 import dev.namelessnanashi.fieldwatch.elevated.ElevatedStatus
 import dev.namelessnanashi.fieldwatch.elevated.RootShell
 import dev.namelessnanashi.fieldwatch.elevated.VectorBridge
@@ -183,11 +184,17 @@ data class ElevatedUi(
     val status: ElevatedStatus? = null,
     /** Which shell runs items that are not root-only. */
     val backend: ElevatedBackend = ElevatedBackend.SHIZUKU,
-    /** Null until Check root has been tapped. */
+    /** Null until Check root has run on this phone. Remembered across launches. */
     val rootAvailable: Boolean? = null,
     val busy: Boolean = false,
     /** Result lines of the last action, newest action only. */
     val log: List<String> = emptyList(),
+)
+
+data class OwnershipUi(
+    val busy: Boolean = false,
+    /** Result of the last Take ownership tap. */
+    val note: String? = null,
 )
 
 data class ExportUi(
@@ -906,6 +913,18 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     init {
+        // Root status and the picked shell from earlier launches, so Check root is not needed every time.
+        viewModelScope.launch(Dispatchers.IO) {
+            val root = ElevatedMemory.root(app.filesDir)
+            val backend = ElevatedMemory.backend(app.filesDir)
+                ?.let { name -> ElevatedBackend.entries.firstOrNull { it.name == name } }
+            _elevated.update { ui ->
+                ui.copy(
+                    rootAvailable = ui.rootAvailable ?: root,
+                    backend = backend ?: ui.backend,
+                )
+            }
+        }
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val header = FlockFiles.peek(app.filesDir, SensorList.PLATES)
@@ -3195,6 +3214,46 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
 
     private fun updateUserAgent(): String = "Fieldwatch/${BuildConfig.VERSION_NAME}"
 
+    private val _installSource = MutableStateFlow<AppUpdateAuto.InstallSource?>(null)
+    /** Who installed this app and who owns its updates. Null until read. */
+    val installSource: StateFlow<AppUpdateAuto.InstallSource?> = _installSource.asStateFlow()
+    private val _ownership = MutableStateFlow(OwnershipUi())
+    val ownership: StateFlow<OwnershipUi> = _ownership.asStateFlow()
+
+    fun refreshInstallSource() {
+        viewModelScope.launch(Dispatchers.IO) { _installSource.value = AppUpdateAuto.installSource(app) }
+    }
+
+    /** Settings → Updates: reinstall this copy as its own installer and update owner. */
+    fun claimUpdateOwnership() {
+        if (!appUpdateAvailable || _ownership.value.busy) return
+        _ownership.value = OwnershipUi(busy = true)
+        viewModelScope.launch {
+            val claim = try {
+                withContext(Dispatchers.IO) { AppUpdateAuto.claimOwnership(app) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                AppUpdateAuto.Claim.FAILED
+            }
+            // DONE restarts the app, so its note shows only if Android has not replaced it yet.
+            _ownership.value = OwnershipUi(
+                note = LanguageText.text(
+                    when (claim) {
+                        AppUpdateAuto.Claim.DONE -> "update.own.done"
+                        AppUpdateAuto.Claim.CONFIRM -> "update.own.confirm"
+                        AppUpdateAuto.Claim.NEEDS_ALLOW -> "update.own.allow"
+                        AppUpdateAuto.Claim.FAILED -> "update.own.failed"
+                    },
+                ),
+            )
+            if (claim == AppUpdateAuto.Claim.NEEDS_ALLOW) {
+                _appUpdateIntent.value = AppUpdateInstall.settingsIntent(app)
+            }
+            refreshInstallSource()
+        }
+    }
+
     fun importSignaturesFromUri(uri: Uri) {
         viewModelScope.launch {
             try {
@@ -3506,6 +3565,7 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
 
     fun setElevatedBackend(backend: ElevatedBackend) {
         _elevated.update { it.copy(backend = backend) }
+        viewModelScope.launch(Dispatchers.IO) { ElevatedMemory.setBackend(app.filesDir, backend.name) }
     }
 
     fun requestShizukuPermission() = elevatedAction {
@@ -3516,6 +3576,7 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
     fun checkRoot() = elevatedAction {
         val ok = RootShell.check()
         _elevated.update { it.copy(rootAvailable = ok) }
+        withContext(Dispatchers.IO) { ElevatedMemory.setRoot(app.filesDir, ok) }
         listOf(if (ok) "Root: available" else "Root: not available or denied")
     }
 

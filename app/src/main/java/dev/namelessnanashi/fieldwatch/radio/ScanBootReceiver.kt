@@ -25,6 +25,8 @@ class ScanBootReceiver : BroadcastReceiver() {
         val app = context.applicationContext as FieldwatchApp
         // An automatic update leaves a marker. Read it once, even if the rest bails out.
         val resume = if (replaced) AppUpdateResume.take(context.filesDir, System.currentTimeMillis()) else null
+        // The update is in. The downloaded APK and the Shizuku or root copy are no longer needed.
+        if (replaced) AppUpdateAuto.clearDownloads(context)
         if (app.pendingCrash != null) return
         val pending = goAsync()
         app.scope.launch {

@@ -10,6 +10,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
 import android.os.Build
 import android.os.SystemClock
 import android.util.Log
@@ -25,6 +26,7 @@ import dev.namelessnanashi.fieldwatch.domain.AppUpdateResume
 import dev.namelessnanashi.fieldwatch.domain.AppUpdateSkip
 import dev.namelessnanashi.fieldwatch.domain.LanguageText
 import dev.namelessnanashi.fieldwatch.domain.UpdateCheckEvery
+import dev.namelessnanashi.fieldwatch.elevated.ElevatedMemory
 import dev.namelessnanashi.fieldwatch.elevated.RootShell
 import dev.namelessnanashi.fieldwatch.elevated.ShizukuShell
 import java.io.File
@@ -41,6 +43,7 @@ object AppUpdateAuto {
     private const val NOTIF_AVAILABLE = 4101
     const val NOTIF_DONE = 4102
     const val NOTIF_ACTION = 4103
+    const val NOTIF_FAILED = 4104
     private const val JOB_PERIODIC = 7301
     private const val JOB_RETRY = 7302
 
@@ -82,7 +85,13 @@ object AppUpdateAuto {
             }
             return@withLock Outcome.NONE
         }
-        val apk = cachedApk(app, note) ?: download(app, note) ?: return@withLock Outcome.FAILED
+        val cached = cachedApk(app, note)
+        if (cached == null && !settings.updateCellular && metered(app)) {
+            // Mobile data is off for updates. Try again once an unmetered network is up.
+            scheduleRetry(app, 0L, JobInfo.NETWORK_TYPE_UNMETERED)
+            return@withLock Outcome.WAITING
+        }
+        val apk = cached ?: download(app, note) ?: return@withLock Outcome.FAILED
         val wait = AppUpdateIdle.waitMs(lastTouchMs, SystemClock.elapsedRealtime())
         if (wait > 0L) {
             scheduleRetry(app, wait)
@@ -138,6 +147,35 @@ object AppUpdateAuto {
         return owner.takeIf { it != context.packageName }
     }
 
+    /** True on mobile data, or on Wi-Fi the phone treats as metered. */
+    private fun metered(context: Context): Boolean {
+        val cm = context.getSystemService(ConnectivityManager::class.java) ?: return true
+        return cm.isActiveNetworkMetered
+    }
+
+    /**
+     * Drops the downloaded APK and the copy staged for Shizuku or root. Called once the app has been
+     * replaced: the installed build is at least as new, so neither file can install again.
+     */
+    fun clearDownloads(context: Context) {
+        runCatching { File(context.cacheDir, "update").listFiles()?.forEach { it.delete() } }
+        runCatching { context.getExternalFilesDir("update")?.listFiles()?.forEach { it.delete() } }
+    }
+
+    /** Android refused an install that had started. The reason is Android's own text, when it gives one. */
+    fun notifyFailed(context: Context, reason: String?) {
+        val body = reason?.trim()?.takeIf { it.isNotEmpty() }
+            ?.let { LanguageText.text("update.failed.reason", mapOf("reason" to it)) }
+            ?: LanguageText.text("update.failed.body")
+        post(
+            context,
+            NOTIF_FAILED,
+            LanguageText.text("update.failed.title"),
+            body,
+            Intent(context, MainActivity::class.java),
+        )
+    }
+
     /** The verified APK left by the last download, for the Shizuku or root fallback. */
     fun downloadedApk(context: Context): File? =
         File(File(context.cacheDir, "update"), "Fieldwatch.apk").takeIf { it.isFile }
@@ -152,6 +190,14 @@ object AppUpdateAuto {
         if (!available || !apk.isFile) return false
         val archive = AppUpdateInstall.archiveVersion(app, apk) ?: return false
         if (!AppUpdateInstall.trusted(app, apk, archive.first, archive.second)) return false
+        return shellInstall(app, apk)
+    }
+
+    /**
+     * `pm install -r -i <this app>` through Shizuku, else root, skipping root when the last
+     * Check root said no. The caller has already checked [apk].
+     */
+    private suspend fun shellInstall(app: FieldwatchApp, apk: File): Boolean {
         val dir = app.getExternalFilesDir("update") ?: return false
         val staged = File(dir, "Fieldwatch.apk")
         val copied = runCatching {
@@ -171,7 +217,8 @@ object AppUpdateAuto {
         }
         val shells = buildList {
             if (app.shizuku.state() == ShizukuShell.State.READY) add(app.shizuku)
-            add(RootShell)
+            // Root that was checked and refused stays skipped until Check root says otherwise.
+            if (ElevatedMemory.root(app.filesDir) != false) add(RootShell)
         }
         for (shell in shells) {
             val result = runCatching { shell.run(command) }.getOrNull() ?: continue
@@ -180,6 +227,52 @@ object AppUpdateAuto {
         }
         staged.delete()
         return false
+    }
+
+    /** Who put this app on the phone, and who Android lets update it without asking. */
+    data class InstallSource(val installer: String?, val updateOwner: String?) {
+        fun ownedHere(pkg: String): Boolean =
+            installer == pkg && (Build.VERSION.SDK_INT < 34 || updateOwner == null || updateOwner == pkg)
+    }
+
+    fun installSource(context: Context): InstallSource {
+        val info = runCatching { context.packageManager.getInstallSourceInfo(context.packageName) }.getOrNull()
+        return InstallSource(
+            installer = info?.installingPackageName,
+            updateOwner = if (Build.VERSION.SDK_INT >= 34) info?.updateOwnerPackageName else null,
+        )
+    }
+
+    enum class Claim { DONE, CONFIRM, NEEDS_ALLOW, FAILED }
+
+    /**
+     * Makes this app its own installer and, on Android 14+, its own update owner, by installing the
+     * copy already on the phone over itself. Through Shizuku or root it needs no tap. Otherwise
+     * Android asks once. The app restarts either way; a running scan starts again.
+     */
+    suspend fun claimOwnership(app: FieldwatchApp): Claim = lock.withLock {
+        val info = app.applicationInfo
+        val apks = buildList {
+            add(File(info.sourceDir))
+            info.splitSourceDirs?.forEach { add(File(it)) }
+        }
+        if (apks.any { !it.isFile }) return@withLock Claim.FAILED
+        val scanning = app.isReady && app.devices.stats.value.scanning
+        AppUpdateResume.write(
+            app.filesDir,
+            AppUpdateResume.Marker(scanning, BuildConfig.VERSION_NAME, System.currentTimeMillis()),
+        )
+        // Split installs need install-multiple; the nightly is one APK, so the shell only takes that.
+        if (apks.size == 1 && shellInstall(app, apks[0])) return@withLock Claim.DONE
+        if (!AppUpdateInstall.allowed(app)) {
+            AppUpdateResume.clear(app.filesDir)
+            return@withLock Claim.NEEDS_ALLOW
+        }
+        if (!commit(app, apks)) {
+            AppUpdateResume.clear(app.filesDir)
+            return@withLock Claim.FAILED
+        }
+        Claim.CONFIRM
     }
 
     private fun cachedApk(context: Context, note: AppUpdateNote): File? {
@@ -202,11 +295,13 @@ object AppUpdateAuto {
     }
 
     /** Silent self-update. Android 12+ skips the prompt when the app updates itself. */
-    private fun commit(context: Context, apk: File): Boolean {
+    private fun commit(context: Context, apk: File): Boolean = commit(context, listOf(apk))
+
+    private fun commit(context: Context, apks: List<File>): Boolean {
         val installer = context.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
             setAppPackageName(context.packageName)
-            setSize(apk.length())
+            setSize(apks.sumOf { it.length() })
             setInstallReason(PackageManager.INSTALL_REASON_USER)
             if (Build.VERSION.SDK_INT >= 31) {
                 setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
@@ -219,9 +314,12 @@ object AppUpdateAuto {
         return try {
             sessionId = installer.createSession(params)
             installer.openSession(sessionId).use { session ->
-                session.openWrite("base.apk", 0, apk.length()).use { out ->
-                    apk.inputStream().use { it.copyTo(out) }
-                    session.fsync(out)
+                apks.forEachIndexed { i, apk ->
+                    val name = if (i == 0) "base.apk" else "split$i.apk"
+                    session.openWrite(name, 0, apk.length()).use { out ->
+                        apk.inputStream().use { it.copyTo(out) }
+                        session.fsync(out)
+                    }
                 }
                 val status = Intent(context, AppUpdateStatusReceiver::class.java).setPackage(context.packageName)
                 val pending = PendingIntent.getBroadcast(
@@ -259,11 +357,11 @@ object AppUpdateAuto {
     }
 
     /** One more try after the idle wait. A later touch pushes it back again. */
-    private fun scheduleRetry(context: Context, waitMs: Long) {
+    private fun scheduleRetry(context: Context, waitMs: Long, network: Int = JobInfo.NETWORK_TYPE_ANY) {
         val js = context.getSystemService(JobScheduler::class.java) ?: return
         val job = JobInfo.Builder(JOB_RETRY, ComponentName(context, AppUpdateJobService::class.java))
             .setMinimumLatency(waitMs + 5_000L)
-            .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+            .setRequiredNetworkType(network)
             .build()
         runCatching { js.schedule(job) }.onFailure { Log.w(TAG, "Could not schedule the install retry", it) }
     }

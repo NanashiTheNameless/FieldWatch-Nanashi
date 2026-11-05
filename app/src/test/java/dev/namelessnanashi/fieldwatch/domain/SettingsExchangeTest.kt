@@ -24,6 +24,7 @@ class SettingsExchangeTest {
             updateAutoInstall = false,
             updateCheckOnLaunch = false,
             updateElevatedInstall = false,
+            updateCellular = false,
             updateCheckEvery = UpdateCheckEvery.OFF,
         )
         val pack = SettingsPack(format = SettingsPack.FORMAT, settings = AppSettings())
@@ -31,6 +32,7 @@ class SettingsExchangeTest {
         assertFalse(next.settings.updateAutoInstall)
         assertFalse(next.settings.updateCheckOnLaunch)
         assertFalse(next.settings.updateElevatedInstall)
+        assertFalse(next.settings.updateCellular)
         assertEquals(UpdateCheckEvery.OFF, next.settings.updateCheckEvery)
     }
 

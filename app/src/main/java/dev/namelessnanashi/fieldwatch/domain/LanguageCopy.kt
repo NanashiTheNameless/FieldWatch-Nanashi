@@ -108,6 +108,7 @@ private fun buildLines(): List<EnglishLine> = listOf(
     en("settings.topic.logging", "Logging", LanguageSlot.CONTROL),
     en("settings.topic.signatures", "Signatures", LanguageSlot.CONTROL),
     en("settings.topic.backup", "Settings backup", LanguageSlot.CONTROL),
+    en("settings.topic.updates", "Updates", LanguageSlot.CONTROL),
     en("settings.topic.maps", "Maps", LanguageSlot.CONTROL),
     en("settings.map.choice", "Map", LanguageSlot.CONTROL),
     en("settings.classic.title", "Bluetooth Classic discovery", LanguageSlot.CONTROL),

@@ -107,6 +107,7 @@ object SettingsExchange {
                 scanOnBoot = local.settings.scanOnBoot,
                 updateAutoInstall = local.settings.updateAutoInstall,
                 updateCheckOnLaunch = local.settings.updateCheckOnLaunch,
+                updateCellular = local.settings.updateCellular,
                 updateElevatedInstall = local.settings.updateElevatedInstall,
                 updateCheckEvery = local.settings.updateCheckEvery,
                 disclaimerRev = local.settings.disclaimerRev,

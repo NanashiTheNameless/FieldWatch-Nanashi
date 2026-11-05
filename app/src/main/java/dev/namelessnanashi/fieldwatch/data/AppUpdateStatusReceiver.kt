@@ -42,10 +42,10 @@ class AppUpdateStatusReceiver : BroadcastReceiver() {
             }
             else -> {
                 AppUpdateResume.clear(context.filesDir)
-                Log.w(
-                    "FieldwatchUpdate",
-                    "Automatic install failed ($status): ${intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)}",
-                )
+                val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
+                Log.w("FieldwatchUpdate", "Automatic install failed ($status): $message")
+                // Aborted means the prompt was cancelled. That was a choice, not a failure to report.
+                if (status != PackageInstaller.STATUS_FAILURE_ABORTED) AppUpdateAuto.notifyFailed(context, message)
             }
         }
     }

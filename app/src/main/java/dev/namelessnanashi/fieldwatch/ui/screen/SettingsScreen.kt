@@ -95,6 +95,8 @@ import dev.namelessnanashi.fieldwatch.ui.component.SectionCard
 import dev.namelessnanashi.fieldwatch.ui.component.StableCaption
 import dev.namelessnanashi.fieldwatch.ui.component.StickyHeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import dev.namelessnanashi.fieldwatch.BuildConfig
 import dev.namelessnanashi.fieldwatch.alert.TtsEngines
 import dev.namelessnanashi.fieldwatch.alert.VoiceOption
 import dev.namelessnanashi.fieldwatch.domain.AlertOtherAudio
@@ -1290,6 +1292,105 @@ fun SettingsScreen(
             if (topic == SettingsTopic.ELEVATED) {
                 ElevatedPage(vm, settings)
             }
+            if (topic == SettingsTopic.UPDATES) {
+            SectionCard(LanguageText.text("settings.topic.updates"), showTitle = false) {
+                if (vm.appUpdateAvailable) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(LanguageText.text("update.auto"), Modifier.weight(1f))
+                        FieldwatchSwitch(settings.updateAutoInstall, { on ->
+                            vm.updateSettings { it.copy(updateAutoInstall = on) }
+                        })
+                    }
+                    Text(
+                        LanguageText.text("update.auto.note"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(LanguageText.text("update.elevated"), Modifier.weight(1f))
+                        FieldwatchSwitch(settings.updateElevatedInstall, { on ->
+                            vm.updateSettings { it.copy(updateElevatedInstall = on) }
+                        })
+                    }
+                    Text(
+                        LanguageText.text("update.elevated.note"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(LanguageText.text("update.launch"), Modifier.weight(1f))
+                        FieldwatchSwitch(settings.updateCheckOnLaunch, { on ->
+                            vm.updateSettings { it.copy(updateCheckOnLaunch = on) }
+                        })
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(LanguageText.text("update.cellular"), Modifier.weight(1f))
+                        FieldwatchSwitch(settings.updateCellular, { on ->
+                            vm.updateSettings { it.copy(updateCellular = on) }
+                        })
+                    }
+                    Text(
+                        LanguageText.text("update.cellular.note"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    var everyMenu by remember { mutableStateOf(false) }
+                    ExposedDropdownMenuBox(
+                        expanded = everyMenu,
+                        onExpandedChange = { everyMenu = it },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        FieldwatchDropdownField(
+                            label = LanguageText.text("update.every"),
+                            value = LanguageText.text(settings.updateCheckEvery.labelKey),
+                            expanded = everyMenu,
+                        )
+                        ExposedDropdownMenu(everyMenu, { everyMenu = false }) {
+                            UpdateCheckEvery.entries.forEach { choice ->
+                                Row(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = 32.dp)
+                                        .clickable {
+                                            everyMenu = false
+                                            if (choice != settings.updateCheckEvery) {
+                                                vm.updateSettings { it.copy(updateCheckEvery = choice) }
+                                            }
+                                        }
+                                        .padding(horizontal = 12.dp, vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        LanguageText.text(choice.labelKey),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    if (choice == settings.updateCheckEvery) {
+                                        Icon(Icons.Outlined.Check, contentDescription = null)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Text(
+                        LanguageText.text("update.every.note"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                FieldwatchActionButton(
+                    onClick = vm::checkForAppUpdate,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = vm.appUpdateAvailable,
+                ) { Text(LanguageText.text("update.settings")) }
+                Text(
+                    LanguageText.text(if (vm.appUpdateAvailable) "update.settings.note" else "update.debug.note"),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (vm.appUpdateAvailable) UpdateOwnershipCard(vm)
+            }
             if (topic == SettingsTopic.BACKUP) {
             SectionCard(LanguageText.text("settings.topic.backup"), showTitle = false) {
             Text(
@@ -1345,90 +1446,6 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (vm.appUpdateAvailable) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(LanguageText.text("update.auto"), Modifier.weight(1f))
-                    FieldwatchSwitch(settings.updateAutoInstall, { on ->
-                        vm.updateSettings { it.copy(updateAutoInstall = on) }
-                    })
-                }
-                Text(
-                    LanguageText.text("update.auto.note"),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(LanguageText.text("update.elevated"), Modifier.weight(1f))
-                    FieldwatchSwitch(settings.updateElevatedInstall, { on ->
-                        vm.updateSettings { it.copy(updateElevatedInstall = on) }
-                    })
-                }
-                Text(
-                    LanguageText.text("update.elevated.note"),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(LanguageText.text("update.launch"), Modifier.weight(1f))
-                    FieldwatchSwitch(settings.updateCheckOnLaunch, { on ->
-                        vm.updateSettings { it.copy(updateCheckOnLaunch = on) }
-                    })
-                }
-                var everyMenu by remember { mutableStateOf(false) }
-                ExposedDropdownMenuBox(
-                    expanded = everyMenu,
-                    onExpandedChange = { everyMenu = it },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    FieldwatchDropdownField(
-                        label = LanguageText.text("update.every"),
-                        value = LanguageText.text(settings.updateCheckEvery.labelKey),
-                        expanded = everyMenu,
-                    )
-                    ExposedDropdownMenu(everyMenu, { everyMenu = false }) {
-                        UpdateCheckEvery.entries.forEach { choice ->
-                            Row(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(min = 32.dp)
-                                    .clickable {
-                                        everyMenu = false
-                                        if (choice != settings.updateCheckEvery) {
-                                            vm.updateSettings { it.copy(updateCheckEvery = choice) }
-                                        }
-                                    }
-                                    .padding(horizontal = 12.dp, vertical = 2.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    LanguageText.text(choice.labelKey),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    modifier = Modifier.weight(1f),
-                                )
-                                if (choice == settings.updateCheckEvery) {
-                                    Icon(Icons.Outlined.Check, contentDescription = null)
-                                }
-                            }
-                        }
-                    }
-                }
-                Text(
-                    LanguageText.text("update.every.note"),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            FieldwatchActionButton(
-                onClick = vm::checkForAppUpdate,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = vm.appUpdateAvailable,
-            ) { Text(LanguageText.text("update.settings")) }
-            Text(
-                LanguageText.text(if (vm.appUpdateAvailable) "update.settings.note" else "update.debug.note"),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
             Text(
                 "Fieldwatch ${dev.namelessnanashi.fieldwatch.BuildConfig.VERSION_NAME}  ·  Catalog ${state.catalogVersion}",
                 style = MaterialTheme.typography.bodySmall,
@@ -1693,6 +1710,7 @@ private enum class SettingsTopic(val titleKey: String) {
     LOGGING("settings.topic.logging"),
     SIGNATURES("settings.topic.signatures"),
     ELEVATED("settings.topic.elevated"),
+    UPDATES("settings.topic.updates"),
     BACKUP("settings.topic.backup"),
     ;
 
@@ -1741,6 +1759,11 @@ private fun SettingsTopicList(
         SettingsTopic.LOGGING to if (settings.loggingEnabled) LanguageText.text("ui.on.label") else LanguageText.text("ui.off.label"),
         SettingsTopic.SIGNATURES to "Catalog $catalogVersion",
         SettingsTopic.ELEVATED to "Root · Shizuku · Admin · Vector",
+        SettingsTopic.UPDATES to when {
+            !BuildConfig.DEBUG && settings.updateAutoInstall -> LanguageText.text("update.topic.auto")
+            !BuildConfig.DEBUG -> LanguageText.text("update.topic.manual")
+            else -> LanguageText.text("update.topic.debug")
+        },
         SettingsTopic.BACKUP to LanguageText.text("ui.export.import"),
     )
     rows.forEach { (item, value) ->
@@ -2443,4 +2466,50 @@ private fun AudioWakeupControl(valueMs: Int, enabled: Boolean, onCommit: (Int) -
         valueRange = 0f..1000f,
         enabled = enabled,
     )
+}
+
+/** Who installed Fieldwatch, who owns its updates, and a button to take both over. */
+@Composable
+private fun UpdateOwnershipCard(vm: FieldwatchViewModel) {
+    val source by vm.installSource.collectAsStateWithLifecycle()
+    val ownership by vm.ownership.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    LifecycleResumeEffect(Unit) {
+        vm.refreshInstallSource()
+        onPauseOrDispose { }
+    }
+    fun name(pkg: String?): String {
+        if (pkg == null) return LanguageText.text("update.own.nobody")
+        if (pkg == context.packageName) return "Fieldwatch"
+        val label = runCatching {
+            val pm = context.packageManager
+            pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
+        }.getOrNull()
+        return if (label.isNullOrBlank() || label == pkg) pkg else "$label ($pkg)"
+    }
+    SectionCard(LanguageText.text("update.own.title")) {
+        val current = source
+        Text(
+            LanguageText.text("update.own.installer", mapOf("name" to name(current?.installer))),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        if (android.os.Build.VERSION.SDK_INT >= 34) {
+            Text(
+                LanguageText.text("update.own.owner", mapOf("name" to name(current?.updateOwner))),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        val owned = current?.ownedHere(context.packageName) == true
+        FieldwatchActionButton(
+            onClick = vm::claimUpdateOwnership,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = current != null && !owned && !ownership.busy,
+        ) { Text(LanguageText.text(if (owned) "update.own.already" else "update.own.button")) }
+        Text(
+            LanguageText.text("update.own.note"),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        ownership.note?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+    }
 }

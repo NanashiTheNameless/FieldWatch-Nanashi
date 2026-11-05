@@ -1377,6 +1377,11 @@ data class AppSettings(
     val updateElevatedInstall: Boolean = true,
     /** Look for a newer nightly each time the app opens. Per phone. Missing JSON is on. */
     val updateCheckOnLaunch: Boolean = true,
+    /**
+     * Let automatic updates download over mobile data or another metered network. Off waits for
+     * Wi-Fi or another unmetered network. "Update now" downloads either way. Per phone. Missing JSON is on.
+     */
+    val updateCellular: Boolean = true,
     /** How often to look for a newer nightly in the background. Per phone. Missing JSON is hourly. */
     val updateCheckEvery: UpdateCheckEvery = UpdateCheckEvery.HOURLY,
     /** Speech engine package for spoken alerts. Blank, and missing JSON, use the system default. */
