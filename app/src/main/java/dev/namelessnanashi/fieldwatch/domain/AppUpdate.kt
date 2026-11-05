@@ -244,7 +244,7 @@ internal object AppUpdateLines {
         en("update.checking", "Checking for an update", LanguageSlot.CONTROL),
         en("update.current.body", "Fieldwatch {version} is the newest one on GitHub.", LanguageSlot.BODY),
         en("update.debug.note", "Not available in debug builds. Install the nightly release to get updates here.", LanguageSlot.BODY),
-        en("update.current.title", "This phone is current", LanguageSlot.CONTROL),
+        en("update.current.title", "Fieldwatch-Nanashi is up to date", LanguageSlot.CONTROL),
         en("update.downloading", "Downloading the update", LanguageSlot.CONTROL),
         en("update.failed.body", "The file from GitHub could not be installed. The app on this phone is unchanged.", LanguageSlot.BODY),
         en("update.failed.title", "Could not install the update", LanguageSlot.CONTROL),
