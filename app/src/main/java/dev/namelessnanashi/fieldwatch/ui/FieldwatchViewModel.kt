@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.location.LocationManager
 import android.net.Uri
+import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
@@ -867,8 +868,21 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
     /** Debug builds carry a .debug application ID, so the nightly APK is never an update for them. */
     val appUpdateAvailable: Boolean = AppUpdateAuto.available
 
-    init {
-        if (appUpdateAvailable) viewModelScope.launch(Dispatchers.IO) {
+    private var openCheckJob: Job? = null
+    private var lastOpenCheckMs = 0L
+
+    /**
+     * Looks for a newer nightly when the app launches or comes back to the screen. Rotations and
+     * quick trips to another screen (Android's settings, a picker) inside [OPEN_CHECK_GAP_MS]
+     * reuse the last check.
+     */
+    fun checkForUpdateOnOpen() {
+        if (!appUpdateAvailable) return
+        if (openCheckJob?.isActive == true || appUpdateJob?.isActive == true) return
+        val now = SystemClock.elapsedRealtime()
+        if (lastOpenCheckMs != 0L && now - lastOpenCheckMs < OPEN_CHECK_GAP_MS) return
+        lastOpenCheckMs = now
+        openCheckJob = viewModelScope.launch(Dispatchers.IO) {
             try {
                 if (!app.awaitConfiguration()) return@launch
                 val settings = app.config.settings
@@ -889,6 +903,9 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
                 // No answer from GitHub. The app still opens.
             }
         }
+    }
+
+    init {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val header = FlockFiles.peek(app.filesDir, SensorList.PLATES)
@@ -4762,6 +4779,7 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
 
     companion object {
         private const val FLASH_MS = 1_000L
+        private const val OPEN_CHECK_GAP_MS = 30_000L
     }
 }
 

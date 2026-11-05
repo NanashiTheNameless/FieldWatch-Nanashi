@@ -86,6 +86,8 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         AppUpdateAuto.visibleActivities++
         AppUpdateAuto.touch()
+        // Launch and every return from the background look for a newer nightly.
+        if ((application as FieldwatchApp).pendingCrash == null) vm.checkForUpdateOnOpen()
     }
 
     override fun onStop() {
