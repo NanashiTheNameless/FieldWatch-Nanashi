@@ -2,6 +2,7 @@ package dev.namelessnanashi.fieldwatch.ui.screen
 
 import dev.namelessnanashi.fieldwatch.domain.rowFillsWindow
 import dev.namelessnanashi.fieldwatch.domain.LanguageText
+import dev.namelessnanashi.fieldwatch.domain.Rssi
 import dev.namelessnanashi.fieldwatch.domain.MapCameraMarks
 
 import android.content.Intent
@@ -1343,7 +1344,7 @@ fun DeviceRow(
                         TrendMark(device.rssiTrend())
                         Spacer(Modifier.width(4.dp))
                         Text(
-                            "${device.rssi}",
+                            rssiNumber(device.rssi),
                             style = compactLine(16.sp, 18.sp, FontWeight.Bold).copy(fontFamily = OxProto),
                             color = accent,
                         )
@@ -1636,7 +1637,7 @@ private fun TimelineView(
         items(devices, key = { it.key }) { device ->
             val color = (device.fleetIds.firstOrNull()
                 ?.let { Color(Palette.color(vm.fleetColor(it))) }
-                ?: rssiColor(device.rssi))
+                ?: rssiColor(if (Rssi.measured(device.rssi)) device.rssi else -100))
             val flash = MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
             val rowColor by animateColorAsState(
                 targetValue = if (device.key in flashKeys) flash else MaterialTheme.colorScheme.surface,
@@ -1671,7 +1672,11 @@ private fun TimelineView(
                         TrendMark(device.rssiTrend())
                         Spacer(Modifier.width(6.dp))
                         Column(horizontalAlignment = Alignment.End) {
-                            Text("${device.rssi} dBm", fontFamily = OxProto, color = color)
+                            Text(
+                                if (Rssi.measured(device.rssi)) "${device.rssi} dBm" else "- -",
+                                fontFamily = OxProto,
+                                color = color,
+                            )
                             if (showFrequency) {
                                 val fact = radioFactLine(device)
                                 if (fact != null) {
@@ -1777,6 +1782,8 @@ private fun listSubtitle(
         }
     }
 }
+
+private fun rssiNumber(rssi: Int): String = if (Rssi.measured(rssi)) "$rssi" else "- -"
 
 private fun radioFactLine(device: Sighting): String? {
     val ch = if (device.channel != 0) "ch${device.channel}" else null

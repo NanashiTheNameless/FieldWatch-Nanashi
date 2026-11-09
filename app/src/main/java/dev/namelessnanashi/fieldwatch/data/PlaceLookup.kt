@@ -9,6 +9,7 @@ import android.os.Build
 import dev.namelessnanashi.fieldwatch.domain.DebriefPlaces
 import dev.namelessnanashi.fieldwatch.domain.GpsSample
 import dev.namelessnanashi.fieldwatch.domain.LanguageText
+import dev.namelessnanashi.fieldwatch.domain.Rssi
 import dev.namelessnanashi.fieldwatch.domain.Sighting
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -161,7 +162,7 @@ object PlaceLookup {
             if (path.size > 1) add(LanguageText.text("report.place.end"), path.last().lat, path.last().lon)
         }
         if (out.size < 8) {
-            devices.filter { it.gpsTrail.isNotEmpty() && it.rssi >= -70 }
+            devices.filter { it.gpsTrail.isNotEmpty() && Rssi.measured(it.rssi) && it.rssi >= -70 }
                 .sortedByDescending { it.rssi }
                 .take(4)
                 .forEach { d ->

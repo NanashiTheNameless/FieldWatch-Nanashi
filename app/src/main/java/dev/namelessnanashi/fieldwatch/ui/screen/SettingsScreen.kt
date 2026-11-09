@@ -214,6 +214,8 @@ fun SettingsScreen(
                     catalogVersion = state.catalogVersion,
                     takInstallTag = state.takInstallTag,
                     gnssReady = gnssReady,
+                    namedRadioCount = state.watchlist.count { it.deviceKey != null },
+                    onNamedRadios = onRadioBookmarks,
                     onOpen = { topicName = it.name },
                 )
             }
@@ -581,17 +583,6 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             }
-            SettingsTopicRow(
-                LanguageText.text("settings.named.radios"),
-                namedRadiosValue(state.watchlist.count { it.deviceKey != null }),
-                onRadioBookmarks,
-            )
-            Text(
-                LanguageText.text("alerts.named.note"),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 14.dp),
-            )
             SettingsTopicRow(
                 LanguageText.text("settings.spoken.names"),
                 spokenNamesValue(settings),
@@ -1723,6 +1714,8 @@ private fun SettingsTopicList(
     catalogVersion: Int,
     takInstallTag: String,
     gnssReady: Boolean,
+    namedRadioCount: Int,
+    onNamedRadios: () -> Unit,
     onOpen: (SettingsTopic) -> Unit,
 ) {
     val scanLabel = when (settings.intensity) {
@@ -1768,6 +1761,13 @@ private fun SettingsTopicList(
     )
     rows.forEach { (item, value) ->
         SettingsTopicRow(item.title(), value) { onOpen(item) }
+        if (item == SettingsTopic.WATCHLIST) {
+            SettingsTopicRow(
+                LanguageText.text("settings.named.radios"),
+                namedRadiosValue(namedRadioCount),
+                onNamedRadios,
+            )
+        }
     }
 }
 

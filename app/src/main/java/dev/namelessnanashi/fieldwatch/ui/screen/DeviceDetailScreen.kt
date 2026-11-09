@@ -22,6 +22,7 @@ import dev.namelessnanashi.fieldwatch.ui.icons.outlined.Check
 import dev.namelessnanashi.fieldwatch.ui.icons.outlined.Edit
 import dev.namelessnanashi.fieldwatch.ui.icons.outlined.GroupAdd
 import dev.namelessnanashi.fieldwatch.ui.icons.outlined.NearMe
+import dev.namelessnanashi.fieldwatch.ui.icons.outlined.Public
 import dev.namelessnanashi.fieldwatch.ui.icons.outlined.Share
 import dev.namelessnanashi.fieldwatch.ui.icons.outlined.WarningAmber
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -88,6 +89,7 @@ import dev.namelessnanashi.fieldwatch.domain.SpokenNames
 import dev.namelessnanashi.fieldwatch.domain.WatchTarget
 import dev.namelessnanashi.fieldwatch.ui.theme.Amber
 import dev.namelessnanashi.fieldwatch.ui.theme.Cyan
+import dev.namelessnanashi.fieldwatch.domain.VendorIeLabel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -115,6 +117,10 @@ fun DeviceDetailScreen(
     val placeStreets by vm.placeStreetNames.collectAsStateWithLifecycle()
     LaunchedEffect(device.key) { vm.refreshPlaceStreets(device) }
     val familyHint by vm.familyHint.collectAsStateWithLifecycle()
+    var catalogRequest by remember(device.key) { mutableStateOf(false) }
+    LaunchedEffect(device.key, device.name, device.kind, device.fleetIds) {
+        catalogRequest = vm.catalogRequestVisible(device)
+    }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     Scaffold(
@@ -703,8 +709,14 @@ fun DeviceDetailScreen(
                         Meta(
                             LanguageText.text("device.vendor", mapOf("oui" to ie.oui)) + type,
                             buildString {
-                                append(org ?: LanguageText.text("ui.unknown.ieee.oui"))
-                                append((" " + LanguageText.text("ui.extra.ap.information.element")))
+                                append(
+                                    VendorIeLabel.lead(
+                                        ie,
+                                        org,
+                                        LanguageText.text("ui.unknown.ieee.oui"),
+                                        LanguageText.text("ui.extra.ap.information.element"),
+                                    ),
+                                )
                                 if (ie.dataHex.isNotBlank()) {
                                     append("\n")
                                     append(if (demoMode) maskedRawBytes(ie.dataHex, true) else ie.dataHex.hexSpaced())
@@ -780,6 +792,16 @@ fun DeviceDetailScreen(
                 Icon(Icons.Outlined.Share, null)
                 Spacer(Modifier.padding(4.dp))
                 Text(LanguageText.text("ui.share.text"))
+            }
+            if (catalogRequest) {
+                FieldwatchActionButton(
+                    onClick = { vm.openCatalogRequest(device) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(Icons.Outlined.Public, null)
+                    Spacer(Modifier.padding(4.dp))
+                    Text(LanguageText.text("ui.catalog.request"))
+                }
             }
             FieldwatchActionButton(
                 onClick = { vm.startDeviceDetailAiExport(device) },

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import dev.namelessnanashi.fieldwatch.ui.icons.Icons
+import dev.namelessnanashi.fieldwatch.ui.icons.outlined.Bluetooth
 import dev.namelessnanashi.fieldwatch.ui.icons.outlined.BugReport
 import dev.namelessnanashi.fieldwatch.ui.icons.outlined.Category
 import dev.namelessnanashi.fieldwatch.ui.icons.outlined.DeviceThermostat
@@ -14,19 +15,20 @@ import dev.namelessnanashi.fieldwatch.ui.icons.outlined.Face
 import dev.namelessnanashi.fieldwatch.ui.icons.outlined.Flight
 import dev.namelessnanashi.fieldwatch.ui.icons.outlined.Headphones
 import dev.namelessnanashi.fieldwatch.ui.icons.outlined.Home
-import dev.namelessnanashi.fieldwatch.ui.icons.outlined.LocalPolice
 import dev.namelessnanashi.fieldwatch.ui.icons.outlined.Hub
 import dev.namelessnanashi.fieldwatch.ui.icons.outlined.LocalHospital
+import dev.namelessnanashi.fieldwatch.ui.icons.outlined.LocalPolice
 import dev.namelessnanashi.fieldwatch.ui.icons.outlined.Lock
 import dev.namelessnanashi.fieldwatch.ui.icons.outlined.PhotoCamera
 import dev.namelessnanashi.fieldwatch.ui.icons.outlined.QuestionMark
 import dev.namelessnanashi.fieldwatch.ui.icons.outlined.Router
 import dev.namelessnanashi.fieldwatch.ui.icons.outlined.Sell
+import dev.namelessnanashi.fieldwatch.ui.icons.outlined.SettingsInputAntenna
+import dev.namelessnanashi.fieldwatch.ui.icons.outlined.Shield
 import dev.namelessnanashi.fieldwatch.ui.icons.outlined.Smartphone
 import dev.namelessnanashi.fieldwatch.ui.icons.outlined.Storefront
 import dev.namelessnanashi.fieldwatch.ui.icons.outlined.Videocam
 import dev.namelessnanashi.fieldwatch.ui.icons.outlined.Watch
-import dev.namelessnanashi.fieldwatch.ui.icons.outlined.Bluetooth
 import dev.namelessnanashi.fieldwatch.ui.icons.outlined.Wifi
 import dev.namelessnanashi.fieldwatch.ui.icons.outlined.WifiTethering
 import androidx.compose.material3.Icon
@@ -66,6 +68,8 @@ object ClassGlyphs {
         SignatureClass.HOME -> Icons.Outlined.Home
         SignatureClass.ISP -> Icons.Outlined.Router
         SignatureClass.MESH -> Icons.Outlined.Hub
+        SignatureClass.TWO_WAY -> Icons.Outlined.SettingsInputAntenna
+        SignatureClass.MILITARY -> Icons.Outlined.Shield
         SignatureClass.PHONE -> Icons.Outlined.Smartphone
         SignatureClass.OTHER -> Icons.Outlined.Category
     }
