@@ -169,9 +169,12 @@ fun FieldwatchRoot(vm: FieldwatchViewModel, onRequestPermissions: () -> Unit) {
         val context = LocalContext.current
         val export by vm.export.collectAsStateWithLifecycle()
         androidx.compose.runtime.LaunchedEffect(export.share) {
-            export.share?.let { intent ->
+            val intent = export.share ?: return@LaunchedEffect
+            try {
                 context.startActivity(Intent.createChooser(intent, export.shareTitle))
                 vm.consumeShare()
+            } catch (error: Exception) {
+                vm.failShare(error)
             }
         }
     }
@@ -392,12 +395,15 @@ private fun AppUpdateNotice(title: String, body: String, onClose: () -> Unit) {
 @Composable
 private fun FieldwatchShell(state: FieldwatchUi, vm: FieldwatchViewModel) {
     val nav = rememberNavController()
-    val route = nav.currentBackStackEntryAsState().value?.destination?.route ?: "live"
+    val backStackEntry by nav.currentBackStackEntryAsState()
+    val route = backStackEntry?.destination?.route ?: "live"
     val openRequested by vm.openRequested.collectAsStateWithLifecycle()
-    LaunchedEffect(openRequested) {
-        if (openRequested == null) return@LaunchedEffect
-        vm.openHandled()
+    val radioPage by vm.radioPage.collectAsStateWithLifecycle()
+    LaunchedEffect(openRequested, radioPage, backStackEntry) {
+        if ((openRequested == null && radioPage == null) || backStackEntry == null) return@LaunchedEffect
         nav.navigate("detail") { launchSingleTop = true }
+        vm.openHandled()
+        vm.consumeRadioPage()
     }
     val context = LocalContext.current
     AppUpdateLayer(vm)
@@ -448,15 +454,19 @@ private fun FieldwatchShell(state: FieldwatchUi, vm: FieldwatchViewModel) {
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    LinearProgressIndicator(
-                        progress = { export.progress },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Text(
-                        "${(export.progress * 100).toInt()}%",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontFamily = OxProto,
-                    )
+                    if (export.spinner) {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    } else {
+                        LinearProgressIndicator(
+                            progress = { export.progress },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Text(
+                            "${(export.progress * 100).toInt()}%",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontFamily = OxProto,
+                        )
+                    }
                 }
             },
             confirmButton = { },

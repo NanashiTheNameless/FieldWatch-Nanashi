@@ -31,6 +31,14 @@ import dev.namelessnanashi.fieldwatch.data.MapKeyStore
 import dev.namelessnanashi.fieldwatch.data.PlaceStore
 import dev.namelessnanashi.fieldwatch.data.SitStore
 import dev.namelessnanashi.fieldwatch.data.TrustedNetworkStore
+import dev.namelessnanashi.fieldwatch.domain.CellCopy
+import dev.namelessnanashi.fieldwatch.domain.TrackerCopy
+import dev.namelessnanashi.fieldwatch.domain.TrackerMonitor
+import dev.namelessnanashi.fieldwatch.domain.TrackerWatch
+import java.util.concurrent.atomic.AtomicInteger
+import dev.namelessnanashi.fieldwatch.domain.CellFix
+import dev.namelessnanashi.fieldwatch.domain.CellReading
+import dev.namelessnanashi.fieldwatch.domain.CellSwitches
 import dev.namelessnanashi.fieldwatch.domain.CoTravel
 import dev.namelessnanashi.fieldwatch.domain.FilterEngine
 import dev.namelessnanashi.fieldwatch.domain.FlockApproach
@@ -65,10 +73,6 @@ import dev.namelessnanashi.fieldwatch.elevated.VectorBridge
 import dev.namelessnanashi.fieldwatch.radio.ScanSession
 import dev.namelessnanashi.fieldwatch.radio.CellRadio
 import dev.namelessnanashi.fieldwatch.data.CellStore
-import dev.namelessnanashi.fieldwatch.domain.CellCopy
-import dev.namelessnanashi.fieldwatch.domain.CellFix
-import dev.namelessnanashi.fieldwatch.domain.CellReading
-import dev.namelessnanashi.fieldwatch.domain.CellSwitches
 import dev.namelessnanashi.fieldwatch.domain.PathCameras
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -106,6 +110,8 @@ class FieldwatchApp : Application() {
         private set
     lateinit var places: PlaceStore
         private set
+    val tracker = TrackerMonitor()
+    private val uiDepth = AtomicInteger(0)
     lateinit var trusted: TrustedNetworkStore
         private set
     lateinit var cells: CellStore
@@ -179,6 +185,31 @@ class FieldwatchApp : Application() {
             return TrustFix(null, null, null, paused = false)
         }
         return TrustFix(fix.first, fix.second, acc, paused = false)
+    }
+
+    /** The activity is on screen. A tracker warning uses the popup here, and a quiet note when it is not. */
+    fun uiStarted() {
+        uiDepth.incrementAndGet()
+    }
+
+    fun uiStopped() {
+        uiDepth.updateAndGet { (it - 1).coerceAtLeast(0) }
+    }
+
+    fun inFront(): Boolean = uiDepth.get() > 0
+
+    /** Quiet shade card for the tracker warning on screen. None while the app is in front. */
+    fun syncTrackerShade(notice: TrackerWatch.Notice?) {
+        if (!::alerter.isInitialized) return
+        if (notice == null || inFront()) {
+            alerter.clearTrackerNote()
+            return
+        }
+        alerter.trackerNote(
+            title = TrackerCopy.title(notice.kind),
+            text = TrackerCopy.notification(notice, config.settings.demoMode),
+            deviceKey = notice.deviceKey,
+        )
     }
 
     /** GPS fix for this phone's cell. A held receiver is paused even when the fix is fresh. */

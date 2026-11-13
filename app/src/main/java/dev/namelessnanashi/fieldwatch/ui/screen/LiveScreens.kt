@@ -191,6 +191,7 @@ fun LivePane(
         }
         TrustedAlertDialog(vm)
         CellAlertDialog(vm)
+        TrackerAlertDialog(vm)
         if (floodNotice != null && !floodNotice.showDialog) {
             Text(
                 floodNotice.line(),

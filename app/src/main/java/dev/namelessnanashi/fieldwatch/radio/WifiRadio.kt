@@ -220,6 +220,7 @@ class WifiRadio(
             supportedRates = ies.rates,
             security = ies.security,
             vendorIes = ies.vendorIes,
+            interworking = ies.interworking,
         )
         return Observation(
             kind = RadioKind.WIFI,

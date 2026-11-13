@@ -1672,6 +1672,10 @@ data class AppSettings(
     val cellVoice: Boolean = true,
     /** System notification for this feature. Off until chosen. */
     val cellShade: Boolean = false,
+    /** Popup when a separated tag stays with this phone. Off until chosen. */
+    val trackerFollow: Boolean = false,
+    /** Popup when a finder reaches two stops. Off until chosen. The place list stays. */
+    val trackerPlaces: Boolean = false,
 )
 
 const val DISCLAIMER_REV = 4
@@ -1831,6 +1835,8 @@ data class Sighting(
     val payloadHeading: Double? = null,
     val payloadSpeed: Double? = null,
     val payloadVspeed: Double? = null,
+    /** ASTM Auth. A later page keeps the page-0 header. A Location message leaves it. */
+    val payloadAuth: RemoteIdAuth? = null,
     /** Advertised fixes kept by the sit. Empty on a live radio that has not been saved into one. */
     val payloadTrail: List<PayloadFix> = emptyList(),
     /** Decoded labels a signature asked to show on the live row. Empty for every other radio. */
