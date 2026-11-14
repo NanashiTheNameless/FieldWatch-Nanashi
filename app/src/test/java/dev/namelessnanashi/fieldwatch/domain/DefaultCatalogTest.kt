@@ -666,7 +666,7 @@ class DefaultCatalogTest {
         assertTrue(chipolo.rules.any { it.kind == RuleKind.SERVICE_UUID && it.text.equals("FE33", true) })
         assertFalse(chipolo.rules.any { it.text.equals("FE65", true) || it.text.equals("FE34", true) })
         assertTrue(DeviceExplain.uuidGloss("FE33")!!.contains("Chipolo"))
-        assertEquals(298, stock.size)
+        assertEquals(306, stock.size)
 
         val unnamed = ble(name = "", serviceUuids = listOf("FE33"))
             .copy(key = "BLE:c1", mac = "AA:BB:CC:DD:EE:41")
@@ -1048,7 +1048,7 @@ class DefaultCatalogTest {
         assertEquals(RadioKind.BLE, icom.rules.single().radio)
         assertFalse("fleet-icom-id52" in DefaultCatalog.defaultWatchlist().mapNotNull { it.fleetId })
         assertTrue(stock.none { it.kind == SignatureClass.MILITARY })
-        assertEquals(9, stock.count { it.kind == SignatureClass.TWO_WAY })
+        assertEquals(17, stock.count { it.kind == SignatureClass.TWO_WAY })
 
         val named = ble(name = "ICOM BT(ID-52)").copy(key = "BLE:i1", mac = "AA:BB:CC:DD:11:01")
         val lower = ble(name = "icom bt(id-52)").copy(key = "BLE:i2", mac = "AA:BB:CC:DD:11:02")
@@ -1257,6 +1257,282 @@ class DefaultCatalogTest {
         assertTrue(
             DeviceExplain.guess(radios.first { it.key == pttZ }, listOf("BLE PTT button")).headline
                 .contains("a Bluetooth push-to-talk button"),
+        )
+    }
+
+    @Test
+    fun bleKissTncMatchesTheKissServiceUuid() {
+        val stock = DefaultCatalog.fleets()
+        val row = stock.single { it.id == "fleet-ble-kiss-tnc" }
+        assertEquals(SignatureClass.TWO_WAY, row.kind)
+        assertTrue(row.attentionNote.isBlank())
+        assertTrue(row.matchAny)
+        assertEquals(RuleKind.SERVICE_UUID, row.rules.single().kind)
+        assertEquals(RadioKind.BLE, row.rules.single().radio)
+        assertEquals("00000001-ba2a-46c9-ae49-01b0961f68bb", row.rules.single().text)
+        assertFalse("fleet-ble-kiss-tnc" in DefaultCatalog.defaultWatchlist().mapNotNull { it.fleetId })
+
+        val kiss = "00000001-ba2a-46c9-ae49-01b0961f68bb"
+        val blank = ble(name = "", serviceUuids = listOf(kiss)).copy(key = "BLE:k1", mac = "AA:BB:CC:DD:55:01")
+        val upper = ble(name = "", serviceUuids = listOf(kiss.uppercase())).copy(key = "BLE:k2", mac = "AA:BB:CC:DD:55:02")
+        val benshi = ble(name = "UV-PRO", serviceUuids = listOf(kiss)).copy(key = "BLE:k3", mac = "AA:BB:CC:DD:55:03")
+        val tx = ble(name = "", serviceUuids = listOf("00000002-ba2a-46c9-ae49-01b0961f68bb"))
+            .copy(key = "BLE:k4", mac = "AA:BB:CC:DD:55:04")
+        val nordic = ble(name = "", serviceUuids = listOf("6e400001-b5a3-f393-e0a9-e50e24dcca9e"))
+            .copy(key = "BLE:k5", mac = "AA:BB:CC:DD:55:05")
+        val ffe0 = ble(name = "", serviceUuids = listOf("FFE0")).copy(key = "BLE:k6", mac = "AA:BB:CC:DD:55:06")
+        val named = ble(name = "TNC4").copy(key = "BLE:k7", mac = "AA:BB:CC:DD:55:07")
+        val wifiKiss = wifi("02:00:00:00:22:01").copy(serviceUuids = listOf(kiss))
+        val hits = SignatureEngine().match(
+            listOf(blank, upper, benshi, tx, nordic, ffe0, named, wifiKiss),
+            stock,
+        )
+        assertTrue("blank", "fleet-ble-kiss-tnc" in hits.getValue(blank.key))
+        assertTrue("upper case", "fleet-ble-kiss-tnc" in hits.getValue(upper.key))
+        assertTrue("UV-PRO keeps KISS", "fleet-ble-kiss-tnc" in hits.getValue(benshi.key))
+        assertTrue("UV-PRO keeps Benshi", "fleet-benshi-radio" in hits.getValue(benshi.key))
+        assertFalse("TX characteristic", "fleet-ble-kiss-tnc" in hits.getValue(tx.key))
+        assertFalse("Nordic UART", "fleet-ble-kiss-tnc" in hits.getValue(nordic.key))
+        assertFalse("FFE0", "fleet-ble-kiss-tnc" in hits.getValue(ffe0.key))
+        assertFalse("name TNC4", "fleet-ble-kiss-tnc" in hits.getValue(named.key))
+        assertFalse("Wi-Fi", "fleet-ble-kiss-tnc" in hits.getValue(wifiKiss.key))
+        assertTrue(
+            DeviceExplain.guess(blank, listOf("BLE KISS TNC")).headline
+                .contains("a Bluetooth packet-radio modem (KISS TNC)"),
+        )
+    }
+
+    @Test
+    fun icomIc705Id5200AndUt137MatchFactoryNames() {
+        val stock = DefaultCatalog.fleets()
+        val watched = DefaultCatalog.defaultWatchlist().mapNotNull { it.fleetId }.toSet()
+        val ic705 = stock.single { it.id == "fleet-icom-ic705" }
+        val id5200 = stock.single { it.id == "fleet-icom-id5200" }
+        val ut137 = stock.single { it.id == "fleet-icom-ut137" }
+        listOf(ic705, id5200, ut137).forEach { row ->
+            assertEquals(SignatureClass.TWO_WAY, row.kind)
+            assertTrue(row.attentionNote.isBlank())
+            assertTrue(row.matchAny)
+            assertTrue(row.rules.all { it.kind == RuleKind.NAME_GLOB && it.radio != null })
+            assertTrue(
+                row.rules.none {
+                    it.kind == RuleKind.RADIO_KIND ||
+                        it.kind == RuleKind.SERVICE_UUID ||
+                        it.kind == RuleKind.MANUFACTURER_ID ||
+                        it.kind == RuleKind.MANUFACTURER_DATA ||
+                        it.kind == RuleKind.OUI
+                },
+            )
+            assertFalse(row.id in watched)
+        }
+        assertEquals(listOf("ICOM BT(IC-705)", "IC-705"), ic705.rules.map { it.text })
+        assertEquals(listOf(RadioKind.BLE, RadioKind.WIFI), ic705.rules.map { it.radio })
+        assertEquals(listOf("ICOM BT(ID-5200)"), id5200.rules.map { it.text })
+        assertEquals(RadioKind.BLE, id5200.rules.single().radio)
+        assertEquals(listOf("ICOM BT-003"), ut137.rules.map { it.text })
+        assertEquals(RadioKind.BLE, ut137.rules.single().radio)
+
+        val ble705 = ble(name = "ICOM BT(IC-705)").copy(key = "BLE:c1", mac = "AA:BB:CC:DD:66:01")
+        val ble705Lower = ble(name = "icom bt(ic-705)").copy(key = "BLE:c2", mac = "AA:BB:CC:DD:66:02")
+        val wifi705 = wifi("02:00:00:00:66:03", "IC-705")
+        val wifi705Lower = wifi("02:00:00:00:66:04", "ic-705")
+        val bleBare = ble(name = "IC-705").copy(key = "BLE:c5", mac = "AA:BB:CC:DD:66:05")
+        val wifiBleName = wifi("02:00:00:00:66:06", "ICOM BT(IC-705)")
+        val wifi7050 = wifi("02:00:00:00:66:07", "IC-7050")
+        val wifiHome = wifi("02:00:00:00:66:08", "IC-705-Home")
+        val ble5200 = ble(name = "ICOM BT(ID-5200)").copy(key = "BLE:c9", mac = "AA:BB:CC:DD:66:09")
+        val ble52 = ble(name = "ICOM BT(ID-52)").copy(key = "BLE:cA", mac = "AA:BB:CC:DD:66:0A")
+        val ble003 = ble(name = "ICOM BT-003").copy(key = "BLE:cB", mac = "AA:BB:CC:DD:66:0B")
+        val ble003Edited = ble(name = "ICOM BT-003 A").copy(key = "BLE:cC", mac = "AA:BB:CC:DD:66:0C")
+        val ble002 = ble(name = "ICOM BT-002").copy(key = "BLE:cD", mac = "AA:BB:CC:DD:66:0D")
+        val hits = SignatureEngine().match(
+            listOf(
+                ble705, ble705Lower, wifi705, wifi705Lower, bleBare, wifiBleName, wifi7050, wifiHome,
+                ble5200, ble52, ble003, ble003Edited, ble002,
+            ),
+            stock,
+        )
+        fun ids(radio: Sighting) = hits.getValue(radio.key)
+        assertTrue("IC-705 BLE", "fleet-icom-ic705" in ids(ble705))
+        assertFalse("IC-705 BLE is not ID-52", "fleet-icom-id52" in ids(ble705))
+        assertFalse("IC-705 BLE is not ID-5200", "fleet-icom-id5200" in ids(ble705))
+        assertTrue("IC-705 lower", "fleet-icom-ic705" in ids(ble705Lower))
+        assertTrue("IC-705 Wi-Fi", "fleet-icom-ic705" in ids(wifi705))
+        assertTrue("ic-705 Wi-Fi", "fleet-icom-ic705" in ids(wifi705Lower))
+        assertFalse("BLE name IC-705", "fleet-icom-ic705" in ids(bleBare))
+        assertFalse("Wi-Fi Bluetooth name", "fleet-icom-ic705" in ids(wifiBleName))
+        assertFalse("IC-7050", "fleet-icom-ic705" in ids(wifi7050))
+        assertFalse("IC-705-Home", "fleet-icom-ic705" in ids(wifiHome))
+        assertTrue("ID-5200", "fleet-icom-id5200" in ids(ble5200))
+        assertFalse("ID-5200 is not ID-52", "fleet-icom-id52" in ids(ble5200))
+        assertTrue("ID-52", "fleet-icom-id52" in ids(ble52))
+        assertFalse("ID-52 is not ID-5200", "fleet-icom-id5200" in ids(ble52))
+        assertTrue("UT-137", "fleet-icom-ut137" in ids(ble003))
+        assertFalse("edited UT-137", "fleet-icom-ut137" in ids(ble003Edited))
+        assertTrue("VS-3", "fleet-icom-vs3" in ids(ble002))
+        assertFalse("VS-3 is not UT-137", "fleet-icom-ut137" in ids(ble002))
+        assertTrue(
+            DeviceExplain.guess(ble705, listOf("Icom IC-705")).headline
+                .contains("an Icom IC-705 portable transceiver"),
+        )
+        assertTrue(
+            DeviceExplain.guess(ble5200, listOf("Icom ID-5200")).headline
+                .contains("an Icom ID-5200 mobile radio"),
+        )
+        assertTrue(
+            DeviceExplain.guess(ble003, listOf("Icom UT-137")).headline
+                .contains("an Icom ID-4100 mobile radio's UT-137 Bluetooth unit"),
+        )
+    }
+
+    @Test
+    fun codaPttButtonMatchesItsAdvertisedService() {
+        val stock = DefaultCatalog.fleets()
+        val row = stock.single { it.id == "fleet-coda-ptt-button" }
+        assertEquals(SignatureClass.TWO_WAY, row.kind)
+        assertTrue(row.attentionNote.isBlank())
+        assertTrue(row.matchAny)
+        assertEquals(RuleKind.SERVICE_UUID, row.rules.single().kind)
+        assertEquals(RadioKind.BLE, row.rules.single().radio)
+        assertEquals("2320ae58-8394-4652-95f7-0a872ac0958f", row.rules.single().text)
+        assertFalse("fleet-coda-ptt-button" in DefaultCatalog.defaultWatchlist().mapNotNull { it.fleetId })
+
+        val uuid = "2320AE58-8394-4652-95F7-0A872AC0958F"
+        val blank = ble(name = "", serviceUuids = listOf(uuid)).copy(key = "BLE:p1", mac = "AA:BB:CC:DD:77:01")
+        val named = ble(name = "Blu-PTT", serviceUuids = listOf(uuid.lowercase()))
+            .copy(key = "BLE:p2", mac = "AA:BB:CC:DD:77:02")
+        val notify = ble(name = "", serviceUuids = listOf("89A8591D-BB19-485B-9F59-58492BC33E24"))
+            .copy(key = "BLE:p3", mac = "AA:BB:CC:DD:77:03")
+        val coda = ble(name = "CODA").copy(key = "BLE:p4", mac = "AA:BB:CC:DD:77:04")
+        val pttZ = ble(name = "PTT-Z").copy(key = "BLE:p5", mac = "AA:BB:CC:DD:77:05")
+        val ffe0 = ble(name = "", serviceUuids = listOf("FFE0")).copy(key = "BLE:p6", mac = "AA:BB:CC:DD:77:06")
+        val wifiCoda = wifi("02:00:00:00:33:01").copy(serviceUuids = listOf(uuid))
+        val hits = SignatureEngine().match(listOf(blank, named, notify, coda, pttZ, ffe0, wifiCoda), stock)
+        assertTrue("blank", "fleet-coda-ptt-button" in hits.getValue(blank.key))
+        assertTrue("named", "fleet-coda-ptt-button" in hits.getValue(named.key))
+        assertFalse("notify service", "fleet-coda-ptt-button" in hits.getValue(notify.key))
+        assertFalse("name CODA", "fleet-coda-ptt-button" in hits.getValue(coda.key))
+        assertTrue("PTT-Z", "fleet-ble-ptt-button" in hits.getValue(pttZ.key))
+        assertFalse("PTT-Z is not Blu-PTT", "fleet-coda-ptt-button" in hits.getValue(pttZ.key))
+        assertFalse("FFE0", "fleet-coda-ptt-button" in hits.getValue(ffe0.key))
+        assertFalse("Wi-Fi", "fleet-coda-ptt-button" in hits.getValue(wifiCoda.key))
+        assertTrue(
+            DeviceExplain.guess(blank, listOf("Blu-PTT button")).headline
+                .contains("a Blu-PTT push-to-talk button"),
+        )
+    }
+
+    @Test
+    fun tidradioTdH9MatchesItsNamePrefix() {
+        val stock = DefaultCatalog.fleets()
+        val row = stock.single { it.id == "fleet-tidradio-td-h9" }
+        assertEquals(SignatureClass.TWO_WAY, row.kind)
+        assertTrue(row.attentionNote.isBlank())
+        assertTrue(row.matchAny)
+        assertEquals(RuleKind.NAME_GLOB, row.rules.single().kind)
+        assertEquals("TD-H9*", row.rules.single().text)
+        assertEquals(RadioKind.BLE, row.rules.single().radio)
+        assertFalse("fleet-tidradio-td-h9" in DefaultCatalog.defaultWatchlist().mapNotNull { it.fleetId })
+
+        val coded = ble(name = "TD-H9-0536").copy(key = "BLE:t1", mac = "AA:BB:CC:DD:88:01")
+        val lower = ble(name = "td-h9-0536").copy(key = "BLE:t2", mac = "AA:BB:CC:DD:88:02")
+        val bare = ble(name = "TD-H9").copy(key = "BLE:t3", mac = "AA:BB:CC:DD:88:03")
+        val h8 = ble(name = "TD-H8").copy(key = "BLE:t4", mac = "AA:BB:CC:DD:88:04")
+        val h3 = ble(name = "TD-H3").copy(key = "BLE:t5", mac = "AA:BB:CC:DD:88:05")
+        val prefixed = ble(name = "XTD-H9").copy(key = "BLE:t6", mac = "AA:BB:CC:DD:88:06")
+        val ff00 = ble(name = "", serviceUuids = listOf("FF00")).copy(key = "BLE:t7", mac = "AA:BB:CC:DD:88:07")
+        val wifiName = wifi("02:00:00:00:88:08", "TD-H9-0536")
+        val hits = SignatureEngine().match(listOf(coded, lower, bare, h8, h3, prefixed, ff00, wifiName), stock)
+        assertTrue("TD-H9-0536", "fleet-tidradio-td-h9" in hits.getValue(coded.key))
+        assertTrue("lower", "fleet-tidradio-td-h9" in hits.getValue(lower.key))
+        assertTrue("bare", "fleet-tidradio-td-h9" in hits.getValue(bare.key))
+        assertFalse("TD-H8", "fleet-tidradio-td-h9" in hits.getValue(h8.key))
+        assertFalse("TD-H3", "fleet-tidradio-td-h9" in hits.getValue(h3.key))
+        assertFalse("XTD-H9", "fleet-tidradio-td-h9" in hits.getValue(prefixed.key))
+        assertFalse("FF00", "fleet-tidradio-td-h9" in hits.getValue(ff00.key))
+        assertFalse("Wi-Fi", "fleet-tidradio-td-h9" in hits.getValue(wifiName.key))
+        assertTrue(
+            DeviceExplain.guess(coded, listOf("TIDRADIO TD-H9")).headline
+                .contains("a TIDRADIO TD-H9 handheld radio"),
+        )
+    }
+
+    @Test
+    fun ainaSmartButtonMatchesAsbPlusSixCharacters() {
+        val stock = DefaultCatalog.fleets()
+        val row = stock.single { it.id == "fleet-aina-smart-button" }
+        assertEquals(SignatureClass.TWO_WAY, row.kind)
+        assertTrue(row.attentionNote.isBlank())
+        assertTrue(row.matchAny)
+        assertEquals(RuleKind.NAME_GLOB, row.rules.single().kind)
+        assertEquals("ASB??????", row.rules.single().text)
+        assertEquals(RadioKind.BLE, row.rules.single().radio)
+        assertFalse("fleet-aina-smart-button" in DefaultCatalog.defaultWatchlist().mapNotNull { it.fleetId })
+
+        val sample = ble(name = "ASB99C2F0").copy(key = "BLE:a1", mac = "AA:BB:CC:DD:99:01")
+        val lower = ble(name = "asb99c2f0").copy(key = "BLE:a2", mac = "AA:BB:CC:DD:99:02")
+        val zeros = ble(name = "ASB000001").copy(key = "BLE:a3", mac = "AA:BB:CC:DD:99:03")
+        val short = ble(name = "ASB99C2F").copy(key = "BLE:a4", mac = "AA:BB:CC:DD:99:04")
+        val long = ble(name = "ASB99C2F01").copy(key = "BLE:a5", mac = "AA:BB:CC:DD:99:05")
+        val prefixed = ble(name = "XASB99C2F0").copy(key = "BLE:a6", mac = "AA:BB:CC:DD:99:06")
+        val voice = ble(name = "APTT1234").copy(key = "BLE:a7", mac = "AA:BB:CC:DD:99:07")
+        val pttZ = ble(name = "PTT-Z").copy(key = "BLE:a8", mac = "AA:BB:CC:DD:99:08")
+        val wifiName = wifi("02:00:00:00:99:09", "ASB99C2F0")
+        val hits = SignatureEngine().match(
+            listOf(sample, lower, zeros, short, long, prefixed, voice, pttZ, wifiName),
+            stock,
+        )
+        assertTrue("ASB99C2F0", "fleet-aina-smart-button" in hits.getValue(sample.key))
+        assertTrue("lower", "fleet-aina-smart-button" in hits.getValue(lower.key))
+        assertTrue("zeros", "fleet-aina-smart-button" in hits.getValue(zeros.key))
+        assertFalse("five characters", "fleet-aina-smart-button" in hits.getValue(short.key))
+        assertFalse("seven characters", "fleet-aina-smart-button" in hits.getValue(long.key))
+        assertFalse("prefixed", "fleet-aina-smart-button" in hits.getValue(prefixed.key))
+        assertFalse("Voice Responder", "fleet-aina-smart-button" in hits.getValue(voice.key))
+        assertTrue("PTT-Z", "fleet-ble-ptt-button" in hits.getValue(pttZ.key))
+        assertFalse("PTT-Z is not AINA", "fleet-aina-smart-button" in hits.getValue(pttZ.key))
+        assertFalse("Wi-Fi", "fleet-aina-smart-button" in hits.getValue(wifiName.key))
+        assertTrue(
+            DeviceExplain.guess(sample, listOf("AINA PTT Smart Button")).headline
+                .contains("an AINA push-to-talk button"),
+        )
+    }
+
+    @Test
+    fun wirelessCpsRadioMatchesExactWalkieTalkieName() {
+        val stock = DefaultCatalog.fleets()
+        val row = stock.single { it.id == "fleet-wireless-cps-radio" }
+        assertEquals(SignatureClass.TWO_WAY, row.kind)
+        assertTrue(row.attentionNote.isBlank())
+        assertTrue(row.matchAny)
+        assertEquals(RuleKind.NAME_GLOB, row.rules.single().kind)
+        assertEquals("walkie-talkie", row.rules.single().text)
+        assertEquals(RadioKind.BLE, row.rules.single().radio)
+        assertFalse("fleet-wireless-cps-radio" in DefaultCatalog.defaultWatchlist().mapNotNull { it.fleetId })
+
+        val lower = ble(name = "walkie-talkie").copy(key = "BLE:w1", mac = "AA:BB:CC:DD:AA:01")
+        val mixed = ble(name = "Walkie-Talkie").copy(key = "BLE:w2", mac = "AA:BB:CC:DD:AA:02")
+        val upper = ble(name = "WALKIE-TALKIE").copy(key = "BLE:w3", mac = "AA:BB:CC:DD:AA:03")
+        val numbered = ble(name = "walkie-talkie 2").copy(key = "BLE:w4", mac = "AA:BB:CC:DD:AA:04")
+        val mine = ble(name = "My walkie-talkie").copy(key = "BLE:w5", mac = "AA:BB:CC:DD:AA:05")
+        val spaced = ble(name = "walkie talkie").copy(key = "BLE:w6", mac = "AA:BB:CC:DD:AA:06")
+        val ffe0 = ble(name = "", serviceUuids = listOf("FFE0")).copy(key = "BLE:w7", mac = "AA:BB:CC:DD:AA:07")
+        val wifiName = wifi("02:00:00:00:AA:08", "walkie-talkie")
+        val hits = SignatureEngine().match(
+            listOf(lower, mixed, upper, numbered, mine, spaced, ffe0, wifiName),
+            stock,
+        )
+        assertTrue("lower", "fleet-wireless-cps-radio" in hits.getValue(lower.key))
+        assertTrue("mixed", "fleet-wireless-cps-radio" in hits.getValue(mixed.key))
+        assertTrue("upper", "fleet-wireless-cps-radio" in hits.getValue(upper.key))
+        assertFalse("numbered", "fleet-wireless-cps-radio" in hits.getValue(numbered.key))
+        assertFalse("prefixed", "fleet-wireless-cps-radio" in hits.getValue(mine.key))
+        assertFalse("space", "fleet-wireless-cps-radio" in hits.getValue(spaced.key))
+        assertFalse("FFE0", "fleet-wireless-cps-radio" in hits.getValue(ffe0.key))
+        assertFalse("Wi-Fi", "fleet-wireless-cps-radio" in hits.getValue(wifiName.key))
+        assertTrue(
+            DeviceExplain.guess(lower, listOf("Walkie-talkie (wireless programming)")).headline
+                .contains("a handheld radio with phone programming switched on"),
         )
     }
 

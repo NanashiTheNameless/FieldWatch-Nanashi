@@ -388,6 +388,12 @@ object DeviceExplain {
                     Hint("drone", "an ExpressLRS radio in Wi-Fi setup", matched(raw), 7)
                 n == "icom id-52" ->
                     Hint("radio", "an Icom ID-52 handheld", matched(raw), 7)
+                n == "icom ic-705" ->
+                    Hint("radio", "an Icom IC-705 portable transceiver", matched(raw), 7)
+                n == "icom id-5200" ->
+                    Hint("radio", "an Icom ID-5200 mobile radio", matched(raw), 7)
+                n == "icom ut-137" ->
+                    Hint("radio", "an Icom ID-4100 mobile radio's UT-137 Bluetooth unit", matched(raw), 7)
                 n == "icom vs-3" ->
                     Hint("radio", "an Icom VS-3 headset", matched(raw), 7)
                 n == "yaesu ssm-bt10" ->
@@ -402,8 +408,18 @@ object DeviceExplain {
                     Hint("radio", "a VGC BHM-88 headset", matched(raw), 7)
                 n == "benshi radio" ->
                     Hint("radio", "a Benshi handheld or mobile radio", matched(raw), 7)
+                n == "tidradio td-h9" ->
+                    Hint("radio", "a TIDRADIO TD-H9 handheld radio", matched(raw), 7)
+                n == "walkie-talkie (wireless programming)" ->
+                    Hint("radio", "a handheld radio with phone programming switched on", matched(raw), 7)
                 n == "ble ptt button" ->
                     Hint("radio", "a Bluetooth push-to-talk button", matched(raw), 7)
+                n == "ble kiss tnc" ->
+                    Hint("radio", "a Bluetooth packet-radio modem (KISS TNC)", matched(raw), 7)
+                n == "blu-ptt button" ->
+                    Hint("radio", "a Blu-PTT push-to-talk button", matched(raw), 7)
+                n == "aina ptt smart button" ->
+                    Hint("radio", "an AINA push-to-talk button", matched(raw), 7)
                 n == "netgear" || n == "orbi" ->
                     Hint("ap", "a NETGEAR or Orbi access point", matched(raw), 6)
                 n == "tp-link" ->

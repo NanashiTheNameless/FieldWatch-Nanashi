@@ -568,3 +568,33 @@ class Catalog112MigrationTest {
         assertEquals("My fridge note", updated.single { it.notes == "My fridge note" }.notes)
     }
 }
+
+class Catalog113MigrationTest {
+    @Test
+    fun addsTwoWayRadiosWhenMissingAndLeavesACustomCopy() {
+        assertTrue(ConfigStore.CATALOG_VERSION >= 113)
+        val stock = DefaultCatalog.fleets().associateBy { it.id }
+        val other = stock.getValue("fleet-dji")
+        val added = catalog113Migrate(listOf(other), stock)
+        assertEquals(ADDED_IN_V113.size + 1, added.size)
+        ADDED_IN_V113.forEach { id ->
+            val row = added.single { it.id == id }
+            assertTrue(id, row.builtIn)
+            assertTrue(id, row.attentionNote.isBlank())
+            assertTrue(id, row.matchAny)
+            assertEquals(SignatureClass.TWO_WAY, row.kind)
+            assertNull(row.decode)
+        }
+        assertEquals(
+            (listOf("DJI") + ADDED_IN_V113.map { stock.getValue(it).name }).sortedBy { it.lowercase() },
+            added.map { it.name },
+        )
+
+        val custom = stock.getValue("fleet-ble-kiss-tnc").copy(builtIn = false, name = "Mine")
+        val kept = catalog113Migrate(listOf(custom, other), stock)
+        assertEquals("Mine", kept.single { it.id == "fleet-ble-kiss-tnc" }.name)
+        assertFalse(kept.single { it.id == "fleet-ble-kiss-tnc" }.builtIn)
+        assertEquals(1, kept.count { it.id == "fleet-ble-kiss-tnc" })
+        assertEquals(ADDED_IN_V113.size, kept.count { it.id in ADDED_IN_V113 })
+    }
+}

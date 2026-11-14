@@ -1253,6 +1253,10 @@ class ConfigStore(context: Context) {
             fleets = catalog112Migrate(fleets, catalog)
             version = CATALOG_V112
         }
+        if (version < CATALOG_V113) {
+            fleets = catalog113Migrate(fleets, catalog)
+            version = CATALOG_V113
+        }
         if (!settings.darkTheme) settings = settings.copy(darkTheme = true)
         if (settings.scanControlsExpanded) settings = settings.copy(scanControlsExpanded = false)
         presets = presets.filterNot { it.isBuiltIn() && it.id in hiddenPresetIds }
@@ -1299,7 +1303,7 @@ class ConfigStore(context: Context) {
 
     companion object {
         /** Stock catalog generation. Settings footer and the GitHub pack use this. */
-        const val CATALOG_VERSION = 112
+        const val CATALOG_VERSION = 113
         private const val CATALOG_V2 = 2
         private const val CATALOG_V3 = 3
         private const val CATALOG_V4 = 4
@@ -1410,7 +1414,8 @@ class ConfigStore(context: Context) {
         private const val CATALOG_V109 = 109
         private const val CATALOG_V110 = 110
         private const val CATALOG_V111 = 111
-        private const val CATALOG_V112 = CATALOG_VERSION
+        private const val CATALOG_V112 = 112
+        private const val CATALOG_V113 = CATALOG_VERSION
         private val GENERIC_GATT_UUIDS = setOf("180A", "180D", "180F")
         private val POLICY_FLEET_IDS = setOf(
             "fleet-flock-cameras",
@@ -2056,6 +2061,30 @@ internal fun catalog112Migrate(
         val fresh = stock[fleet.id] ?: return@map fleet
         if (fleet.notes != previous) fleet else fleet.copy(notes = fresh.notes)
     }
+}
+
+internal val ADDED_IN_V113 = listOf(
+    "fleet-aina-smart-button",
+    "fleet-ble-kiss-tnc",
+    "fleet-coda-ptt-button",
+    "fleet-icom-ic705",
+    "fleet-icom-id5200",
+    "fleet-icom-ut137",
+    "fleet-tidradio-td-h9",
+    "fleet-wireless-cps-radio",
+)
+
+/**
+ * Catalog 113 adds the two-way rows when those ids are missing. A custom row
+ * with the same id stays. The rows are not bookmarked.
+ */
+internal fun catalog113Migrate(
+    fleets: List<Fleet>,
+    stock: Map<String, Fleet>,
+): List<Fleet> {
+    val have = fleets.map { it.id }.toSet()
+    val extras = ADDED_IN_V113.mapNotNull { stock[it] }.filter { it.id !in have }
+    return if (extras.isEmpty()) fleets else (fleets + extras).sortedBy { it.name.lowercase() }
 }
 
 /**

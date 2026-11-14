@@ -284,6 +284,9 @@ object DefaultCatalog {
         senseCap(),
         rakWisGate(),
         icomId52(),
+        icomIc705(),
+        icomId5200(),
+        icomUt137(),
         icomVs3(),
         yaesuSsmBt10(),
         yaesuSsmBt20(),
@@ -291,7 +294,12 @@ object DefaultCatalog {
         kenwoodKhs56Bt(),
         vgcBhm88(),
         benshiRadio(),
+        tidradioTdH9(),
+        wirelessCpsRadio(),
         blePttButton(),
+        bleKissTnc(),
+        codaPttButton(),
+        ainaSmartButton(),
         genetec(),
         blueToadSpectra(),
         blipTrack(),
@@ -2749,6 +2757,49 @@ object DefaultCatalog {
         ),
     )
 
+    private fun icomIc705() = Fleet(
+        id = "fleet-icom-ic705",
+        name = "Icom IC-705",
+        enabled = true,
+        colorIndex = Hue.MESH,
+        kind = SignatureClass.TWO_WAY,
+        matchAny = true,
+        notes = "Icom IC-705 portable HF/VHF/UHF transceiver. The Bluetooth name is ICOM BT(IC-705) while the radio's Bluetooth is on. In Wi-Fi access point mode its network is named IC-705 by default. This phone does not hear the voice channel. A renamed radio or network does not match.",
+        builtIn = true,
+        rules = listOf(
+            bleGlob("ICOM BT(IC-705)"),
+            wifiGlob("IC-705"),
+        ),
+    )
+
+    private fun icomId5200() = Fleet(
+        id = "fleet-icom-id5200",
+        name = "Icom ID-5200",
+        enabled = true,
+        colorIndex = Hue.MESH,
+        kind = SignatureClass.TWO_WAY,
+        matchAny = true,
+        notes = "Icom ID-5200 VHF/UHF D-STAR mobile radio. The Bluetooth name is ICOM BT(ID-5200) while the radio's Bluetooth is on. This phone does not hear the voice channel. A renamed radio does not match.",
+        builtIn = true,
+        rules = listOf(
+            bleGlob("ICOM BT(ID-5200)"),
+        ),
+    )
+
+    private fun icomUt137() = Fleet(
+        id = "fleet-icom-ut137",
+        name = "Icom UT-137",
+        enabled = true,
+        colorIndex = Hue.MESH,
+        kind = SignatureClass.TWO_WAY,
+        matchAny = true,
+        notes = "Icom UT-137 Bluetooth unit fitted inside an ID-4100 mobile radio. Its Bluetooth name is ICOM BT-003. This phone does not hear the voice channel. A renamed unit does not match.",
+        builtIn = true,
+        rules = listOf(
+            bleGlob("ICOM BT-003"),
+        ),
+    )
+
     /**
      * Bluetooth on these microphones is the audio link, not a setup step.
      * This phone still only hears a Low Energy advertisement of the name.
@@ -2844,6 +2895,76 @@ object DefaultCatalog {
             bleGlob("PTT-Z"),
             bleGlob("PTT-AZ"),
             bleGlob("PTT-Z01"),
+        ),
+    )
+
+    private fun bleKissTnc() = Fleet(
+        id = "fleet-ble-kiss-tnc",
+        name = "BLE KISS TNC",
+        enabled = true,
+        colorIndex = Hue.MESH,
+        kind = SignatureClass.TWO_WAY,
+        matchAny = true,
+        notes = "Packet-radio modem (KISS TNC) or a radio with a TNC built in, offering the BLE KISS service to a phone APRS or Winlink app. Mobilinkd TNC3 and TNC4, PicoAPRS, B.B. Link, LoRa APRS trackers, and some handheld radios use it. A computer or small board running a KISS bridge can advertise it too. Matches the service, so a renamed device still matches. Most stop advertising while an app is connected. This phone does not hear the radio channel.",
+        builtIn = true,
+        rules = listOf(
+            bleUuid("00000001-ba2a-46c9-ae49-01b0961f68bb"),
+        ),
+    )
+
+    private fun codaPttButton() = Fleet(
+        id = "fleet-coda-ptt-button",
+        name = "Blu-PTT button",
+        enabled = true,
+        colorIndex = Hue.MESH,
+        kind = SignatureClass.TWO_WAY,
+        matchAny = true,
+        notes = "Wireless push-to-talk button for a phone app such as ESChat, ProPTT2, or Sonoran Radio. Blu-PTT and other Coda-compatible buttons advertise this Bluetooth service, so a renamed button still matches. That Low Energy link is how the button works. A button that is already connected may stay quiet. Some buttons advertise only a name and are missed.",
+        builtIn = true,
+        rules = listOf(
+            bleUuid("2320ae58-8394-4652-95f7-0a872ac0958f"),
+        ),
+    )
+
+    private fun ainaSmartButton() = Fleet(
+        id = "fleet-aina-smart-button",
+        name = "AINA PTT Smart Button",
+        enabled = true,
+        colorIndex = Hue.MESH,
+        kind = SignatureClass.TWO_WAY,
+        matchAny = true,
+        notes = "AINA PTT Smart Button, a wireless push-to-talk button for phone PTT apps such as ESChat. Its Bluetooth Low Energy name is ASB followed by a six-character code, for example ASB99C2F0. That Low Energy link is how the button works. A button that is already connected may stay quiet.",
+        builtIn = true,
+        rules = listOf(
+            bleGlob("ASB??????"),
+        ),
+    )
+
+    private fun tidradioTdH9() = Fleet(
+        id = "fleet-tidradio-td-h9",
+        name = "TIDRADIO TD-H9",
+        enabled = true,
+        colorIndex = Hue.MESH,
+        kind = SignatureClass.TWO_WAY,
+        matchAny = true,
+        notes = "TIDRADIO TD-H9 handheld radio. Its Bluetooth Low Energy name starts with TD-H9, often followed by a dash and four digits. Bluetooth is how the radio is programmed from a phone or browser. This phone does not hear the voice channel. A renamed radio does not match.",
+        builtIn = true,
+        rules = listOf(
+            bleGlob("TD-H9*"),
+        ),
+    )
+
+    private fun wirelessCpsRadio() = Fleet(
+        id = "fleet-wireless-cps-radio",
+        name = "Walkie-talkie (wireless programming)",
+        enabled = true,
+        colorIndex = Hue.MESH,
+        kind = SignatureClass.TWO_WAY,
+        matchAny = true,
+        notes = "Handheld radio with phone programming (Wireless CPS) switched on, such as a Baofeng UV-5R Mini. It advertises the generic Bluetooth name walkie-talkie. The name does not say which brand or model. This phone does not hear the voice channel. The name appears when Wireless CPS is switched on.",
+        builtIn = true,
+        rules = listOf(
+            bleGlob("walkie-talkie"),
         ),
     )
 
