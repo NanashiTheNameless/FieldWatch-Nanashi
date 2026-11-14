@@ -98,6 +98,6 @@ Snoop reading and unattended-start preferences stay local to this phone when imp
 Copyright (c) 2026 Off Grid Pete LLC. \
 Modifications copyright (c) 2026 NanashiTheNameless.
 
-Fieldwatch™ is a trademark of Off Grid Pete LLC.
+Fieldwatch™ is a trademark of Off Grid Pete LLC. Registration pending.
 
 Fieldwatch source is licensed under the [MIT License](LICENSE). AndroidX, Kotlin, and related libraries remain Apache-2.0. IEEE and Bluetooth SIG assigned-number tables in `radiodb.bin` are subject to those organizations' terms. See [NOTICE](NOTICE).
