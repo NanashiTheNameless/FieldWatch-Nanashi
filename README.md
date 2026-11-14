@@ -9,6 +9,10 @@ Wi-Fi access-point and Bluetooth LE watcher for Android, with optional active Bl
 
 Application id `dev.namelessnanashi.fieldwatch`. It installs alongside upstream `app.fieldwatch` and does not update or replace it.
 
+## Technical papers
+
+- [Radio signature interchange](docs/papers/Radio_Signature_Interchange.pdf). A proposal for a shared signature file that different apps can read.
+
 ## Safety & disclaimer
 
 Provided as-is under the MIT License.
