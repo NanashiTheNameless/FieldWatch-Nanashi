@@ -124,11 +124,11 @@ dependencies {
     // Constrain these transitives here as well; none are APK runtime dependencies.
     constraints {
         add("androidLintTool", "com.google.guava:guava:33.8.0-jre")
-        add("androidLintTool", "org.apache.commons:commons-lang3:3.21.0")
+        add("androidLintTool", "org.apache.commons:commons-lang3:3.22.0")
         add("androidLintTool", "org.apache.httpcomponents:httpclient:4.5.14")
-        add("androidLintTool", "org.bouncycastle:bcpkix-jdk18on:1.86")
-        add("androidLintTool", "org.bouncycastle:bcprov-jdk18on:1.86")
-        add("androidLintTool", "org.bouncycastle:bcutil-jdk18on:1.86")
+        add("androidLintTool", "org.bouncycastle:bcpkix-jdk18on:1.87")
+        add("androidLintTool", "org.bouncycastle:bcprov-jdk18on:1.87")
+        add("androidLintTool", "org.bouncycastle:bcutil-jdk18on:1.87")
     }
 
     val composeBom = platform("androidx.compose:compose-bom:2026.09.00")
@@ -145,7 +145,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-service:2.11.0")
     implementation("androidx.navigation:navigation-compose:2.10.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.13.0")
     // Elevated access: Shizuku shell service; the Vector (libxposed) API is provided by the framework.
     implementation("dev.rikka.shizuku:api:13.1.5")
     implementation("dev.rikka.shizuku:provider:13.1.5")
