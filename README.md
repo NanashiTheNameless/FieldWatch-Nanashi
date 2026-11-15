@@ -11,7 +11,7 @@ Application id `dev.namelessnanashi.fieldwatch`. It installs alongside upstream 
 
 ## Technical papers
 
-- [Radio signature interchange](docs/papers/Radio_Signature_Interchange.pdf). A proposal for a shared signature file that different apps can read.
+- [Radio signature interchange](https://github.com/OffGridPete/radio-signature-interchange). A proposal for a shared signature file that different apps can read. It has its own repository.
 
 ## Safety & disclaimer
 
