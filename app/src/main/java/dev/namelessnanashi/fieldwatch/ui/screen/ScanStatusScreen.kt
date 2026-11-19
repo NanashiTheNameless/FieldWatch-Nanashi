@@ -27,6 +27,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -46,6 +47,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.namelessnanashi.fieldwatch.domain.LanguageText
 import dev.namelessnanashi.fieldwatch.ui.theme.OxProto
 import dev.namelessnanashi.fieldwatch.domain.CellWatch
+import dev.namelessnanashi.fieldwatch.domain.BatteryFloor
+import dev.namelessnanashi.fieldwatch.domain.DroneNear
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -66,7 +69,9 @@ fun ScanStatusScreen(
     val app = context.applicationContext as FieldwatchApp
     val gnss by app.gnss.reading.collectAsStateWithLifecycle()
     val cell by app.cells.reading.collectAsStateWithLifecycle()
+    val battery by app.batteryFloor.collectAsStateWithLifecycle()
     val gnssProfile by app.gnssProfile.profile.collectAsStateWithLifecycle()
+    val nearLine = DroneNear.diag(state.settings.droneNearM, app.gpsAccFix(now), now)
     val report = ScanStatus.report(
         radio = state.scanRadio,
         phone = scanPhoneFacts(context, state, now),
@@ -75,6 +80,7 @@ fun ScanStatusScreen(
         gnssRows = gnss.diagRows + GnssCalibration.diagRows(gnssProfile),
         tak = takDiag(state, app),
         cellRows = CellWatch.diagRows(cell),
+        extraChecks = listOfNotNull(nearLine),
     )
     Scaffold(
         contentWindowInsets = NestedTabInsets,
@@ -101,6 +107,19 @@ fun ScanStatusScreen(
             Text(LanguageText.text("ui.what.check"), style = MaterialTheme.typography.titleSmall)
             report.checks.forEach { line ->
                 Text(line, style = MaterialTheme.typography.bodyMedium)
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    LanguageText.text("ui.battery.label"),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(0.42f),
+                )
+                Text(
+                    BatteryFloor.diagValue(battery),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier.weight(0.58f),
+                )
             }
             report.rows.forEach { (label, value) ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {

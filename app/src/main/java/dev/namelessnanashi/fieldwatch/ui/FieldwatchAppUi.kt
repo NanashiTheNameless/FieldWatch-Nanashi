@@ -147,6 +147,9 @@ import dev.namelessnanashi.fieldwatch.ui.theme.FieldwatchTheme
 import dev.namelessnanashi.fieldwatch.ui.theme.LocalStatusColors
 import dev.namelessnanashi.fieldwatch.ui.theme.OxProto
 import dev.namelessnanashi.fieldwatch.ui.screen.SpokenNamesScreen
+import dev.namelessnanashi.fieldwatch.FieldwatchApp
+import dev.namelessnanashi.fieldwatch.domain.BatteryFloorStep
+import dev.namelessnanashi.fieldwatch.domain.ScanIntensity
 
 @Composable
 fun FieldwatchRoot(vm: FieldwatchViewModel, onRequestPermissions: () -> Unit) {
@@ -646,19 +649,23 @@ private fun FieldwatchShell(state: FieldwatchUi, vm: FieldwatchViewModel) {
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                             ) {
                                 val muted = MaterialTheme.colorScheme.onSurfaceVariant
+                                val battery = (context.applicationContext as FieldwatchApp)
+                                    .batteryFloor.collectAsStateWithLifecycle().value
+                                val saverIcons = state.settings.intensity == ScanIntensity.SAVER ||
+                                    battery.step == BatteryFloorStep.SLOW
                                 val wifiHead = wifiHeader(state.scanning, state.locationOn, state.scanRadio)
                                 val bleHead = bleHeader(state.scanning, state.locationOn, state.scanRadio)
                                 HeaderCount(
                                     state.wifiNow,
                                     Icons.Outlined.Wifi,
                                     wifiHead.second,
-                                    headerTint(wifiHead.first, muted),
+                                    headerTint(wifiHead.first, muted, saverIcons),
                                 )
                                 HeaderCount(
                                     state.bleNow,
                                     Icons.Outlined.Bluetooth,
                                     bleHead.second,
-                                    headerTint(bleHead.first, muted),
+                                    headerTint(bleHead.first, muted, saverIcons),
                                 )
                                 HeaderCount(
                                     state.namedNow,
@@ -1050,9 +1057,9 @@ private fun FieldwatchShell(state: FieldwatchUi, vm: FieldwatchViewModel) {
 }
 
 @Composable
-private fun headerTint(tone: HeaderTone, muted: Color): Color {
+private fun headerTint(tone: HeaderTone, muted: Color, saver: Boolean = false): Color {
     return when (tone) {
-        HeaderTone.HEALTHY -> LocalStatusColors.current.healthy
+        HeaderTone.HEALTHY -> if (saver) LocalStatusColors.current.saver else LocalStatusColors.current.healthy
         HeaderTone.PROBLEM -> MaterialTheme.colorScheme.error
         HeaderTone.OFF -> muted.copy(alpha = 0.38f)
         HeaderTone.IDLE -> muted

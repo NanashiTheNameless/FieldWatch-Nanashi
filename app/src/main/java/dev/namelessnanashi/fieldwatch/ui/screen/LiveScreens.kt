@@ -142,6 +142,7 @@ fun LivePane(
     val flashKeys by vm.flashKeys.collectAsStateWithLifecycle()
     val alertedKeys by vm.alertedKeys.collectAsStateWithLifecycle()
     val flood by vm.floodNotice.collectAsStateWithLifecycle()
+    val swarm by vm.swarmNotice.collectAsStateWithLifecycle()
     val gnss by vm.gnssNotice.collectAsStateWithLifecycle()
     val gnssStatus by vm.gnssStatus.collectAsStateWithLifecycle()
     val floodHide by vm.floodHide.collectAsStateWithLifecycle()
@@ -224,6 +225,17 @@ fun LivePane(
                 )
                 FieldwatchSwitch(true, { on -> if (!on) vm.clearHiddenFlood() })
             }
+        }
+        val swarmNotice = swarm
+        if (swarmNotice != null && swarmNotice.showDialog) {
+            AlertDialog(
+                onDismissRequest = { vm.dismissSwarm() },
+                title = { Text(swarmNotice.title()) },
+                text = { NoticeBody(swarmNotice.body(), swarmNotice.details()) },
+                confirmButton = {
+                    TextButton(onClick = { vm.dismissSwarm() }) { Text(LanguageText.text("ui.ok.label")) }
+                },
+            )
         }
         if (floodNotice != null && floodNotice.showDialog) {
             AlertDialog(
@@ -433,19 +445,21 @@ private fun LivePathSplit(
     val flockRevision by vm.flockRevision.collectAsStateWithLifecycle()
     val pendingCameras by vm.shownMapCameras.collectAsStateWithLifecycle()
     val cameraMode = MapCameraMarks.onScreen(pendingCameras, state.settings.mapCameras)
-    val tip = state.operatorPath.lastOrNull()
+    val pathSamples = state.operatorPath
+    val pathRadios = state.livePathRadios
+    val tip = pathSamples.lastOrNull()
     val names = remember(state.watchlist) { RadioBookmarks.labels(state.watchlist) }
     val model = remember(
-        state.operatorPath,
-        state.livePathRadios,
+        pathSamples,
+        pathRadios,
         state.livePathSince,
         state.fleets,
         names,
     ) {
         SitPathPlot.Model(
-            samples = state.operatorPath,
+            samples = pathSamples,
             dots = SitPathPlot.liveDots(
-                state.livePathRadios,
+                pathRadios,
                 state.fleets,
                 names,
                 since = state.livePathSince,
@@ -465,8 +479,8 @@ private fun LivePathSplit(
         pendingFrame,
         MapFrame.resolved(state.settings.mapFrame, state.settings.mapRotate),
     )
-    val tileKey = remember(state.operatorPath, online, basemap, overlays, mapKeyRev) {
-        livePathTileKey(state.operatorPath, online, basemap, overlays, mapKeyRev)
+    val tileKey = remember(pathSamples, online, basemap, overlays, mapKeyRev) {
+        livePathTileKey(pathSamples, online, basemap, overlays, mapKeyRev)
     }
     val tipBucket = if (tip == null) "" else {
         "${(tip.lat * 2500.0).toInt()}:${(tip.lon * 2500.0).toInt()}"
@@ -508,7 +522,7 @@ private fun LivePathSplit(
                     overlays,
                 )
             }
-            else -> vm.refreshLivePathTiles(state.operatorPath, online, basemap, overlays)
+            else -> vm.refreshLivePathTiles(pathSamples, online, basemap, overlays)
         }
     }
     LaunchedEffect(tileKey, mapFrame, tileWindowKey, courseKey, heldMap, tipBucket) {
@@ -548,9 +562,9 @@ private fun LivePathSplit(
                 .fillMaxWidth()
                 .clipToBounds(),
         ) {
-            if (!showMap && (state.operatorPath.isNotEmpty() || model.dots.isNotEmpty())) {
+            if (!showMap && (pathSamples.isNotEmpty() || model.dots.isNotEmpty())) {
                 // Waiting one frame keeps a long path from holding up the list.
-            } else if (state.operatorPath.isEmpty() && model.dots.isEmpty()) {
+            } else if (pathSamples.isEmpty() && model.dots.isEmpty()) {
                 Text(
                     if (state.settings.tagLocation) {
                         LanguageText.text("ui.waiting.gps.fix")
@@ -576,7 +590,7 @@ private fun LivePathSplit(
                     },
                     expand = true,
                     viewport = viewport,
-                    onViewport = { viewport = it },
+                    onViewport = { next -> viewport = next },
                     courseDeg = state.travelDeg,
                     mapFrame = mapFrame,
                     onRotate = { vm.cycleMapFrame() },
@@ -587,6 +601,9 @@ private fun LivePathSplit(
                         state.phoneLon,
                         state.settings.demoMode,
                     ),
+                    phoneLat = state.phoneLat,
+                    phoneLon = state.phoneLon,
+                    demoMode = state.settings.demoMode,
                     zoomIn = zoomIn,
                     flock = state.settings.flockLayer || state.settings.sensorLayer,
                     flockIndex = vm.flockIndex,
@@ -596,7 +613,9 @@ private fun LivePathSplit(
                     camerasReady = (state.settings.flockLayer || state.settings.sensorLayer) &&
                         vm.flockIndex.hasCameras(),
                     onTileWindow = { next ->
-                        if (SitPathPlot.tileWindowKey(next) != tileWindowKey) tileWindow = next
+                        if (SitPathPlot.tileWindowKey(next) != tileWindowKey) {
+                            tileWindow = next
+                        }
                     },
                 )
             }
@@ -1413,6 +1432,14 @@ private fun FleetNameChips(
     observed: Boolean = false,
     mine: Boolean = false,
 ) {
+    val nearChips by vm.droneNearChips.collectAsStateWithLifecycle()
+    val near = device.payloadUasId?.trim()?.takeIf { it.isNotEmpty() }?.let { nearChips[it] }
+    if (near == null && !attention && !observed && !alerted && !mine &&
+        !(showNames && device.fleetIds.isNotEmpty()) &&
+        device.liveDecode.isEmpty() && device.payloadAircraft.isNullOrBlank()
+    ) {
+        return
+    }
     Row(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1494,6 +1521,31 @@ private fun FleetNameChips(
                         .padding(horizontal = 5.dp, vertical = 1.dp)
                         .size(11.dp),
                     tint = mark,
+                )
+            }
+        }
+        if (near != null) {
+            val warn = MaterialTheme.colorScheme.error
+            Surface(
+                shape = RoundedCornerShape(99.dp),
+                color = warn.copy(alpha = 0.22f),
+            ) {
+                Text(
+                    near,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 0.dp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = TextStyle(
+                        color = warn,
+                        fontSize = 10.sp,
+                        lineHeight = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        platformStyle = PlatformTextStyle(includeFontPadding = false),
+                        lineHeightStyle = LineHeightStyle(
+                            alignment = LineHeightStyle.Alignment.Center,
+                            trim = LineHeightStyle.Trim.Both,
+                        ),
+                    ),
                 )
             }
         }

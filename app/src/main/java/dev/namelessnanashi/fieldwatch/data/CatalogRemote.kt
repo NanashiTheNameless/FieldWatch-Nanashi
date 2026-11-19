@@ -16,9 +16,12 @@ object CatalogRemote {
     const val FORK_PACK_URL =
         "https://github.com/NanashiTheNameless/FieldWatch-Nanashi/releases/download/Data-Assets/fieldwatch-signatures-v2.json"
 
-    /** Upstream Fieldwatch's published pack. */
+    /**
+     * Upstream Fieldwatch's published pack. Upstream 1.2.0 moved to the RSI file;
+     * dist/fieldwatch-signatures-v2.json stays for phones on 1.1.44.
+     */
     const val UPSTREAM_PACK_URL =
-        "https://raw.githubusercontent.com/OffGridPete/Fieldwatch/main/dist/fieldwatch-signatures-v2.json"
+        "https://raw.githubusercontent.com/OffGridPete/Fieldwatch/main/dist/fieldwatch-signatures.rsi"
 
     fun urlFor(source: CatalogSource): String = when (source) {
         CatalogSource.FORK -> FORK_PACK_URL

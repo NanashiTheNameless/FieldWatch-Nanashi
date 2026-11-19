@@ -60,7 +60,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.namelessnanashi.fieldwatch.domain.Fleet
 import dev.namelessnanashi.fieldwatch.domain.LanguageText
 import dev.namelessnanashi.fieldwatch.domain.MatchRule
@@ -71,18 +70,20 @@ import dev.namelessnanashi.fieldwatch.domain.SignatureClass
 import dev.namelessnanashi.fieldwatch.domain.SignatureListSort
 import dev.namelessnanashi.fieldwatch.domain.groupedByClass
 import dev.namelessnanashi.fieldwatch.domain.sortedForCatalog
-import dev.namelessnanashi.fieldwatch.ui.FieldwatchUi
-import dev.namelessnanashi.fieldwatch.ui.FieldwatchViewModel
+import dev.namelessnanashi.fieldwatch.domain.visibleOnPhone
 import dev.namelessnanashi.fieldwatch.ui.NestedTabInsets
 import dev.namelessnanashi.fieldwatch.ui.NestedTopBar
 import dev.namelessnanashi.fieldwatch.ui.RadioClassBadge
+import dev.namelessnanashi.fieldwatch.ui.FieldwatchUi
+import dev.namelessnanashi.fieldwatch.ui.FieldwatchViewModel
+import dev.namelessnanashi.fieldwatch.ui.component.SectionCard
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.namelessnanashi.fieldwatch.ui.component.DecodeGlyph
 import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchActionButton
 import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchDropdownField
 import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchFilterChip
 import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchOutlinedField
 import dev.namelessnanashi.fieldwatch.ui.component.FieldwatchSwitch
-import dev.namelessnanashi.fieldwatch.ui.component.SectionCard
 import dev.namelessnanashi.fieldwatch.ui.theme.OxProto
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -138,9 +139,10 @@ fun FleetsScreen(
         )
         return
     }
+    val shown = state.fleets.filter { it.visibleOnPhone() }
     Scaffold(
         contentWindowInsets = NestedTabInsets,
-        topBar = { NestedTopBar("Signatures (${state.fleets.size})") },
+        topBar = { NestedTopBar("Signatures (${shown.size})") },
         floatingActionButton = {
             FloatingActionButton(onClick = vm::beginNewFleet) {
                 Icon(Icons.Outlined.Add, LanguageText.text("ui.new.signature"))
@@ -182,7 +184,7 @@ fun FleetsScreen(
                 }
             }
             if (sort == SignatureListSort.CLASS) {
-                state.fleets.groupedByClass().forEach { (kind, rows) ->
+                shown.groupedByClass().forEach { (kind, rows) ->
                     val classId = kind.name
                     val expanded = classId in openClasses
                     item(key = "class-$classId") {
@@ -203,7 +205,7 @@ fun FleetsScreen(
                     }
                 }
             } else {
-                items(state.fleets.sortedForCatalog(sort), key = { it.id }) { fleet ->
+                items(shown.sortedForCatalog(sort), key = { it.id }) { fleet ->
                     SignatureRow(fleet, state, vm)
                 }
             }
@@ -266,7 +268,7 @@ private fun SignatureRow(fleet: Fleet, state: FieldwatchUi, vm: FieldwatchViewMo
             verticalAlignment = Alignment.CenterVertically,
         ) {
             RadioClassBadge(
-                classKind = fleet.kind,
+                classKind = fleet.kind.folded(),
                 accent = color,
             )
             Spacer(Modifier.width(8.dp))
@@ -293,7 +295,7 @@ private fun SignatureRow(fleet: Fleet, state: FieldwatchUi, vm: FieldwatchViewMo
                     }
                 }
                 Text(
-                    "${fleet.kind.label()} · ${fleet.rules.size} rules · $liveHits live · ${if (fleet.matchAny) "OR" else "AND"}",
+                    "${fleet.kind.folded().label()} · ${fleet.rules.count { it.foreign == null }} rules · $liveHits live · ${if (fleet.matchAny) "OR" else "AND"}",
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     style = compactLine(11.sp, 13.sp),
@@ -370,13 +372,13 @@ fun FleetEditor(
             SectionCard(LanguageText.text("ui.matching.label")) {
             var classMenu by remember { mutableStateOf(false) }
             ExposedDropdownMenuBox(classMenu, { classMenu = it }) {
-                FieldwatchDropdownField(LanguageText.text("voice.class"), fleet.kind.label(), classMenu)
+                FieldwatchDropdownField(LanguageText.text("voice.class"), fleet.kind.folded().label(), classMenu)
                 ExposedDropdownMenu(classMenu, { classMenu = false }) {
                     SignatureClass.visible.sortedBy { it.label().lowercase() }.forEach { kind ->
                         DropdownMenuItem(
                             text = { Text(kind.label()) },
                             onClick = {
-                                fleet = fleet.copy(kind = kind)
+                                fleet = fleet.copy(kind = kind, kindRaw = "")
                                 classMenu = false
                             },
                         )
@@ -428,6 +430,7 @@ fun FleetEditor(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             fleet.rules.forEachIndexed { index, rule ->
+                if (rule.foreign != null) return@forEachIndexed
                 RuleEditor(
                     rule = rule,
                     onChange = { next ->

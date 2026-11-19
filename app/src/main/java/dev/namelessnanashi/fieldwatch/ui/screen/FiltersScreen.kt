@@ -44,6 +44,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -70,6 +71,7 @@ import dev.namelessnanashi.fieldwatch.ui.component.spectreSectionFill
 import dev.namelessnanashi.fieldwatch.ui.component.spectreTileEdge
 import dev.namelessnanashi.fieldwatch.ui.component.spectreTileFill
 import dev.namelessnanashi.fieldwatch.ui.theme.AccentActive
+import dev.namelessnanashi.fieldwatch.domain.visibleOnPhone
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -392,7 +394,7 @@ fun FiltersScreen(state: FieldwatchUi, vm: FieldwatchViewModel) {
                 )
             }
             SignaturePickList(
-                fleets = state.fleets,
+                fleets = state.fleets.filter { it.visibleOnPhone() },
                 selected = filter.selectedSignatureIds(),
                 help = LanguageText.text("ui.tap.class.open"),
                 onToggle = { id, checked ->
@@ -426,15 +428,15 @@ fun FiltersScreen(state: FieldwatchUi, vm: FieldwatchViewModel) {
                 valueRange = -100f..-30f,
             )
 
-            StoredTextField(
-                filter.nameQuery,
-                { value -> vm.updateFilter { it.copy(nameQuery = value) } },
-                LanguageText.text("ui.name.mac.contains"),
+            FilterQueryField(
+                saved = filter.nameQuery,
+                onSave = { value -> vm.updateFilter { it.copy(nameQuery = value) } },
+                label = LanguageText.text("ui.name.mac.contains"),
             )
-            StoredTextField(
-                filter.ouiQuery,
-                { value -> vm.updateFilter { it.copy(ouiQuery = value) } },
-                LanguageText.text("ui.vendor.contains"),
+            FilterQueryField(
+                saved = filter.ouiQuery,
+                onSave = { value -> vm.updateFilter { it.copy(ouiQuery = value) } },
+                label = LanguageText.text("ui.vendor.contains"),
             )
 
             Text(LanguageText.text("ui.name.vendor.signal.class"), style = MaterialTheme.typography.labelLarge)
@@ -694,6 +696,30 @@ private fun fineValue(filter: FilterState): String? {
 }
 
 @Composable
+private fun FilterQueryField(
+    saved: String,
+    onSave: (String) -> Unit,
+    label: String,
+) {
+    val draft = remember { FilterQueryDraft(saved) }
+    var text by remember { mutableStateOf(draft.text) }
+    SideEffect {
+        draft.observe(saved)
+        if (text != draft.text) text = draft.text
+    }
+    FieldwatchOutlinedField(
+        text,
+        { next ->
+            if (draft.edit(next)) {
+                text = draft.text
+                onSave(next)
+            }
+        },
+        label,
+    )
+}
+
+@Composable
 private fun SignaturePickList(
     fleets: List<Fleet>,
     selected: Set<String>,
@@ -807,35 +833,4 @@ private fun PresetChip(
             overflow = TextOverflow.Ellipsis,
         )
     }
-}
-
-/**
- * Text field over a value held in [dev.namelessnanashi.fieldwatch.data.ConfigStore]. Each store
- * write finishes on disk before the new value comes back, so binding the field to the stored value
- * drops keys typed in the meantime. Keys show at once here; echoes of our own edits are skipped,
- * and only an outside change (preset, reset, import) replaces the text.
- */
-@Composable
-private fun StoredTextField(stored: String, onCommit: (String) -> Unit, label: String) {
-    var text by remember { mutableStateOf(stored) }
-    val inFlight = remember { ArrayDeque<String>() }
-    LaunchedEffect(stored) {
-        // The store conflates, so an echo may skip earlier edits; drop everything up to it.
-        val echo = inFlight.indexOf(stored)
-        if (echo >= 0) {
-            repeat(echo + 1) { inFlight.removeFirst() }
-        } else {
-            inFlight.clear()
-            text = stored
-        }
-    }
-    FieldwatchOutlinedField(
-        text,
-        { value ->
-            text = value
-            inFlight.addLast(value)
-            onCommit(value)
-        },
-        label,
-    )
 }

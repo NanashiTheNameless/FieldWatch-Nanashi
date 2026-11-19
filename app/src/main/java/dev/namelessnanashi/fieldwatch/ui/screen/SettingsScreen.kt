@@ -14,6 +14,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.alpha
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -28,8 +31,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -114,9 +115,14 @@ import dev.namelessnanashi.fieldwatch.ui.icons.Icons
 import dev.namelessnanashi.fieldwatch.ui.icons.automirrored.filled.ArrowBack
 import dev.namelessnanashi.fieldwatch.ui.icons.automirrored.filled.KeyboardArrowRight
 import dev.namelessnanashi.fieldwatch.ui.icons.outlined.Check
+import kotlin.math.roundToInt
+import dev.namelessnanashi.fieldwatch.R
+import dev.namelessnanashi.fieldwatch.domain.BatteryFloor
+import dev.namelessnanashi.fieldwatch.domain.DroneNear
+import dev.namelessnanashi.fieldwatch.domain.RemoteIdSwarm
+import dev.namelessnanashi.fieldwatch.ui.component.WarningReachCard
 import java.net.Inet4Address
 import java.net.NetworkInterface
-import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -133,7 +139,7 @@ fun SettingsScreen(
     val flock by vm.flockLayerUi.collectAsStateWithLifecycle()
     val sensors by vm.sensorLayerUi.collectAsStateWithLifecycle()
     val saveSignatures = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json"),
+        ActivityResultContracts.CreateDocument("*/*"),
     ) { uri -> uri?.let(vm::saveSignaturesToUri) }
     val importSignatures = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
@@ -279,6 +285,61 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Text(
+                LanguageText.text("ui.battery.icons.yellow"),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            val slowPct = BatteryFloor.nearest(settings.batterySlowPct, BatteryFloor.SLOW_CHOICES)
+            val stopPct = BatteryFloor.nearest(settings.batteryStopPct, BatteryFloor.STOP_CHOICES)
+            val slowDim = settings.batteryFloor && stopPct > 0 && slowPct > 0 && stopPct >= slowPct
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(LanguageText.text("ui.battery.floor"), Modifier.weight(1f))
+                FieldwatchSwitch(settings.batteryFloor, { on ->
+                    vm.updateSettings { it.copy(batteryFloor = on) }
+                })
+            }
+            Text(
+                LanguageText.text("ui.battery.floor.note"),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                LanguageText.text("ui.battery.slow.at") + "  ·  " + BatteryFloor.choiceLabel(slowPct),
+                color = if (settings.batteryFloor && !slowDim) {
+                    MaterialTheme.colorScheme.onSurface
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+            )
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                BatteryFloor.SLOW_CHOICES.forEach { choice ->
+                    FieldwatchFilterChip(
+                        selected = slowPct == choice,
+                        onClick = { vm.updateSettings { it.copy(batterySlowPct = choice) } },
+                        enabled = settings.batteryFloor && !slowDim,
+                        label = { Text(BatteryFloor.choiceLabel(choice)) },
+                    )
+                }
+            }
+            Text(
+                LanguageText.text("ui.battery.stop.at") + "  ·  " + BatteryFloor.choiceLabel(stopPct),
+                color = if (settings.batteryFloor) {
+                    MaterialTheme.colorScheme.onSurface
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+            )
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                BatteryFloor.STOP_CHOICES.forEach { choice ->
+                    FieldwatchFilterChip(
+                        selected = stopPct == choice,
+                        onClick = { vm.updateSettings { it.copy(batteryStopPct = choice) } },
+                        enabled = settings.batteryFloor,
+                        label = { Text(BatteryFloor.choiceLabel(choice)) },
+                    )
+                }
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(LanguageText.text("settings.classic.title"), Modifier.weight(1f))
                 FieldwatchSwitch(
@@ -1005,33 +1066,16 @@ fun SettingsScreen(
             }
             Note(LanguageText.text("ui.warns.when.gain.falls"))
             }
-            SectionCard(LanguageText.text("trusted.reach")) {
-            Note(
-                LanguageText.text(
-                    "gnss.reach.note",
-                    mapOf(
-                        "beep" to LanguageText.text("ui.beep.label"),
-                        "voice" to LanguageText.text("ui.voice.label"),
-                        "watchlist" to LanguageText.text("settings.topic.alerts"),
-                    ),
-                ),
+            WarningReachCard(
+                intro = LanguageText.text("gnss.reach.note"),
+                beep = settings.gnssBeep,
+                onBeep = { on -> vm.updateSettings { it.copy(gnssBeep = on) } },
+                voice = settings.gnssVoice,
+                onVoice = { on -> vm.updateSettings { it.copy(gnssVoice = on) } },
+                voiceNote = LanguageText.text("ui.says.possible.gps.interference"),
+                shade = settings.gnssShade,
+                onShade = { on -> vm.updateSettings { it.copy(gnssShade = on) } },
             )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(LanguageText.text("ui.beep.label"), Modifier.weight(1f))
-                FieldwatchSwitch(settings.gnssBeep, { on -> vm.updateSettings { it.copy(gnssBeep = on) } })
-            }
-            Note(LanguageText.text("ui.same.pip.watchlist.hit"))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(LanguageText.text("ui.voice.label"), Modifier.weight(1f))
-                FieldwatchSwitch(settings.gnssVoice, { on -> vm.updateSettings { it.copy(gnssVoice = on) } })
-            }
-            Note(LanguageText.text("ui.says.possible.gps.interference"))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(LanguageText.text("ui.system.notification"), Modifier.weight(1f))
-                FieldwatchSwitch(settings.gnssShade, { on -> vm.updateSettings { it.copy(gnssShade = on) } })
-            }
-            Note(LanguageText.text("ui.silent.notification.warning.popup"))
-            }
             SectionCard(LanguageText.text("gnss.section.recording")) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(LanguageText.text("ui.record.raw.gnss.during"), Modifier.weight(1f))
@@ -1114,6 +1158,20 @@ fun SettingsScreen(
                     }
                     Note(LanguageText.text("tracker.places.note"))
                 }
+                WarningReachCard(
+                    intro = LanguageText.text("trusted.reach.note"),
+                    beep = settings.trackerBeep,
+                    onBeep = { on -> vm.updateSettings { it.copy(trackerBeep = on) } },
+                    voice = settings.trackerVoice,
+                    onVoice = { on -> vm.updateSettings { it.copy(trackerVoice = on) } },
+                    voiceNote = LanguageText.text("tracker.voice.note"),
+                    shade = settings.trackerShade,
+                    onShade = { on -> vm.updateSettings { it.copy(trackerShade = on) } },
+                )
+            }
+
+            if (topic == SettingsTopic.SWARM) {
+                SwarmMonitoringPage(settings, vm)
             }
 
             if (topic == SettingsTopic.TAK) {
@@ -1610,6 +1668,129 @@ private fun Note(text: String) {
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
+private fun SwarmMonitoringPage(settings: AppSettings, vm: FieldwatchViewModel) {
+    val on = settings.remoteIdSwarm
+    SectionCard(LanguageText.text("settings.topic.swarm"), showTitle = false) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(LanguageText.text("ui.swarm.warn"), Modifier.weight(1f))
+            FieldwatchSwitch(on, vm::setRemoteIdSwarm)
+        }
+        Note(LanguageText.text("ui.swarm.note"))
+    }
+    SectionCard(LanguageText.text("ui.swarm.trigger")) {
+        Column(Modifier.alpha(if (on) 1f else 0.38f)) {
+            SwarmSlider(
+                label = { n -> LanguageText.text("ui.swarm.min", mapOf("n" to n.toString())) },
+                value = settings.swarmMinIds,
+                enabled = on,
+                range = RemoteIdSwarm.MIN_IDS_LO..RemoteIdSwarm.MIN_IDS_HI,
+                step = 1,
+            ) { next -> vm.updateSettings { it.copy(swarmMinIds = next) } }
+            SwarmSlider(
+                label = { s -> LanguageText.text("ui.swarm.window", mapOf("s" to s.toString())) },
+                value = settings.swarmWindowSec,
+                enabled = on,
+                range = RemoteIdSwarm.WINDOW_LO..RemoteIdSwarm.WINDOW_HI,
+                step = RemoteIdSwarm.WINDOW_STEP,
+            ) { next -> vm.updateSettings { it.copy(swarmWindowSec = next) } }
+            SwarmSlider(
+                label = { min -> LanguageText.text("ui.swarm.quiet", mapOf("min" to min.toString())) },
+                value = settings.swarmQuietMin,
+                enabled = on,
+                range = RemoteIdSwarm.QUIET_LO..RemoteIdSwarm.QUIET_HI,
+                step = 1,
+            ) { next -> vm.updateSettings { it.copy(swarmQuietMin = next) } }
+            Note(LanguageText.text("ui.swarm.help"))
+            TextButton(
+                onClick = {
+                    vm.updateSettings {
+                        it.copy(
+                            swarmMinIds = RemoteIdSwarm.DEFAULT_MIN_IDS,
+                            swarmWindowSec = RemoteIdSwarm.DEFAULT_WINDOW_SEC,
+                            swarmQuietMin = RemoteIdSwarm.DEFAULT_QUIET_MIN,
+                        )
+                    }
+                },
+                enabled = on,
+            ) { Text(LanguageText.text("ui.swarm.reset")) }
+        }
+    }
+    val tagged = settings.tagLocation
+    val armed = settings.droneNearM > 0
+    val selected = if (armed) settings.droneNearM else settings.droneNearPick
+    SectionCard(LanguageText.text("ui.near.row"), showTitle = false) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(LanguageText.text("ui.near.row"), Modifier.weight(1f))
+            FieldwatchSwitch(
+                checked = armed,
+                onCheckedChange = { next -> vm.updateSettings { DroneNear.armed(it, next) } },
+                enabled = tagged,
+            )
+        }
+        Note(LanguageText.text("ui.near.lead"))
+        Column(Modifier.alpha(if (armed && tagged) 1f else 0.38f)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                DroneNear.DISTANCES.sorted().forEach { meters ->
+                    FieldwatchFilterChip(
+                        selected = selected == meters,
+                        onClick = { vm.updateSettings { DroneNear.pick(it, meters) } },
+                        enabled = tagged && armed,
+                        label = { Text(DroneNear.settingLabel(meters)) },
+                    )
+                }
+            }
+        }
+        Note(LanguageText.text("ui.near.note"))
+        if (!tagged) Note(LanguageText.text("ui.near.tag"))
+    }
+    WarningReachCard(
+        intro = LanguageText.text("trusted.reach.note"),
+        beep = settings.swarmBeep,
+        onBeep = { next -> vm.updateSettings { it.copy(swarmBeep = next) } },
+        voice = settings.swarmVoice,
+        onVoice = { next -> vm.updateSettings { it.copy(swarmVoice = next) } },
+        voiceNote = LanguageText.text("ui.swarm.voice"),
+        shade = settings.swarmShade,
+        onShade = { next -> vm.updateSettings { it.copy(swarmShade = next) } },
+    )
+}
+
+@Composable
+private fun SwarmSlider(
+    label: (Int) -> String,
+    value: Int,
+    enabled: Boolean,
+    range: IntRange,
+    step: Int,
+    onChange: (Int) -> Unit,
+) {
+    var drag by remember { mutableIntStateOf(value) }
+    var dragging by remember { mutableStateOf(false) }
+    LaunchedEffect(value) {
+        if (!dragging) drag = value
+    }
+    val stops = ((range.last - range.first) / step) - 1
+    Text(label(drag), modifier = Modifier.padding(top = 8.dp))
+    FieldwatchSlider(
+        value = drag.toFloat(),
+        onValueChange = {
+            dragging = true
+            val raw = it.roundToInt().coerceIn(range.first, range.last)
+            val snapped = range.first + ((raw - range.first + step / 2) / step) * step
+            drag = snapped.coerceIn(range.first, range.last)
+        },
+        onValueChangeFinished = {
+            onChange(drag)
+            dragging = false
+        },
+        enabled = enabled,
+        valueRange = range.first.toFloat()..range.last.toFloat(),
+        steps = stops.coerceAtLeast(0),
+    )
+}
+
+@Composable
 private fun SensorLayerBlock(
     title: String,
     note: String,
@@ -1719,6 +1900,7 @@ private enum class SettingsTopic(val titleKey: String) {
     CELL("settings.topic.cell"),
     TRUSTED("settings.topic.trusted"),
     TRACKER("settings.topic.tracker"),
+    SWARM("settings.topic.swarm"),
     TAK("settings.topic.tak"),
     LOGGING("settings.topic.logging"),
     SIGNATURES("settings.topic.signatures"),
@@ -1745,12 +1927,12 @@ private fun SettingsTopicList(
         ScanIntensity.BALANCED -> LanguageText.text("ui.balanced.label")
         ScanIntensity.PERFORMANCE -> LanguageText.text("ui.high.performance")
     }
-    fun onOff(on: Boolean) = if (on) "on" else "off"
+    fun onOff(on: Boolean) = if (on) LanguageText.text("ui.on.label") else LanguageText.text("ui.off.label")
     val rows: List<Pair<SettingsTopic, String>> = listOf(
         SettingsTopic.APPEARANCE to "Privacy ${onOff(settings.demoMode)}",
         SettingsTopic.SCANNING to scanLabel,
-        SettingsTopic.WATCHLIST to "Alerts ${onOff(settings.alertsEnabled)}",
-        SettingsTopic.LOCATION to "GPS ${onOff(settings.tagLocation)} · Places ${onOff(settings.placeWatch)}",
+        SettingsTopic.WATCHLIST to onOff(settings.alertsEnabled),
+        SettingsTopic.LOCATION to "GPS ${onOff(settings.tagLocation)} · ${LanguageText.text("ui.places.label")} ${onOff(settings.placeWatch)}",
         SettingsTopic.GNSS to when {
             !gnssReady -> LanguageText.text("ui.needs.calibration")
             settings.gnssMonitor -> LanguageText.text("ui.on.label")
@@ -1771,9 +1953,14 @@ private fun SettingsTopicList(
         } else {
             LanguageText.text("ui.off.label")
         },
+        SettingsTopic.SWARM to if (settings.remoteIdSwarm || settings.droneNearM > 0) {
+            LanguageText.text("ui.on.label")
+        } else {
+            LanguageText.text("ui.off.label")
+        },
         SettingsTopic.TAK to when {
             settings.takEnabled && settings.demoMode -> LanguageText.text("ui.paused.label")
-            settings.takEnabled -> "On · ${TakInstall.callsign(settings.takCallsign, takInstallTag)}"
+            settings.takEnabled -> "${LanguageText.text("ui.on.label")} · ${TakInstall.callsign(settings.takCallsign, takInstallTag)}"
             else -> LanguageText.text("ui.off.label")
         },
         SettingsTopic.LOGGING to if (settings.loggingEnabled) LanguageText.text("ui.on.label") else LanguageText.text("ui.off.label"),

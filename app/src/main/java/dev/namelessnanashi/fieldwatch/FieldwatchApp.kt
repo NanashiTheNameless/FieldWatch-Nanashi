@@ -74,6 +74,13 @@ import dev.namelessnanashi.fieldwatch.radio.ScanSession
 import dev.namelessnanashi.fieldwatch.radio.CellRadio
 import dev.namelessnanashi.fieldwatch.data.CellStore
 import dev.namelessnanashi.fieldwatch.domain.PathCameras
+import dev.namelessnanashi.fieldwatch.domain.BatteryFloorLive
+import dev.namelessnanashi.fieldwatch.domain.DroneNear
+import dev.namelessnanashi.fieldwatch.domain.DroneNearMark
+import dev.namelessnanashi.fieldwatch.domain.DroneNearOutcome
+import dev.namelessnanashi.fieldwatch.domain.GpsAccFix
+import dev.namelessnanashi.fieldwatch.domain.RemoteIdSwarm
+import dev.namelessnanashi.fieldwatch.domain.SignatureClass
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -133,6 +140,24 @@ class FieldwatchApp : Application() {
     val pairingFlood = PairingFlood()
     val wifiFlood = WifiBeaconFlood()
     val scanSession = ScanSession()
+    val remoteIdSwarm = RemoteIdSwarm()
+    val droneNear = DroneNear()
+    /** Latest GPS fix at 75 m or better. Network points and a missing accuracy stay out. */
+    @Volatile private var lastGpsAccFix: GpsAccFix? = null
+
+    /** GPS fix still young enough for the drone-distance alert. Null when it is older than 30 s. */
+    fun gpsAccFix(now: Long = System.currentTimeMillis()): GpsAccFix? {
+        val fix = lastGpsAccFix ?: return null
+        val age = now - fix.at
+        if (age > DroneNear.PHONE_MAX_AGE_MS || age < -5_000L) return null
+        return fix
+    }
+    private val _batteryFloor = MutableStateFlow(BatteryFloorLive())
+    val batteryFloor: StateFlow<BatteryFloorLive> = _batteryFloor.asStateFlow()
+
+    fun publishBatteryFloor(live: BatteryFloorLive) {
+        _batteryFloor.value = live
+    }
     lateinit var gnss: GnssMonitor
         private set
     lateinit var gnssRaw: GnssRawFiles
@@ -150,6 +175,120 @@ class FieldwatchApp : Application() {
         if (wifi.isEmpty()) return ble
         if (ble.isEmpty()) return wifi
         return (ble + wifi).sortedBy { it.at }
+    }
+
+    fun droneFleetIds(): Set<String> {
+        val out = HashSet<String>()
+        for (fleet in config.fleets) {
+            if (fleet.kind == SignatureClass.DRONE) out.add(fleet.id)
+        }
+        return out
+    }
+
+    /** Drone signature names for the swarm popup. Remote ID is the plate, not a maker. */
+    private fun droneTypeNames(): Map<String, String> {
+        val out = HashMap<String, String>()
+        for (fleet in config.fleets) {
+            if (fleet.kind != SignatureClass.DRONE || fleet.id == "fleet-remote-id") continue
+            val name = fleet.name.trim()
+            if (name.isNotEmpty()) out[fleet.id] = name
+        }
+        return out
+    }
+
+    /**
+     * Count new Remote ID drones and, when a sit is open, save the burst.
+     * Idle when scanning is off, so a paused display is not a new session.
+     */
+    fun passRemoteIdSwarm(now: Long): RemoteIdSwarm.Outcome {
+        if (!devices.stats.value.scanning) return RemoteIdSwarm.Outcome()
+        val settings = config.settings
+        val outcome = remoteIdSwarm.pass(
+            devices = devices.devices.value,
+            droneFleetIds = droneFleetIds(),
+            now = now,
+            typeNames = droneTypeNames(),
+            enabled = settings.remoteIdSwarm,
+            minIds = settings.swarmMinIds.coerceIn(RemoteIdSwarm.MIN_IDS_LO, RemoteIdSwarm.MIN_IDS_HI),
+            windowMs = settings.swarmWindowSec.coerceIn(
+                RemoteIdSwarm.WINDOW_LO,
+                RemoteIdSwarm.WINDOW_HI,
+            ) * 1000L,
+            quietMs = settings.swarmQuietMin.coerceIn(
+                RemoteIdSwarm.QUIET_LO,
+                RemoteIdSwarm.QUIET_HI,
+            ) * 60_000L,
+        )
+        sits.noteSwarms(remoteIdSwarm.bursts())
+        return outcome
+    }
+
+    /** Distance alert. A sit line is written only while a sit is open. The cue is separate. */
+    fun passDroneNear(now: Long): DroneNearOutcome {
+        val settings = config.settings
+        val names = config.fleets.associate { it.id to it.name }
+        val outcome = droneNear.pass(
+            devices = devices.devices.value,
+            names = names,
+            mineKeys = RadioBookmarks.mineKeys(config.watchlist),
+            now = now,
+            distanceM = settings.droneNearM,
+            phone = gpsAccFix(now),
+        )
+        if (outcome.marks.isNotEmpty()) sits.noteNear(outcome.marks)
+        return outcome
+    }
+
+    fun droneNearMarks(): List<DroneNearMark> = droneNear.marks()
+
+    /** Beep, voice, and the silent notification are the Drone monitoring switches. */
+    fun announceDroneNear(outcome: DroneNearOutcome) {
+        if (!::alerter.isInitialized || outcome.fires.isEmpty()) return
+        val settings = config.settings
+        outcome.fires.forEachIndexed { index, fire ->
+            val first = index == 0
+            alerter.droneNearAlert(
+                title = fire.title,
+                text = fire.body,
+                phrase = if (first && settings.swarmVoice) fire.title else null,
+                beep = first && settings.swarmBeep,
+                vibrate = first && settings.swarmBeep,
+                shade = settings.swarmShade,
+                noteId = fire.noteId,
+            )
+        }
+    }
+
+    /**
+     * First post can beep, vibrate, and speak. A rising count rewrites the
+     * notification only. Beep, voice, and the notification are this page's
+     * switches, not the watchlist.
+     */
+    fun announceSwarm(outcome: RemoteIdSwarm.Outcome) {
+        if (!::alerter.isInitialized) return
+        if (outcome.clearNote) {
+            alerter.clearSwarmNote()
+            return
+        }
+        if (!outcome.notify) return
+        val settings = config.settings
+        val title = LanguageText.text("ui.swarm.title")
+        val text = remoteIdSwarm.notice.value?.body() ?: LanguageText.text(
+            "ui.swarm.body",
+            mapOf(
+                "n" to outcome.count.toString(),
+                "s" to outcome.windowSec.toString(),
+            ),
+        )
+        val beep = outcome.beep && settings.swarmBeep
+        alerter.swarmAlert(
+            title = title,
+            text = text,
+            phrase = if (outcome.beep && settings.swarmVoice) title else null,
+            beep = beep,
+            vibrate = beep,
+            shade = settings.swarmShade,
+        )
     }
 
     private val filters = FilterEngine()
@@ -187,7 +326,7 @@ class FieldwatchApp : Application() {
         return TrustFix(fix.first, fix.second, acc, paused = false)
     }
 
-    /** The activity is on screen. A tracker warning uses the popup here, and a quiet note when it is not. */
+    /** The activity is on screen. */
     fun uiStarted() {
         uiDepth.incrementAndGet()
     }
@@ -198,10 +337,13 @@ class FieldwatchApp : Application() {
 
     fun inFront(): Boolean = uiDepth.get() > 0
 
-    /** Quiet shade card for the tracker warning on screen. None while the app is in front. */
+    /**
+     * Silent notification for the tracker warning on screen.
+     * Posted only when System notification is on. The popup is separate.
+     */
     fun syncTrackerShade(notice: TrackerWatch.Notice?) {
         if (!::alerter.isInitialized) return
-        if (notice == null || inFront()) {
+        if (notice == null || !config.settings.trackerShade) {
             alerter.clearTrackerNote()
             return
         }
@@ -209,6 +351,17 @@ class FieldwatchApp : Application() {
             title = TrackerCopy.title(notice.kind),
             text = TrackerCopy.notification(notice, config.settings.demoMode),
             deviceKey = notice.deviceKey,
+        )
+    }
+
+    /** Beep and speak a tracker warning that just opened. No vibration. */
+    fun announceTracker(notice: TrackerWatch.Notice) {
+        if (!::alerter.isInitialized) return
+        val settings = config.settings
+        if (!settings.trackerBeep && !settings.trackerVoice) return
+        alerter.trackerCue(
+            phrase = if (settings.trackerVoice) TrackerCopy.title(notice.kind) else null,
+            beep = settings.trackerBeep,
         )
     }
 
@@ -713,6 +866,7 @@ class FieldwatchApp : Application() {
             places.load()
             trusted.load()
             cells.load()
+            Log.i("Fieldwatch", "cell places loaded: ${cells.bookFlow.value.places.size}")
             val sitOpen = sits.ui.value.open != null
             pairingFlood.setSitOpen(sitOpen)
             wifiFlood.setSitOpen(sitOpen)
@@ -731,7 +885,7 @@ class FieldwatchApp : Application() {
         alerter.setOtherAudio(config.settings.alertOtherAudio)
         applyTheme(config.settings.appTheme)
         syncFlock()
-        if (config.settings.alertVoice || config.settings.gnssVoice || config.settings.trustedVoice || config.settings.cellVoice || config.settings.anySensorAlert()) {
+        if (config.settings.alertVoice || config.settings.gnssVoice || config.settings.trustedVoice || config.settings.cellVoice || config.settings.swarmVoice || config.settings.trackerVoice || config.settings.anySensorAlert()) {
             alerter.prepareVoice()
         }
         if (config.filter.arrivalsOnly) {
@@ -1091,6 +1245,9 @@ class FieldwatchApp : Application() {
             travelDeg = travelCourse.note(loc.latitude, loc.longitude, speed, bearing, bearingAcc)
         }
         val accuracy = if (loc.hasAccuracy()) loc.accuracy else null
+        if (gps && accuracy != null && accuracy.isFinite() && accuracy <= 75f) {
+            lastGpsAccFix = GpsAccFix(loc.latitude, loc.longitude, accuracy, loc.time)
+        }
         if (!Geo.acceptDriveFix(gps, accuracy)) return
         val lat = loc.latitude
         val lon = loc.longitude

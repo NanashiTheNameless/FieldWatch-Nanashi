@@ -664,6 +664,25 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
         _export.value = ExportUi(share = intent, shareTitle = LanguageText.text("ui.gnss.recording"))
     }
 
+    val swarmNotice = app.remoteIdSwarm.notice
+    val droneNearChips = app.droneNear.chips
+
+    fun dismissSwarm() {
+        app.remoteIdSwarm.dismiss()
+    }
+
+    fun swarmMemberLine(uasId: String?): String? = app.remoteIdSwarm.memberLine(uasId)
+
+    /** The switch stops the warning on this pass. The three trigger values wait for the next one. */
+    fun setRemoteIdSwarm(on: Boolean) {
+        viewModelScope.launch {
+            app.config.update { cfg ->
+                cfg.copy(settings = cfg.settings.copy(remoteIdSwarm = on))
+            }
+            app.announceSwarm(app.passRemoteIdSwarm(System.currentTimeMillis()))
+        }
+    }
+
     val floodNotice: StateFlow<PairingFlood.Notice?> = combine(
         app.pairingFlood.notice,
         app.wifiFlood.notice,
@@ -2138,6 +2157,8 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
 
     fun endSit() {
         viewModelScope.launch {
+            val closing = app.droneNear.closeOpen(System.currentTimeMillis())
+            app.sits.noteNear(closing)
             app.sits.end(app.config.fleets)
             publishSitNotice()
         }
@@ -2336,6 +2357,7 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
             path = otherFile.operatorPath,
             floods = otherFile.floods,
             gnss = otherFile.gnss,
+            swarms = otherFile.swarms,
         )
         val thisSide = compareThisSide(
             sit, fleets, customNames, observerNotes, bookmarkedKeys, mineKeys,
@@ -2368,6 +2390,7 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
                 path = source?.operatorPath.orEmpty(),
                 floods = source?.floods.orEmpty(),
                 gnss = source?.gnss.orEmpty(),
+                swarms = source?.swarms.orEmpty(),
             )
         }
         val selected = sit.closed.firstOrNull { it.id == sit.selectedId }
@@ -2385,6 +2408,7 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
                 path = file.operatorPath,
                 floods = file.floods,
                 gnss = file.gnss,
+                swarms = file.swarms,
             )
         }
         val now = System.currentTimeMillis()
@@ -2399,6 +2423,7 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
             path = app.operatorPathCopy().filter { it.at >= since },
             floods = app.floodBursts().filter { it.at >= since },
             gnss = app.gnss.marks().filter { it.at >= since || it.endedAt >= since },
+            swarms = app.remoteIdSwarm.bursts().filter { it.at >= since },
         )
     }
 
@@ -2604,8 +2629,11 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
             if (prev.alertLeadInMs != next.alertLeadInMs) app.alerter.setLeadIn(next.alertLeadInMs)
             if (prev.alertOtherAudio != next.alertOtherAudio) app.alerter.setOtherAudio(next.alertOtherAudio)
             if (prev.appTheme != next.appTheme) app.applyTheme(next.appTheme)
-            if (next.alertVoice || next.gnssVoice || next.trustedVoice || next.cellVoice || next.anySensorAlert()) {
+            if (next.alertVoice || next.gnssVoice || next.trustedVoice || next.cellVoice || next.swarmVoice || next.trackerVoice || next.anySensorAlert()) {
                 app.alerter.prepareVoice()
+            }
+            if (prev.trackerShade != next.trackerShade) {
+                app.syncTrackerShade(app.tracker.notice.value)
             }
             app.announceCell()
             if (layerAlertsChanged(prev, next)) {
@@ -3023,13 +3051,13 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
     fun suggestedSignaturesName(): String {
         val stamp = java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US)
             .format(java.util.Date())
-        return "fieldwatch-signatures-$stamp.json"
+        return "fieldwatch-signatures-$stamp.rsi"
     }
 
     private fun signaturePackJson(): String {
         val cfg = app.config.config.value
         return SignatureExchange.encode(
-            SignatureExchange.pack(
+            SignatureExchange.exportPack(
                 fleets = cfg.fleets,
                 catalogVersion = cfg.version,
                 appVersion = BuildConfig.VERSION_NAME,
@@ -3047,7 +3075,7 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
                 withContext(Dispatchers.IO) { file.writeText(json) }
                 val uri = FileProvider.getUriForFile(app, "${app.packageName}.files", file)
                 Intent(Intent.ACTION_SEND).apply {
-                    type = "application/json"
+                    type = "application/octet-stream"
                     clipData = ClipData.newRawUri("signatures", uri)
                     putExtra(Intent.EXTRA_STREAM, uri)
                     putExtra(Intent.EXTRA_SUBJECT, LanguageText.text("ui.fieldwatch.signatures"))
@@ -3138,7 +3166,10 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
                 _export.value = if (result.alreadyLatest) {
                     ExportUi(
                         noticeTitle = LanguageText.text("ui.already.latest.catalog"),
-                        noticeMessage = "Already on catalog ${result.catalogVersion}. Nothing to update.",
+                        noticeMessage = newerNote(
+                            parsed.newer,
+                            "Already on catalog ${result.catalogVersion}. Nothing to update.",
+                        ),
                     )
                 } else {
                     val bits = mutableListOf<String>()
@@ -3149,8 +3180,11 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
                     val skip = result.skippedDecode > 0
                     ExportUi(
                         noticeTitle = LanguageText.text("ui.catalog.updated"),
-                        noticeMessage = "Stock catalog is now ${result.catalogVersion}. $change " +
-                            LanguageText.text("ui.bookmarks.settings.were.not"),
+                        noticeMessage = newerNote(
+                            parsed.newer,
+                            "Stock catalog is now ${result.catalogVersion}. $change " +
+                                LanguageText.text("ui.bookmarks.settings.were.not"),
+                        ),
                         followUpTitle = if (skip) LanguageText.text("ui.signature.decoding.skipped") else null,
                         followUpMessage = if (skip) {
                             (LanguageText.text("ui.some.signature.field.maps") + " ") +
@@ -3366,15 +3400,21 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
+    private fun newerNote(newer: Boolean, message: String): String {
+        if (!newer) return message
+        val note = "This file is newer than this app. Signatures this app understands were kept."
+        return if (message.isBlank()) note else "$message $note"
+    }
+
     fun importSignaturesFromUri(uri: Uri) {
         viewModelScope.launch {
             try {
                 val summary = withContext(Dispatchers.IO) {
                     val text = readImportText(uri, ImportFiles.SIGNATURE_MAX)
-                    val pack = SignatureExchange.parse(text)
-                    val result = app.config.importFleets(pack.fleets)
+                    val parsed = SignatureExchange.parsePack(text)
+                    val result = app.config.importFleets(parsed.pack.fleets)
                     if (result.error != null) error(result.error)
-                    result.summary()
+                    newerNote(parsed.newer, result.summary())
                 }
                 refreshDevicesAfterImport()
                 _export.value = ExportUi(
@@ -3853,8 +3893,11 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
         app.alerter.setLeadIn(next.alertLeadInMs)
         app.alerter.setOtherAudio(next.alertOtherAudio)
         app.applyTheme(next.appTheme)
-        if (next.alertVoice || next.gnssVoice || next.trustedVoice || next.cellVoice || next.anySensorAlert()) {
+        if (next.alertVoice || next.gnssVoice || next.trustedVoice || next.cellVoice || next.swarmVoice || next.trackerVoice || next.anySensorAlert()) {
             app.alerter.prepareVoice()
+        }
+        if (prev.trackerShade != next.trackerShade) {
+            app.syncTrackerShade(app.tracker.notice.value)
         }
         app.announceCell()
         if (layerAlertsChanged(prev, next)) {
@@ -4312,6 +4355,9 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
                 trusted = trustedLines,
                 cells = source?.cells ?: app.cells.marks(),
                 savedCameras = savedCameras,
+                swarms = source?.swarms ?: app.remoteIdSwarm.bursts(),
+                battery = source?.battery.orEmpty(),
+                droneNear = source?.droneNear ?: app.droneNearMarks(),
             ).withDemoMacs(
                 devices.map { it.mac } + trustedLines.map { it.bssid },
                 settings.demoMode,
@@ -4380,6 +4426,9 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
                         trusted = trustedLines,
                         cells = source?.cells ?: app.cells.marks(),
                         savedCameras = savedCameras,
+                        swarms = source?.swarms ?: app.remoteIdSwarm.bursts(),
+                        battery = source?.battery.orEmpty(),
+                        droneNear = source?.droneNear ?: app.droneNearMarks(),
                     )
                     val masked = MacUtil.redactPrivateText(
                         raw,

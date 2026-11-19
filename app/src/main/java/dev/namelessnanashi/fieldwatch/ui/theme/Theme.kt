@@ -29,6 +29,8 @@ val AccentActive = Color(0xFFC62828)
 /** Healthy status only (header dot). Kept green so it never reads as an alert. */
 val Healthy = Color(0xFF3DFF9A)
 val Amber = Color(0xFFFFB020)
+/** Live Wi-Fi and Bluetooth icons while the scan is on Battery saver. */
+val BatterySaverYellow = Color(0xFFFFC857)
 val SignalRed = Color(0xFFFF3D5A)
 val Cyan = Color(0xFF4FC3F7)
 /** OLED black: background and cards are pure black so unlit pixels stay off. */
@@ -105,6 +107,8 @@ private val LightColors = lightColorScheme(
 @Immutable
 data class StatusColors(
     val healthy: Color,
+    /** Live Wi-Fi and Bluetooth icons while the scan is on Battery saver. */
+    val saver: Color,
     val amber: Color,
     val cyan: Color,
     val signalStrong: Color,
@@ -116,6 +120,7 @@ data class StatusColors(
 
 private val DarkStatus = StatusColors(
     healthy = Healthy,
+    saver = BatterySaverYellow,
     amber = Amber,
     cyan = Cyan,
     signalStrong = Healthy,
@@ -127,6 +132,7 @@ private val DarkStatus = StatusColors(
 
 private val LightStatus = StatusColors(
     healthy = Color(0xFF1B7F4B),
+    saver = Color(0xFF8A6D00),
     amber = Color(0xFF8A5A00),
     cyan = Color(0xFF0277BD),
     signalStrong = Color(0xFF1B7F4B),
