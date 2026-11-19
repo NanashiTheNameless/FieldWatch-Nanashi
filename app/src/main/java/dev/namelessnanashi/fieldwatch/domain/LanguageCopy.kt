@@ -264,9 +264,12 @@ private fun buildLines(): List<EnglishLine> = listOf(
     en("elevated.busy", "Working…", LanguageSlot.CONTROL),
     en("settings.catalog.source.fork", "FieldWatch-Nanashi", LanguageSlot.CONTROL),
     en("settings.catalog.source.upstream", "Upstream Fieldwatch", LanguageSlot.CONTROL),
+    en("settings.catalog.format", "Stock catalog format", LanguageSlot.CONTROL),
+    en("settings.catalog.format.rsi", "RSI (.rsi)", LanguageSlot.CONTROL),
+    en("settings.catalog.format.legacy", "Legacy JSON (v2)", LanguageSlot.CONTROL),
     en(
         "settings.catalog.source.about",
-        "Where Update stock catalog from GitHub downloads the signature pack. Only a newer catalog version changes anything. Your own signatures, bookmarks, and settings stay.",
+        "Where Update stock catalog from GitHub downloads the signature pack, and which file. RSI is the Radio Signature Interchange file. Legacy JSON is the older fieldwatch-signatures file with the same signatures. Only a newer catalog version changes anything. Your own signatures, bookmarks, and settings stay.",
         LanguageSlot.BODY,
     ),
     en("settings.map.overlays", "Overlays", LanguageSlot.CONTROL),

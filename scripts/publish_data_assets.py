@@ -6,10 +6,12 @@ import json
 from pathlib import Path
 import subprocess
 
-from prepare_data_assets import ROOT, CONFIG_NAME, UPSTREAM_FILES, validate_catalog, validate_export
+from prepare_data_assets import (
+    ROOT, CONFIG_NAME, FORK_CATALOG, FORK_RSI, UPSTREAM_FILES, validate_catalog, validate_export, validate_rsi,
+)
 
 TAG = "Data-Assets"
-ASSETS = ("fieldwatch-signatures-v2.json", *UPSTREAM_FILES, CONFIG_NAME)
+ASSETS = (FORK_CATALOG, FORK_RSI, *UPSTREAM_FILES, CONFIG_NAME)
 
 
 def gh(*args):
@@ -23,8 +25,10 @@ def publish(directory, repo, run=gh):
         if name == CONFIG_NAME:
             if json.loads(data).get("id") != "dev.namelessnanashi.fieldwatch":
                 raise ValueError("Wrong Obtainium app ID")
-        elif name == "fieldwatch-signatures-v2.json":
+        elif name == FORK_CATALOG:
             validate_catalog(data)
+        elif name == FORK_RSI:
+            validate_rsi(data)
         else:
             validate_export(name, data)
     release = json.loads(run("api", f"repos/{repo}/releases/tags/{TAG}"))

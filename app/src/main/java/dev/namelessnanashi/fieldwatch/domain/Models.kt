@@ -1289,6 +1289,22 @@ enum class CatalogSource {
         }
 }
 
+/** File format Update stock catalog downloads. Missing JSON is RSI. */
+@Serializable
+enum class CatalogFormat {
+    /** Radio Signature Interchange (`fieldwatch-signatures.rsi`). */
+    RSI,
+    /** Older fieldwatch-signatures JSON (`fieldwatch-signatures-v2.json`). */
+    LEGACY_JSON,
+    ;
+
+    val labelKey: String
+        get() = when (this) {
+            RSI -> "settings.catalog.format.rsi"
+            LEGACY_JSON -> "settings.catalog.format.legacy"
+        }
+}
+
 @Serializable
 enum class MapFooter {
     OFF,
@@ -1498,6 +1514,8 @@ data class AppSettings(
     val mapFooter: MapFooter = MapFooter.OFF,
     /** Stock signature pack for Update stock catalog. Missing JSON is this fork's nightly. */
     val catalogSource: CatalogSource = CatalogSource.FORK,
+    /** File format for Update stock catalog. Missing JSON is RSI. */
+    val catalogFormat: CatalogFormat = CatalogFormat.RSI,
     /**
      * Opt-in. Bluetooth Classic inquiry alongside the BLE scan, for devices that answer an
      * inquiry instead of advertising. Costs battery and shares the chip with BLE. Missing JSON is off.

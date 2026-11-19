@@ -12,6 +12,7 @@ from prepare_data_assets import CONFIG_NAME, UPSTREAM_FILES, prepare, validate_e
 from publish_data_assets import ASSETS, publish
 
 CATALOG = json.dumps({"format": "fieldwatch-signatures", "fleets": [{"id": "test"}]}).encode()
+RSI = json.dumps({"format": "radio-signatures", "publisher": "fieldwatch", "fleets": [{"id": "test"}]}).encode()
 SENSORS = gzip.compress(json.dumps({"type": "FeatureCollection", "features": [
     {"type": "Feature", "geometry": {"type": "Point", "coordinates": [0, 0]}, "properties": {}}
 ]}).encode())
@@ -25,6 +26,7 @@ class DataAssetsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp)
             (directory / "fieldwatch-signatures-v2.json").write_bytes(CATALOG)
+            (directory / "fieldwatch-signatures.rsi").write_bytes(RSI)
             config = directory / "config-source.json"
             config.write_bytes(CONFIG)
             urls = []
@@ -42,6 +44,7 @@ class DataAssetsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp)
             (directory / "fieldwatch-signatures-v2.json").write_bytes(CATALOG)
+            (directory / "fieldwatch-signatures.rsi").write_bytes(RSI)
             for name in UPSTREAM_FILES:
                 (directory / name).write_bytes(b"previous")
             config = directory / "config-source.json"
@@ -55,6 +58,16 @@ class DataAssetsTest(unittest.TestCase):
                 self.assertEqual((directory / name).read_bytes(), b"previous")
             self.assertFalse((directory / CONFIG_NAME).exists())
 
+    def test_rejects_invalid_fork_rsi(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            (directory / "fieldwatch-signatures-v2.json").write_bytes(CATALOG)
+            (directory / "fieldwatch-signatures.rsi").write_bytes(CATALOG)
+            config = directory / "config-source.json"
+            config.write_bytes(CONFIG)
+            with self.assertRaises(ValueError):
+                prepare(directory, "c" * 40, lambda url: EXPORTS[url.rsplit('/', 1)[-1]], config)
+
     def test_rejects_missing_attribution_and_unpinned_upstream(self):
         with self.assertRaises(ValueError):
             validate_export('fieldwatch-sensors.txt', b'No license here')
@@ -64,7 +77,7 @@ class DataAssetsTest(unittest.TestCase):
     def test_publish_skips_unchanged_assets_and_preserves_data_release_flags(self):
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp)
-            contents = {"fieldwatch-signatures-v2.json": CATALOG, **EXPORTS, CONFIG_NAME: CONFIG}
+            contents = {"fieldwatch-signatures-v2.json": CATALOG, "fieldwatch-signatures.rsi": RSI, **EXPORTS, CONFIG_NAME: CONFIG}
             for name, data in contents.items():
                 (directory / name).write_bytes(data)
             release = {"assets": [{"name": n, "digest": "sha256:" + hashlib.sha256(d).hexdigest()}

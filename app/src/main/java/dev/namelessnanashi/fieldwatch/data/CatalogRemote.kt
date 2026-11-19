@@ -1,5 +1,6 @@
 package dev.namelessnanashi.fieldwatch.data
 
+import dev.namelessnanashi.fieldwatch.domain.CatalogFormat
 import dev.namelessnanashi.fieldwatch.domain.CatalogSource
 import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
@@ -12,20 +13,27 @@ import kotlinx.coroutines.CancellationException
 
 /** HTTPS GET of a stock signature pack on GitHub. No account. Fails to the caller. */
 object CatalogRemote {
-    /** Built from this fork's DefaultCatalog; hosted on the separate Data-Assets release. */
-    const val FORK_PACK_URL =
+    /** This fork's DefaultCatalog, exported to the separate Data-Assets release. */
+    const val FORK_RSI_URL =
+        "https://github.com/NanashiTheNameless/FieldWatch-Nanashi/releases/download/Data-Assets/fieldwatch-signatures.rsi"
+    const val FORK_JSON_URL =
         "https://github.com/NanashiTheNameless/FieldWatch-Nanashi/releases/download/Data-Assets/fieldwatch-signatures-v2.json"
 
-    /**
-     * Upstream Fieldwatch's published pack. Upstream 1.2.0 moved to the RSI file;
-     * dist/fieldwatch-signatures-v2.json stays for phones on 1.1.44.
-     */
-    const val UPSTREAM_PACK_URL =
+    /** Upstream Fieldwatch's published packs. Upstream keeps the v2 JSON for phones on 1.1.44. */
+    const val UPSTREAM_RSI_URL =
         "https://raw.githubusercontent.com/OffGridPete/Fieldwatch/main/dist/fieldwatch-signatures.rsi"
+    const val UPSTREAM_JSON_URL =
+        "https://raw.githubusercontent.com/OffGridPete/Fieldwatch/main/dist/fieldwatch-signatures-v2.json"
 
-    fun urlFor(source: CatalogSource): String = when (source) {
-        CatalogSource.FORK -> FORK_PACK_URL
-        CatalogSource.UPSTREAM -> UPSTREAM_PACK_URL
+    fun urlFor(source: CatalogSource, format: CatalogFormat): String = when (source) {
+        CatalogSource.FORK -> when (format) {
+            CatalogFormat.RSI -> FORK_RSI_URL
+            CatalogFormat.LEGACY_JSON -> FORK_JSON_URL
+        }
+        CatalogSource.UPSTREAM -> when (format) {
+            CatalogFormat.RSI -> UPSTREAM_RSI_URL
+            CatalogFormat.LEGACY_JSON -> UPSTREAM_JSON_URL
+        }
     }
 
     enum class Reason {

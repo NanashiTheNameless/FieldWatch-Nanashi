@@ -3133,7 +3133,10 @@ class FieldwatchViewModel(application: Application) : AndroidViewModel(applicati
             try {
                 val fetched = withContext(Dispatchers.IO) {
                     CatalogRemote.fetch(
-                        CatalogRemote.urlFor(app.config.settings.catalogSource),
+                        CatalogRemote.urlFor(
+                            app.config.settings.catalogSource,
+                            app.config.settings.catalogFormat,
+                        ),
                         userAgent = "Fieldwatch/${BuildConfig.VERSION_NAME}",
                     )
                 }

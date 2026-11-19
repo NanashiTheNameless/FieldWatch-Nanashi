@@ -15,6 +15,23 @@ MAX_DOWNLOAD = 16 * 1024 * 1024
 MAX_EXPANDED = 64 * 1024 * 1024
 
 
+FORK_CATALOG = "fieldwatch-signatures-v2.json"
+FORK_RSI = "fieldwatch-signatures.rsi"
+
+
+def validate_rsi(data):
+    catalog = json.loads(data)
+    if (
+        not isinstance(catalog, dict)
+        or catalog.get("format") != "radio-signatures"
+        or not catalog.get("publisher")
+        or not isinstance(catalog.get("fleets"), list)
+        or not catalog["fleets"]
+    ):
+        raise ValueError("Missing or invalid RSI signature catalog")
+    return catalog
+
+
 def validate_catalog(data):
     catalog = json.loads(data)
     if not isinstance(catalog, dict) or catalog.get("format") != "fieldwatch-signatures" or not isinstance(catalog.get("fleets"), list) or not catalog["fleets"]:
@@ -54,7 +71,8 @@ def prepare(directory, upstream_commit, fetch=download, config_path=None):
     if not re.fullmatch(r"[0-9a-f]{40}", upstream_commit):
         raise ValueError("Use a full upstream commit SHA to keep exports consistent")
     directory = Path(directory)
-    validate_catalog((directory / "fieldwatch-signatures-v2.json").read_bytes())
+    validate_catalog((directory / FORK_CATALOG).read_bytes())
+    validate_rsi((directory / FORK_RSI).read_bytes())
     config_data = (config_path or ROOT / "docs" / CONFIG_NAME).read_bytes()
     config = json.loads(config_data)
     if config.get("id") != "dev.namelessnanashi.fieldwatch":
@@ -70,7 +88,7 @@ def prepare(directory, upstream_commit, fetch=download, config_path=None):
     for name, data in pending.items():
         (directory / name).write_bytes(data)
     (directory / CONFIG_NAME).write_bytes(config_data)
-    print(f"Prepared five data assets; upstream snapshot {upstream_commit}")
+    print(f"Prepared six data assets; upstream snapshot {upstream_commit}")
 
 
 if __name__ == "__main__":

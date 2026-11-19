@@ -52,6 +52,7 @@ jobs:
       - name: Unit tests and fork catalog
         env:
           STOCK_CATALOG_OUT: ${{ runner.temp }}/data-assets/fieldwatch-signatures-v2.json
+          STOCK_RSI_OUT: ${{ runner.temp }}/data-assets/fieldwatch-signatures.rsi
         run: ./build.sh testDebugUnitTest --no-daemon --build-cache
 
       - name: Resolve upstream snapshot

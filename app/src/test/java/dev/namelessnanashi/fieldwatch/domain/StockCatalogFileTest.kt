@@ -139,7 +139,14 @@ class StockCatalogFileTest {
 
     @Test
     fun rsiPackMatchesBaselineCatalog() {
-        val parsed = SignatureExchange.parsePack(rsiPackJson())
+        val encoded = rsiPackJson()
+        // The data-assets workflow publishes this file on the separate Data-Assets release.
+        System.getenv("STOCK_RSI_OUT")?.takeIf { it.isNotBlank() }?.let { path ->
+            val dest = java.io.File(path)
+            dest.parentFile?.mkdirs()
+            dest.writeText(encoded)
+        }
+        val parsed = SignatureExchange.parsePack(encoded)
         assertEquals(SignaturePack.RSI_FORMAT, parsed.pack.format)
         assertEquals(SignaturePack.PUBLISHER, parsed.pack.publisher)
         assertFalse(parsed.newer)

@@ -102,6 +102,7 @@ import dev.namelessnanashi.fieldwatch.alert.TtsEngines
 import dev.namelessnanashi.fieldwatch.alert.VoiceOption
 import dev.namelessnanashi.fieldwatch.domain.AlertOtherAudio
 import dev.namelessnanashi.fieldwatch.domain.AppTheme
+import dev.namelessnanashi.fieldwatch.domain.CatalogFormat
 import dev.namelessnanashi.fieldwatch.domain.CatalogSource
 import dev.namelessnanashi.fieldwatch.domain.UpdateCheckEvery
 import dev.namelessnanashi.fieldwatch.radio.ScanService
@@ -1323,6 +1324,45 @@ fun SettingsScreen(
                                     sourceMenu = false
                                     if (choice != settings.catalogSource) {
                                         vm.updateSettings { it.copy(catalogSource = choice) }
+                                    }
+                                }
+                                .padding(horizontal = 12.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                LanguageText.text(choice.labelKey),
+                                style = MaterialTheme.typography.labelLarge,
+                                modifier = Modifier.weight(1f),
+                            )
+                            if (selected) {
+                                Icon(Icons.Outlined.Check, contentDescription = null)
+                            }
+                        }
+                    }
+                }
+            }
+            var formatMenu by remember { mutableStateOf(false) }
+            ExposedDropdownMenuBox(
+                expanded = formatMenu,
+                onExpandedChange = { formatMenu = it },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                FieldwatchDropdownField(
+                    label = LanguageText.text("settings.catalog.format"),
+                    value = LanguageText.text(settings.catalogFormat.labelKey),
+                    expanded = formatMenu,
+                )
+                ExposedDropdownMenu(formatMenu, { formatMenu = false }) {
+                    CatalogFormat.entries.forEach { choice ->
+                        val selected = choice == settings.catalogFormat
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 32.dp)
+                                .clickable {
+                                    formatMenu = false
+                                    if (choice != settings.catalogFormat) {
+                                        vm.updateSettings { it.copy(catalogFormat = choice) }
                                     }
                                 }
                                 .padding(horizontal = 12.dp, vertical = 2.dp),
