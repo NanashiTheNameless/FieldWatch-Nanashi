@@ -15,7 +15,7 @@ This is a regular release, explicitly **not latest** and **not a pre-release**. 
 
 The app includes its stock signatures, so downloading a catalog is optional for normal scanning.
 
-`.github/workflows/data-assets.yml` runs daily at 04:17 UTC, when relevant catalog/configuration sources change on `main`, and through **Actions → Data assets → Run workflow**. It exports this fork's catalog through `build.sh`, downloads the optional upstream files from one pinned upstream commit, validates the JSON, compressed GeoJSON, and attribution notice, and uploads changed assets only. Invalid downloads fail before publication. It requires no APK signing secrets.
+`.github/workflows/data-assets.yml` runs daily at 10:17 America/Chicago time, when relevant catalog/configuration sources change on `main`, and through **Actions → Data assets → Run workflow**. It exports this fork's catalog through `build.sh`, downloads the optional upstream files from one pinned upstream commit, validates the JSON, compressed GeoJSON, and attribution notice, and uploads changed assets only. Invalid downloads fail before publication. It requires no APK signing secrets.
 
 The APK workflow publishes its own copy of `FieldWatch-Nanashi-obtainium.json`. The data workflow does not touch APKs or the nightly release, avoiding cross-workflow publication races.
 
