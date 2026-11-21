@@ -44,10 +44,11 @@ enum class SensorList(
     ),
     /**
      * Speed cameras, red lights, gunshot detectors, and other cameras.
-     * Published from dist/ on GitHub. Plate readers stay on [PLATES].
+     * Upstream's dist/ export, mirrored and validated by this fork's Data-Assets
+     * release. Plate readers stay on [PLATES].
      */
     OTHER(
-        "https://raw.githubusercontent.com/OffGridPete/Fieldwatch/main/dist/fieldwatch-sensors.geojson.gz",
+        "https://github.com/NanashiTheNameless/FieldWatch-Nanashi/releases/download/Data-Assets/fieldwatch-sensors.geojson.gz",
         "road-sensors.bin",
         627_143L,
         false,

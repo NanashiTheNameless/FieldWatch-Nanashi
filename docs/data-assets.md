@@ -9,7 +9,7 @@ This is a regular release, explicitly **not latest** and **not a pre-release**. 
 | `fieldwatch-signatures.rsi` | Current stock catalog exported from this fork's `DefaultCatalog` in [Radio Signature Interchange](https://github.com/OffGridPete/radio-signature-interchange) format (`radio-signatures`, publisher `fieldwatch`). The app's **Update stock catalog from GitHub** uses this file when **Stock catalog source** is **FieldWatch-Nanashi** and **Stock catalog format** is **RSI** (the default). The data-assets workflow regenerates it after unit tests pass. |
 | `fieldwatch-signatures-v2.json` | The same catalog in the older `fieldwatch-signatures` format, used when **Stock catalog format** is **Legacy JSON**, and by fork builds from before RSI support. Regenerated alongside the RSI file. |
 | `fieldwatch-signatures.json` | Upstream's legacy-compatible catalog, refreshed from upstream `dist/`. The app does not fetch this mirror; its **Upstream Fieldwatch** source reads upstream's `dist/` directly. |
-| `fieldwatch-sensors.geojson.gz` | Optional upstream US sensor-location export: speed cameras, red lights, gunshot detectors, and other cameras. This fork currently does not load it. |
+| `fieldwatch-sensors.geojson.gz` | Upstream's US sensor-location export (speed cameras, red lights, gunshot detectors, and other cameras), mirrored from upstream `dist/`. The app downloads this copy for its **Other sensors** list. |
 | `fieldwatch-sensors.txt` | Description and OpenStreetMap attribution/license notice accompanying the sensor dataset. |
 | `FieldWatch-Nanashi-obtainium.json` | Obtainium import configuration for this app; also attached to the nightly APK release. |
 

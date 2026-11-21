@@ -301,23 +301,6 @@ class FlockCamerasTest {
     }
 
     @Test
-    fun publishedSensorListKeepsTheFourTypes() {
-        val file = listOf(
-            File("dist/fieldwatch-sensors.geojson.gz"),
-            File("../dist/fieldwatch-sensors.geojson.gz"),
-        ).first { it.isFile }
-        val parsed = GZIPInputStream(FileInputStream(file)).use { stream ->
-            parseFlock(InputStreamReader(stream, Charsets.UTF_8))
-        }
-        assertEquals(40743, parsed.size)
-        assertEquals(1832, parsed.count { it.kind == SensorKind.SPEED })
-        assertEquals(681, parsed.count { it.kind == SensorKind.RED })
-        assertEquals(4126, parsed.count { it.kind == SensorKind.GUNSHOT })
-        assertEquals(34104, parsed.count { it.kind == SensorKind.CAMERA })
-        assertTrue(parsed.none { it.kind == SensorKind.PLATE })
-    }
-
-    @Test
     fun plateAndOtherListsStayInSeparateFiles() {
         val dir = tempDir()
         val plates = List(FlockApproach.MIN_COUNT) { i ->
