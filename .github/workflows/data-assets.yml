@@ -1,8 +1,6 @@
 name: Data assets
 
 on:
-  schedule:
-    - cron: '17 4 * * *'
   workflow_dispatch:
   push:
     branches: [main]
