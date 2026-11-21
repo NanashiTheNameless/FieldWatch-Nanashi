@@ -91,6 +91,10 @@ class Alerter(private val context: Context) {
     private val afterBeepPhrases = ArrayList<String>()
     /** Bumped on every speak attempt, so a start check left from an earlier attempt does nothing. */
     private var speakSeq = 0
+    /** Init failed, or speak() found the engine unbound. The next attempt builds a new one. */
+    private var ttsFailed = false
+    /** Bumped per engine built, so a late init callback from a dropped engine does nothing. */
+    private var ttsGeneration = 0
     private val speakWatchdog = Runnable {
         if (!speaking) return@Runnable
         val retry = pendingSpeak
@@ -200,12 +204,7 @@ class Alerter(private val context: Context) {
         if (next == ttsEnginePackage) return
         ttsEnginePackage = next
         voiceList.value = emptyList()
-        main.removeCallbacks(speakWatchdog)
-        runCatching { tts?.shutdown() }
-        tts = null
-        ttsReady = false
-        speaking = false
-        utteranceStarted = false
+        releaseTts()
         // A phrase cut off by the switch is spoken again by the new engine once it starts.
         if (pendingSpeak != null) {
             ttsSpeakTries = 0
@@ -905,7 +904,7 @@ class Alerter(private val context: Context) {
     private fun enqueueSpeech(phrase: String, next: Boolean = false) {
         takeFocus()
         if (next) speechQueue.addFirst(phrase) else speechQueue.addLast(phrase)
-        if (pendingSpeak == null) nextPhrase() else if (tts == null) ensureTts()
+        if (pendingSpeak == null) nextPhrase() else if (tts == null || ttsFailed) ensureTts()
     }
 
     private fun nextPhrase() {
@@ -930,18 +929,30 @@ class Alerter(private val context: Context) {
     }
 
     private fun ensureTts() {
-        if (tts != null) return
-        tts = TextToSpeech(context, { status ->
-            ttsReady = status == TextToSpeech.SUCCESS
-            if (!ttsReady) {
-                main.post {
+        if (tts != null && !ttsFailed) return
+        if (tts != null) releaseTts()
+        ttsFailed = false
+        val generation = ++ttsGeneration
+        var created: TextToSpeech? = null
+        created = TextToSpeech(context, { status ->
+            main.post {
+            val engine = created ?: return@post
+            if (generation != ttsGeneration || tts !== engine) return@post
+            if (status != TextToSpeech.SUCCESS) {
+                ttsReady = false
+                ttsFailed = true
+                // Build a fresh engine for the waiting phrase; give up after two tries.
+                if (pendingSpeak != null && ttsSpeakTries < 2) {
+                    ttsSpeakTries++
+                    main.post { ensureTts() }
+                } else {
                     speechQueue.clear()
                     pendingSpeak = null
                     releaseFocusIfIdle()
                 }
-                return@TextToSpeech
+                return@post
             }
-            val engine = tts ?: return@TextToSpeech
+            ttsReady = true
             engine.setAudioAttributes(
                 AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -972,7 +983,21 @@ class Alerter(private val context: Context) {
             main.postDelayed({
                 pendingSpeak?.let { startSpeak(it) }
             }, TTS_AFTER_INIT_MS)
+            }
         }, ttsEnginePackage.ifBlank { null })
+        tts = created
+    }
+
+    /** Drop a speech engine that failed to start or is no longer bound. Main thread. */
+    private fun releaseTts() {
+        val dead = tts
+        tts = null
+        ttsReady = false
+        ttsFailed = false
+        speaking = false
+        utteranceStarted = false
+        main.removeCallbacks(speakWatchdog)
+        if (dead != null) runCatching { dead.shutdown() }
     }
 
     /** The chosen voice when the engine has it; otherwise the engine's voice for the phone language. */
@@ -1050,9 +1075,10 @@ class Alerter(private val context: Context) {
     }
 
     private fun startSpeak(text: String) {
-        val engine = tts ?: return
-        if (!ttsReady) {
+        val engine = tts
+        if (engine == null || !ttsReady) {
             pendingSpeak = text
+            if (ttsFailed || engine == null) ensureTts()
             return
         }
         if (speaking && utteranceStarted) return
@@ -1064,8 +1090,11 @@ class Alerter(private val context: Context) {
         if (ok != TextToSpeech.SUCCESS) {
             speaking = false
             if (ttsSpeakTries < 2) {
-                val seq = ++speakSeq
-                main.postDelayed({ if (seq == speakSeq) startSpeak(text) }, TTS_AFTER_INIT_MS)
+                // speak() does not rebind after the speech process dies, so build a new engine.
+                // Its init speaks pendingSpeak.
+                speakSeq++
+                ttsFailed = true
+                ensureTts()
             } else {
                 finishPhrase()
             }
