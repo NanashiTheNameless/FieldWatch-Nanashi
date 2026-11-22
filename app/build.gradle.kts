@@ -131,7 +131,7 @@ dependencies {
         add("androidLintTool", "org.bouncycastle:bcutil-jdk18on:1.87")
     }
 
-    val composeBom = platform("androidx.compose:compose-bom:2026.09.00")
+    val composeBom = platform("androidx.compose:compose-bom:2026.11.01")
     implementation(composeBom)
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
