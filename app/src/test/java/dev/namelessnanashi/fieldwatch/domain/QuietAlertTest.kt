@@ -37,7 +37,9 @@ class QuietAlertTest {
     fun cueNameUsesTheCustomNameAndMasksAMac() {
         val mac = "AA:BB:CC:DD:EE:FF"
         assertEquals("bag", QuietAlert.cueName("bag", mac, mac, demoMode = true))
-        assertEquals("AA:BB:CC:**:**:**", QuietAlert.cueName("  ", mac, mac, demoMode = true))
+        // AA:… is locally administered, so the fork masks every octet.
+        assertEquals("**:**:**:**:**:**", QuietAlert.cueName("  ", mac, mac, demoMode = true))
+        assertEquals("00:11:22:**:**:**", QuietAlert.cueName("", "00:11:22:33:44:55", "00:11:22:33:44:55", demoMode = true))
         assertEquals("—", QuietAlert.rssiText(127))
         assertEquals("-62", QuietAlert.rssiText(-62))
     }
