@@ -15,7 +15,7 @@ _fw_setup() {
     root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     sdk_fallback="$root_dir/.android-sdk"
     java_major="$(tr -d '[:space:]' < "$root_dir/.java-version")"
-    local -a sdk_packages=("platform-tools" "platforms;android-37.0" "build-tools;37.0.0")
+    local -a sdk_packages=("platform-tools" "platforms;android-37.2" "build-tools;37.0.0")
 
     say() { [ -n "${FW_SETUP_QUIET:-}" ] || echo "$@"; }
 
@@ -47,7 +47,7 @@ _fw_setup() {
     fi
 
     sdk_has_all() {
-        [ -d "$1/platform-tools" ] && [ -d "$1/platforms/android-37.0" ] && [ -d "$1/build-tools/37.0.0" ]
+        [ -d "$1/platform-tools" ] && [ -d "$1/platforms/android-37.2" ] && [ -d "$1/build-tools/37.0.0" ]
     }
 
     # First SDK that already has every package wins; otherwise the first existing SDK
@@ -78,7 +78,7 @@ _fw_setup() {
 
     local -a missing=()
     [ -d "$sdk_dir/platform-tools" ] || missing+=("platform-tools")
-    [ -d "$sdk_dir/platforms/android-37.0" ] || missing+=("platforms;android-37.0")
+    [ -d "$sdk_dir/platforms/android-37.2" ] || missing+=("platforms;android-37.2")
     [ -d "$sdk_dir/build-tools/37.0.0" ] || missing+=("build-tools;37.0.0")
 
     if [ "${#missing[@]}" -gt 0 ]; then

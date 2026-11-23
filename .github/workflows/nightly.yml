@@ -45,7 +45,7 @@ jobs:
       - name: Android SDK packages
         run: |
           yes | sdkmanager --licenses > /dev/null
-          sdkmanager "platform-tools" "platforms;android-37.0" "build-tools;${BUILD_TOOLS}"
+          sdkmanager "platform-tools" "platforms;android-37.2" "build-tools;${BUILD_TOOLS}"
 
       - uses: gradle/actions/setup-gradle@v6
 

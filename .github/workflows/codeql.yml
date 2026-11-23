@@ -46,7 +46,7 @@ jobs:
         if: matrix.language == 'java-kotlin'
         run: |
           yes | sdkmanager --licenses > /dev/null
-          sdkmanager "platform-tools" "platforms;android-37.0" "build-tools;37.0.0"
+          sdkmanager "platform-tools" "platforms;android-37.2" "build-tools;37.0.0"
 
       - name: Set up Gradle
         if: matrix.language == 'java-kotlin'
