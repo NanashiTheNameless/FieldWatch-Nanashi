@@ -122,6 +122,8 @@ fun RadioBookmarksScreen(
                         },
                         onAlert = { on -> vm.setRadioAlert(row.id, on) },
                         onMine = { on -> vm.setNamedRadioMine(row.id, on) },
+                        onMute = { on -> vm.setNamedRadioMute(row.id, on) },
+                        onQuiet = { on -> vm.setNamedRadioQuiet(row.id, on) },
                         onRename = { renameId = row.id },
                         onRemove = { vm.removeRadioBookmark(row.id) },
                     )
@@ -206,6 +208,8 @@ private fun BookmarkCard(
     onOpen: () -> Unit,
     onAlert: (Boolean) -> Unit,
     onMine: (Boolean) -> Unit,
+    onMute: (Boolean) -> Unit,
+    onQuiet: (Boolean) -> Unit,
     onRename: () -> Unit,
     onRemove: () -> Unit,
 ) {
@@ -287,6 +291,28 @@ private fun BookmarkCard(
                 )
                 Spacer(Modifier.width(6.dp))
                 FieldwatchSwitch(checked = row.alert, onCheckedChange = onAlert)
+                Spacer(Modifier.width(16.dp))
+                Text(
+                    LanguageText.text("ui.mute.label"),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.width(6.dp))
+                FieldwatchSwitch(checked = row.mute, onCheckedChange = onMute)
+            }
+            Row(
+                modifier = underName.padding(top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    LanguageText.text("ui.quiet.gone.label"),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.width(6.dp))
+                FieldwatchSwitch(checked = row.alertOnGone, onCheckedChange = onQuiet)
             }
         }
     }

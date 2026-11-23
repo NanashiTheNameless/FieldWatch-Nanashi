@@ -857,6 +857,16 @@ data class WatchTarget(
     val observerNotes: String = "",
     /** This radio is the operator's. Missing JSON = off. Alert is left as last set. */
     val mine: Boolean = false,
+    /**
+     * Stops beep, voice, notification, and vibrate for this radio.
+     * Missing JSON = off. Does not mark the radio as the operator's.
+     */
+    val mute: Boolean = false,
+    /**
+     * One low pip when this radio is marked gone after it was heard for 2 minutes.
+     * Missing JSON = off. Mute still silences it. Mine does not.
+     */
+    val alertOnGone: Boolean = false,
 )
 
 /**
@@ -1510,6 +1520,12 @@ data class AppSettings(
     val gunshotAlert: Boolean = false,
     /** Notify when another mapped camera is ahead. Off until chosen. Acts only while [sensorLayer] is on. */
     val cameraAlert: Boolean = false,
+    /**
+     * One voice for known cameras within [FlockApproach.GROUP_M] of the one that speaks.
+     * Off until chosen. Flock cameras and the other known cameras share it.
+     * The map, the path count, and the sit list still keep every camera.
+     */
+    val groupCameraAlerts: Boolean = false,
     /** Lower left of the on-screen map. Missing JSON is off. */
     val mapFooter: MapFooter = MapFooter.OFF,
     /** Stock signature pack for Update stock catalog. Missing JSON is this fork's nightly. */
@@ -1763,11 +1779,11 @@ data class AppSettings(
     val swarmWindowSec: Int = 30,
     /** Minutes with no new UAS ID before another warning. Out of range clamps to 1-10. */
     val swarmQuietMin: Int = 2,
-    /** Pip for the swarm warning and the distance warning. Independent of the watchlist beep. */
+    /** Pip for a Drone monitoring warning. Independent of the watchlist beep. */
     val swarmBeep: Boolean = true,
-    /** Spoken swarm title, or broadcast within the distance. On by default. */
+    /** Spoken line for a Drone monitoring warning. On by default. */
     val swarmVoice: Boolean = true,
-    /** Silent notification for both warnings on this page. Off unless chosen. */
+    /** Silent notification for a Drone monitoring warning. Off unless chosen. */
     val swarmShade: Boolean = false,
     /**
      * Horizontal meters while Drone perimeter detection is on.
@@ -1777,6 +1793,11 @@ data class AppSettings(
     val droneNearM: Int = 0,
     /** Distance chip kept while the switch is off. Missing JSON is 250. */
     val droneNearPick: Int = 250,
+    /**
+     * Warn when a Remote ID on the live list declares an emergency.
+     * Off until chosen, including after an upgrade.
+     */
+    val remoteIdEmergency: Boolean = false,
     /**
      * Drop to Battery saver, then stop, when the phone battery is low.
      * Off until chosen, including after an upgrade. The saved intensity stays.
@@ -1871,6 +1892,16 @@ data class PersistedConfig(
      * A missing key on an older file stays false so the delete can still go out.
      */
     val takLegacySelfRetired: Boolean = false,
+    /**
+     * Last Log export format. Missing or unknown is CSV.
+     * Not part of a settings pack. Sit export keeps its own.
+     */
+    val logExportKind: String = LogExportKind.LOG_CSV.name,
+    /**
+     * Last Sit export format. Missing or unknown is CSV.
+     * Not part of a settings pack.
+     */
+    val sitExportKind: String = LogExportKind.LOG_CSV.name,
 )
 
 data class RssiSample(
@@ -1961,6 +1992,18 @@ data class Sighting(
     /** Where this phone was at [payloadOpAt]. */
     val payloadOpPhoneLat: Double? = null,
     val payloadOpPhoneLon: Double? = null,
+    /**
+     * Location status from this advertisement only.
+     * Null when this advertisement had no Location message. 0 is Undeclared, not missing.
+     * A later Basic ID clears it. It does not stick the way latitude does.
+     */
+    val payloadStatus: Int? = null,
+    /**
+     * Emergency self-ID text from this advertisement.
+     * Null when this advertisement did not send description type 1.
+     * Empty when that type arrived with no words. A later packet clears it.
+     */
+    val payloadEmergencyText: String? = null,
     /**
      * Samsung SmartTag privacy ID while the latest FD5A frame is separated.
      * Not a device key. Null for with owner, unlabeled, and rejected frames.

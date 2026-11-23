@@ -922,6 +922,26 @@ fun SettingsScreen(
                     !sensors.busy,
                 ) { on -> vm.updateSettings { it.copy(cameraAlert = on) } }
             }
+            if (settings.flockLayer || settings.sensorLayer) {
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f).padding(end = 8.dp)) {
+                        Text(
+                            LanguageText.text("settings.layer.alert.group"),
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                        Text(
+                            LanguageText.text("settings.layer.alert.group.note"),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    FieldwatchSwitch(
+                        settings.groupCameraAlerts,
+                        { on -> vm.updateSettings { it.copy(groupCameraAlerts = on) } },
+                    )
+                }
+            }
             }
             SectionCard(LanguageText.text("settings.map.display")) {
             ExposedDropdownMenuBox(
@@ -1785,6 +1805,13 @@ private fun SwarmMonitoringPage(settings: AppSettings, vm: FieldwatchViewModel) 
         Note(LanguageText.text("ui.near.note"))
         if (!tagged) Note(LanguageText.text("ui.near.tag"))
     }
+    SectionCard(LanguageText.text("ui.rid.emergency.row"), showTitle = false) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(LanguageText.text("ui.rid.emergency.row"), Modifier.weight(1f))
+            FieldwatchSwitch(settings.remoteIdEmergency, vm::setRemoteIdEmergency)
+        }
+        Note(LanguageText.text("ui.rid.emergency.note"))
+    }
     WarningReachCard(
         intro = LanguageText.text("trusted.reach.note"),
         beep = settings.swarmBeep,
@@ -1970,8 +1997,8 @@ private fun SettingsTopicList(
     }
     fun onOff(on: Boolean) = if (on) LanguageText.text("ui.on.label") else LanguageText.text("ui.off.label")
     val rows: List<Pair<SettingsTopic, String>> = listOf(
-        SettingsTopic.APPEARANCE to "Privacy ${onOff(settings.demoMode)}",
-        SettingsTopic.SCANNING to scanLabel,
+        SettingsTopic.APPEARANCE to "${LanguageText.text("ui.privacy.label")} ${onOff(settings.demoMode)}",
+        SettingsTopic.SCANNING to "$scanLabel · ${LanguageText.text("ui.battery.protection")} ${onOff(settings.batteryFloor)}",
         SettingsTopic.WATCHLIST to onOff(settings.alertsEnabled),
         SettingsTopic.LOCATION to "GPS ${onOff(settings.tagLocation)} · ${LanguageText.text("ui.places.label")} ${onOff(settings.placeWatch)}",
         SettingsTopic.GNSS to when {
@@ -1994,7 +2021,9 @@ private fun SettingsTopicList(
         } else {
             LanguageText.text("ui.off.label")
         },
-        SettingsTopic.SWARM to if (settings.remoteIdSwarm || settings.droneNearM > 0) {
+        SettingsTopic.SWARM to if (
+            settings.remoteIdSwarm || settings.droneNearM > 0 || settings.remoteIdEmergency
+        ) {
             LanguageText.text("ui.on.label")
         } else {
             LanguageText.text("ui.off.label")

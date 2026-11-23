@@ -67,6 +67,10 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.namelessnanashi.fieldwatch.OPEN" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
 
         <service
@@ -86,6 +90,37 @@
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <service
+            android:name=".AutomationService"
+            android:exported="true"
+            android:foregroundServiceType="location|connectedDevice">
+            <intent-filter>
+                <action android:name="dev.namelessnanashi.fieldwatch.CLOSE" />
+                <action android:name="dev.namelessnanashi.fieldwatch.START_SCAN" />
+                <action android:name="dev.namelessnanashi.fieldwatch.STOP_SCAN" />
+                <action android:name="dev.namelessnanashi.fieldwatch.SCAN_STATUS" />
+                <action android:name="dev.namelessnanashi.fieldwatch.START_SIT" />
+                <action android:name="dev.namelessnanashi.fieldwatch.STOP_SIT" />
+                <action android:name="dev.namelessnanashi.fieldwatch.EXPORT_SIT" />
+                <action android:name="dev.namelessnanashi.fieldwatch.EXPORT_LOG" />
+            </intent-filter>
+        </service>
+
+        <receiver
+            android:name=".AutomationReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="dev.namelessnanashi.fieldwatch.CLOSE" />
+                <action android:name="dev.namelessnanashi.fieldwatch.START_SCAN" />
+                <action android:name="dev.namelessnanashi.fieldwatch.STOP_SCAN" />
+                <action android:name="dev.namelessnanashi.fieldwatch.SCAN_STATUS" />
+                <action android:name="dev.namelessnanashi.fieldwatch.START_SIT" />
+                <action android:name="dev.namelessnanashi.fieldwatch.STOP_SIT" />
+                <action android:name="dev.namelessnanashi.fieldwatch.EXPORT_SIT" />
+                <action android:name="dev.namelessnanashi.fieldwatch.EXPORT_LOG" />
             </intent-filter>
         </receiver>
 

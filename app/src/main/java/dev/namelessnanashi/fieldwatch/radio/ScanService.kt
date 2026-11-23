@@ -45,6 +45,7 @@ import dev.namelessnanashi.fieldwatch.domain.BatteryFloorStep
 import dev.namelessnanashi.fieldwatch.domain.BatteryMark
 import dev.namelessnanashi.fieldwatch.domain.BatteryRestore
 import dev.namelessnanashi.fieldwatch.domain.BatterySample
+import dev.namelessnanashi.fieldwatch.domain.Automation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -72,6 +73,9 @@ class ScanService : LifecycleService() {
     private var batteryStopping = false
     private var batteryWatching = false
     private var lastNotifAt = 0L
+    private var lastNotifText = ""
+    private var locationTypeOn = false
+    private var foregroundRefusal: SecurityException? = null
     private val inbound = Channel<Observation>(512, BufferOverflow.DROP_OLDEST)
     private val publishGate = Any()
     private lateinit var classic: ClassicRadio
@@ -171,6 +175,7 @@ class ScanService : LifecycleService() {
                 noteLocation(locationOn)
                 val hold = locationQuiet.radioHoldMs()
                 if (hold > 0L) {
+                    app.devices.noteQuietScan(false, false)
                     delay(hold.coerceAtMost(2_000L))
                     continue
                 }
@@ -441,6 +446,7 @@ class ScanService : LifecycleService() {
                         app.sits.clusterLabel(),
                     )
                 }
+                app.aircraft.hear(seen)
                 considerTrackers(app, seen, tagged)
                 if (settings.loggingEnabled) {
                     val toLog = seen.filter { it.hitCount <= 1 || it.hitCount % 25 == 0 }.take(16)
@@ -598,11 +604,28 @@ class ScanService : LifecycleService() {
         }
     }
 
+    /** A running BLE scan that is not parked, retrying, or held for a location fix. */
+    private fun quietBleHealthy(): Boolean {
+        if (locationQuiet.radiosHeld()) return false
+        if (!ble.isRunning() || ble.holding()) return false
+        return when (ble.statusHint()) {
+            "BLE parked · restarting", "BLE retrying", "BLE unavailable" -> false
+            else -> true
+        }
+    }
+
+    /** A failed Wi-Fi scan holds radios. A normal gap between scans does not. */
+    private fun quietWifiHealthy(): Boolean {
+        if (locationQuiet.radiosHeld()) return false
+        return !wifi.waitingOnOs()
+    }
+
     private suspend fun publishNow() {
         try {
             val app = application as FieldwatchApp
             val fleets = app.config.fleets
             val settings = app.config.settings
+            app.devices.noteQuietScan(quietBleHealthy(), quietWifiHealthy())
             app.devices.refresh(
                 fleets,
                 settings.staleSec,
@@ -617,6 +640,7 @@ class ScanService : LifecycleService() {
             val nowMs = System.currentTimeMillis()
             val swarm = app.passRemoteIdSwarm(nowMs)
             val near = app.passDroneNear(nowMs)
+            val emergency = app.passRemoteIdEmergency()
             val quietFleets = if (swarm.quiet) app.droneFleetIds() else emptySet()
             if (settings.alertsEnabled && app.config.watchlist.isNotEmpty()) {
                 app.alerter.checkLive(
@@ -643,8 +667,22 @@ class ScanService : LifecycleService() {
                     },
                 )
             }
+            if (settings.alertsEnabled && app.devices.isScanLive()) {
+                val marks = app.alerter.wentQuiet(
+                    app.devices.takeQuietEdges(),
+                    app.config.watchlist,
+                    beepOn = settings.alertBeep,
+                    voiceOn = settings.alertVoice,
+                    shadeOn = settings.alertShade,
+                    demoMode = settings.demoMode,
+                )
+                for (mark in marks) app.sits.noteQuiet(mark)
+            } else {
+                app.devices.takeQuietEdges()
+            }
             app.announceSwarm(swarm)
             app.announceDroneNear(near)
+            app.announceEmergency(emergency)
             val gnss = app.gnss.reading.value
             val floodNotice = app.pairingFlood.notice.value ?: app.wifiFlood.notice.value
             val phoneNote = listOfNotNull(
@@ -682,25 +720,52 @@ class ScanService : LifecycleService() {
         }
     }
 
+    /**
+     * API 34 and later refuse a location type until Fieldwatch is on screen.
+     * The connected-device type still starts, so that refusal does not kill
+     * the process. [includeLocationType] adds location once it is allowed.
+     */
     private fun startAsForeground() {
-        val notification = buildNotification(LanguageText.text("ui.starting.radios"))
-        if (Build.VERSION.SDK_INT >= 34) {
-            startForeground(
-                NOTIF_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION or
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE,
-            )
-        } else if (Build.VERSION.SDK_INT >= 29) {
-            startForeground(
-                NOTIF_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION,
-            )
-        } else {
-            startForeground(NOTIF_ID, notification)
+        lastNotifText = LanguageText.text("ui.starting.radios")
+        val notification = buildNotification(lastNotifText)
+        when (chooseForeground(Build.VERSION.SDK_INT) { types -> postForeground(notification, types) }) {
+            ForegroundChoice.UNTYPED -> {
+                startForeground(NOTIF_ID, notification)
+                locationTypeOn = false
+            }
+            ForegroundChoice.LOCATION -> locationTypeOn = true
+            ForegroundChoice.RADIOS -> locationTypeOn = false
+            ForegroundChoice.REFUSED -> throw foregroundRefusal
+                ?: IllegalStateException("foreground start refused")
         }
     }
+
+    private fun includeLocationType() {
+        if (Build.VERSION.SDK_INT < 29 || locationTypeOn) return
+        val types = ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION or
+            if (Build.VERSION.SDK_INT >= 34) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+            } else {
+                0
+            }
+        val text = lastNotifText.ifBlank { LanguageText.text("ui.starting.radios") }
+        if (!postForeground(buildNotification(text), types)) return
+        locationTypeOn = true
+        val app = application as FieldwatchApp
+        runCatching { app.syncLocationUpdates() }
+        if (gnssReady) runCatching { app.syncGnss() }
+    }
+
+    private fun postForeground(notification: Notification, types: Int): Boolean =
+        try {
+            startForeground(NOTIF_ID, notification, types)
+            foregroundRefusal = null
+            true
+        } catch (e: SecurityException) {
+            foregroundRefusal = e
+            Log.w(TAG, "foreground type $types refused", e)
+            false
+        }
 
     private fun updateNotification() {
         val now = System.currentTimeMillis()
@@ -708,6 +773,7 @@ class ScanService : LifecycleService() {
         lastNotifAt = now
         val stats = (application as FieldwatchApp).devices.stats.value
         val text = "${stats.wifiNow} Wi-Fi · ${stats.bleNow} BLE · ${stats.namedNow} signatures"
+        lastNotifText = text
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         nm.notify(NOTIF_ID, buildNotification(text))
     }
@@ -744,6 +810,7 @@ class ScanService : LifecycleService() {
             stopScanning()
             return START_NOT_STICKY
         }
+        if (intent?.action == ACTION_INCLUDE_LOCATION) includeLocationType()
         val app = application as FieldwatchApp
         return if (app.backgroundScanningAllowed) START_STICKY else START_NOT_STICKY
     }
@@ -932,7 +999,13 @@ class ScanService : LifecycleService() {
     companion object {
         private const val TAG = "FieldwatchScan"
         const val CHANNEL = "fieldwatch_scan"
-        const val ACTION_STOP = "dev.namelessnanashi.fieldwatch.STOP_SCAN"
+        const val ACTION_STOP = Automation.STOP_SCAN
+        const val ACTION_INCLUDE_LOCATION = "dev.namelessnanashi.fieldwatch.INCLUDE_LOCATION"
+
+        fun includeLocation(context: Context) {
+            val intent = Intent(context, ScanService::class.java).setAction(ACTION_INCLUDE_LOCATION)
+            runCatching { context.startService(intent) }
+        }
         private const val NOTIF_ID = 42
         private const val BATTERY_NOTE_ID = 43
         private const val BATTERY_CHANNEL = "fieldwatch_battery"
@@ -953,4 +1026,33 @@ class ScanService : LifecycleService() {
             )
         }
     }
+}
+
+internal enum class ForegroundChoice {
+    /** Before API 29 the call has no type mask. */
+    UNTYPED,
+    /** Location type was accepted, with the connected-device type from API 34. */
+    LOCATION,
+    /** Location was refused. The connected-device type was accepted. */
+    RADIOS,
+    /** Every typed start was refused. */
+    REFUSED,
+}
+
+/**
+ * Try location first. From API 29, a refusal falls back to the connected-device
+ * type so a screen-off start still comes up. Before API 29 there is no type mask.
+ */
+internal fun chooseForeground(sdkInt: Int, accept: (Int) -> Boolean): ForegroundChoice {
+    if (sdkInt < 29) return ForegroundChoice.UNTYPED
+    val location = ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+    val connected = ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+    if (sdkInt >= 34) {
+        if (accept(location or connected)) return ForegroundChoice.LOCATION
+        if (accept(connected)) return ForegroundChoice.RADIOS
+        return ForegroundChoice.REFUSED
+    }
+    if (accept(location)) return ForegroundChoice.LOCATION
+    if (accept(connected)) return ForegroundChoice.RADIOS
+    return ForegroundChoice.REFUSED
 }

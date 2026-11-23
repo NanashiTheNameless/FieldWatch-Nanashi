@@ -22,14 +22,28 @@ import dev.namelessnanashi.fieldwatch.data.AppUpdateAuto
 import dev.namelessnanashi.fieldwatch.data.AppUpdateInstall
 import dev.namelessnanashi.fieldwatch.domain.AlertRadioSnapshot
 import dev.namelessnanashi.fieldwatch.radio.RadioPermissions
+import dev.namelessnanashi.fieldwatch.radio.ScanService
 import dev.namelessnanashi.fieldwatch.ui.FieldwatchRoot
 import dev.namelessnanashi.fieldwatch.ui.FieldwatchViewModel
 import dev.namelessnanashi.fieldwatch.ui.screen.CrashNoteScreen
 import dev.namelessnanashi.fieldwatch.ui.theme.FieldwatchTheme
+import java.lang.ref.WeakReference
 
 class MainActivity : ComponentActivity() {
     companion object {
         const val EXTRA_OPEN_INSTALL_SETTINGS = "dev.namelessnanashi.fieldwatch.extra.OPEN_INSTALL_SETTINGS"
+
+        private var screen: WeakReference<MainActivity>? = null
+
+        /**
+         * Sends the screen behind the other apps. The task stays, so swiping
+         * Fieldwatch out of Recents is still what stops the scan.
+         * True when the screen is already gone.
+         */
+        fun closeScreen(): Boolean {
+            val activity = screen?.get() ?: return true
+            return activity.moveTaskToBack(true)
+        }
     }
 
     private val vm: FieldwatchViewModel by viewModels()
@@ -65,6 +79,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        screen = WeakReference(this)
         AppUpdateAuto.visibleActivities++
         val app = application as FieldwatchApp
         app.uiStarted()
@@ -72,6 +87,7 @@ class MainActivity : ComponentActivity() {
         if (app.pendingCrash == null && app.isReady) {
             app.syncTrackerShade(app.tracker.notice.value)
             vm.checkForUpdateOnOpen()
+            if (RadioPermissions.granted(this)) ScanService.includeLocation(this)
         }
     }
 
@@ -90,8 +106,9 @@ class MainActivity : ComponentActivity() {
         val app = application as FieldwatchApp
         if (app.pendingCrash != null || !app.isReady) return
         vm.refreshPermissions()
-        if (RadioPermissions.granted(this) && !app.devices.stats.value.scanning) {
-            vm.resumeScan()
+        if (RadioPermissions.granted(this)) {
+            ScanService.includeLocation(this)
+            if (!app.devices.stats.value.scanning) vm.resumeScan()
         }
     }
 
@@ -158,11 +175,16 @@ class MainActivity : ComponentActivity() {
                         openAlerted(intent)
                     }
                     FieldwatchRoot(vm) {
-                        permissionLauncher.launch(RadioPermissions.required())
+                        permissionLauncher.launch(RadioPermissions.request())
                     }
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        if (screen?.get() === this) screen = null
+        super.onDestroy()
     }
 
     private fun copyNote(text: String) {

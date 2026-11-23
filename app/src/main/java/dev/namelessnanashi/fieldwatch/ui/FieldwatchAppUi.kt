@@ -151,6 +151,8 @@ import dev.namelessnanashi.fieldwatch.ui.screen.SpokenNamesScreen
 import dev.namelessnanashi.fieldwatch.FieldwatchApp
 import dev.namelessnanashi.fieldwatch.domain.BatteryFloorStep
 import dev.namelessnanashi.fieldwatch.domain.ScanIntensity
+import dev.namelessnanashi.fieldwatch.ui.screen.AircraftRecordScreen
+import dev.namelessnanashi.fieldwatch.ui.theme.BatterySaverYellow
 
 @Composable
 fun FieldwatchRoot(vm: FieldwatchViewModel, onRequestPermissions: () -> Unit) {
@@ -417,13 +419,14 @@ private fun FieldwatchShell(state: FieldwatchUi, vm: FieldwatchViewModel) {
     val gnssNotice by vm.gnssNotice.collectAsStateWithLifecycle()
     val gnssProfile by vm.gnssProfile.collectAsStateWithLifecycle()
     val logKind by vm.logExportKind.collectAsStateWithLifecycle()
+    val sitKind by vm.sitExportKind.collectAsStateWithLifecycle()
     val saveLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument(vm.exportMime()),
+        ActivityResultContracts.CreateDocument(vm.exportMime(logKind)),
     ) { uri ->
         uri?.let(vm::startSaveToUri)
     }
     val sitSaveLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument(vm.sitExportMime()),
+        ActivityResultContracts.CreateDocument(vm.sitExportMime(sitKind)),
     ) { uri ->
         uri?.let(vm::startSitSaveToUri)
     }
@@ -946,6 +949,10 @@ private fun FieldwatchShell(state: FieldwatchUi, vm: FieldwatchViewModel) {
                     onOpenPlaceRadio = { key ->
                         if (vm.openPlaceRadio(key)) nav.navigate("detail")
                     },
+                    onOpenAircraft = { id ->
+                        vm.showAircraft(id)
+                        nav.navigate("aircraft") { launchSingleTop = true }
+                    },
                 )
             }
             composable("candidates") {
@@ -994,6 +1001,17 @@ private fun FieldwatchShell(state: FieldwatchUi, vm: FieldwatchViewModel) {
                     },
                 )
             }
+            composable("aircraft") {
+                AircraftRecordScreen(
+                    state = state,
+                    vm = vm,
+                    onBack = { nav.popBackStack() },
+                    onOpenLive = { device ->
+                        vm.select(device)
+                        nav.navigate("detail")
+                    },
+                )
+            }
             composable("detail") {
                 val device = state.selected
                 val onBack = { nav.popBackStack(); vm.select(null); Unit }
@@ -1030,6 +1048,10 @@ private fun FieldwatchShell(state: FieldwatchUi, vm: FieldwatchViewModel) {
                         spokenNames = state.settings.spokenNames,
                         voiceWhat = state.settings.alertVoiceWhat,
                         watchlist = state.watchlist,
+                        onOpenAircraft = { id ->
+                            vm.showAircraft(id)
+                            nav.navigate("aircraft") { launchSingleTop = true }
+                        },
                     )
                 }
             }
